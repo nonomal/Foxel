@@ -1,7 +1,7 @@
 using Foxel.Services.Attributes;
-using Foxel.Services.Interface;
+using Foxel.Services.Configuration;
 
-namespace Foxel.Services.StorageProvider;
+namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.Local)]
 public class LocalStorageProvider(IConfigService config) : IStorageProvider

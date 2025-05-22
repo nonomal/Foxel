@@ -1,6 +1,6 @@
 using Foxel.Models.DataBase;
 
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.Configuration;
 
 public interface IConfigService
 {

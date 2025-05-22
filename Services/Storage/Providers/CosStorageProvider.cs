@@ -1,13 +1,13 @@
-using Foxel.Services.Interface;
 using COSXML;
 using COSXML.Auth;
-using COSXML.Model.Object;
-using COSXML.Transfer;
 using COSXML.CosException;
+using COSXML.Model.Object;
 using COSXML.Model.Tag;
+using COSXML.Transfer;
 using Foxel.Services.Attributes;
+using Foxel.Services.Configuration;
 
-namespace Foxel.Services.StorageProvider;
+namespace Foxel.Services.Storage.Providers;
 
 public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProvider
 {

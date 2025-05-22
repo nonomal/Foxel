@@ -1,10 +1,10 @@
-using Foxel.Services.Attributes;
-using Foxel.Services.Interface;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
+using Foxel.Services.Attributes;
+using Foxel.Services.Configuration;
 
-namespace Foxel.Services.StorageProvider;
+namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.S3)]
 public class S3StorageProvider : IStorageProvider

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.Request.Tag;
 using Foxel.Models.Response.Tag;
-using Foxel.Services.Interface;
+using Foxel.Services.Media;
 
 namespace Foxel.Controllers;
 

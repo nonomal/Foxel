@@ -1,10 +1,10 @@
-using Foxel.Models.DataBase;
-using Foxel.Services.Interface;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
+using Foxel.Models.DataBase;
+using Foxel.Services.Configuration;
+using Microsoft.EntityFrameworkCore;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Initializer;
 
 public class DatabaseInitializer(
     IDbContextFactory<MyDbContext> contextFactory,

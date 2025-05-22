@@ -4,9 +4,10 @@ using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Picture;
 using Foxel.Models.Response.Picture;
-using Foxel.Services.Interface;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Foxel.Services.Configuration;
+using Foxel.Services.Media;
 
 namespace Foxel.Controllers;
 

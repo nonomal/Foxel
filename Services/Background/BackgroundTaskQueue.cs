@@ -1,12 +1,14 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Microsoft.EntityFrameworkCore;
 using Foxel.Models.DataBase;
+using Foxel.Services.AI;
 using Foxel.Services.Attributes;
-using Foxel.Services.Interface;
+using Foxel.Services.Configuration;
+using Foxel.Services.Storage;
 using Foxel.Utils;
+using Microsoft.EntityFrameworkCore;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Background;
 
 public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 {

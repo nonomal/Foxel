@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Response.Tag;
-using Foxel.Services.Interface;
+using Foxel.Services.Media;
 
 namespace Foxel.Services;
 

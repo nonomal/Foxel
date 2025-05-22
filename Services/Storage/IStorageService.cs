@@ -1,7 +1,6 @@
-using Foxel.Models.DataBase;
 using Foxel.Services.Attributes;
 
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.Storage;
 
 /// <summary>
 /// 统一的存储服务接口

@@ -1,8 +1,7 @@
 using Foxel.Models.DataBase;
-using Foxel.Models.Request;
 using Foxel.Models.Request.Auth;
 
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.Auth;
 
 public interface IAuthService
 {

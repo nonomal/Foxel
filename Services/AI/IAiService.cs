@@ -1,4 +1,4 @@
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.AI;
 
 public interface IAiService
 {

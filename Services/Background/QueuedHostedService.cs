@@ -1,6 +1,4 @@
-using Foxel.Services.Interface;
-
-namespace Foxel.Services;
+namespace Foxel.Services.Background;
 
 public class QueuedHostedService(
     ILogger<QueuedHostedService> logger,

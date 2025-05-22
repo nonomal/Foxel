@@ -1,6 +1,6 @@
 using Foxel.Models.DataBase;
 
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.Background;
 
 /// <summary>
 /// 后台任务队列接口

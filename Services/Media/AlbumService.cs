@@ -1,35 +1,22 @@
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Response.Album;
-using Foxel.Models.Response.Picture;
-using Foxel.Services.Interface;
-using Foxel.Utils;
+using Microsoft.EntityFrameworkCore;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Media;
 
-public class AlbumService : IAlbumService
+public class AlbumService(
+    IDbContextFactory<MyDbContext> contextFactory,
+    IHttpContextAccessor httpContextAccessor)
+    : IAlbumService
 {
-    private readonly IDbContextFactory<MyDbContext> _contextFactory;
-    private readonly IConfigService _configuration;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    
-    private string ServerUrl => _configuration["AppSettings:ServerUrl"];
-    
-    public AlbumService(IDbContextFactory<MyDbContext> contextFactory, IConfigService configuration, IHttpContextAccessor httpContextAccessor)
-    {
-        _contextFactory = contextFactory;
-        _configuration = configuration;
-        _httpContextAccessor = httpContextAccessor;
-    }
-    
     public async Task<PaginatedResult<AlbumResponse>> GetAlbumsAsync(int page = 1, int pageSize = 10, int? userId = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
         
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         // 构建查询
         IQueryable<Album> query = dbContext.Albums
@@ -63,9 +50,9 @@ public class AlbumService : IAlbumService
             Id = a.Id,
             Name = a.Name,
             Description = a.Description,
-            PictureCount = albumPictureCounts.TryGetValue(a.Id, out var count) ? count : 0,
+            PictureCount = albumPictureCounts.GetValueOrDefault(a.Id, 0),
             UserId = a.UserId,
-            Username = a.User?.UserName,
+            Username = a.User.UserName,
             CreatedAt = a.CreatedAt,
             UpdatedAt = a.UpdatedAt
         }).ToList();
@@ -81,7 +68,7 @@ public class AlbumService : IAlbumService
     
     public async Task<AlbumResponse> GetAlbumByIdAsync(int id)
     {
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         var album = await dbContext.Albums
             .Include(a => a.User)
@@ -103,7 +90,7 @@ public class AlbumService : IAlbumService
             Description = album.Description,
             PictureCount = pictureCount,
             UserId = album.UserId,
-            Username = album.User?.UserName,
+            Username = album.User.UserName,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt
         };
@@ -116,7 +103,7 @@ public class AlbumService : IAlbumService
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("相册名称不能为空", nameof(name));
             
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         // 检查用户是否存在
         var user = await dbContext.Users.FindAsync(userId);
@@ -156,7 +143,7 @@ public class AlbumService : IAlbumService
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("相册名称不能为空", nameof(name));
             
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         // 获取相册
         var album = await dbContext.Albums
@@ -193,7 +180,7 @@ public class AlbumService : IAlbumService
             Description = album.Description,
             PictureCount = album.Pictures?.Count ?? 0,
             UserId = album.UserId,
-            Username = album.User?.UserName,
+            Username = album.User.UserName,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt
         };
@@ -201,7 +188,7 @@ public class AlbumService : IAlbumService
     
     public async Task<bool> DeleteAlbumAsync(int id)
     {
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         var album = await dbContext.Albums.FindAsync(id);
         if (album == null)
@@ -218,7 +205,7 @@ public class AlbumService : IAlbumService
     
     public async Task<bool> AddPictureToAlbumAsync(int albumId, int pictureId)
     {
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         // 获取相册和图片
         var album = await dbContext.Albums.FindAsync(albumId);
@@ -240,7 +227,7 @@ public class AlbumService : IAlbumService
     
     public async Task<bool> RemovePictureFromAlbumAsync(int albumId, int pictureId)
     {
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         // 获取图片
         var picture = await dbContext.Pictures
@@ -260,13 +247,13 @@ public class AlbumService : IAlbumService
 
     public async Task<bool> AddPicturesToAlbumAsync(int albumId, List<int> pictureIds)
     {
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         
         var album = await dbContext.Albums.FindAsync(albumId) 
             ?? throw new KeyNotFoundException("相册不存在");
         
         // 检查是否有权限修改此相册
-        var currentUser = _httpContextAccessor.HttpContext?.User;
+        var currentUser = httpContextAccessor.HttpContext?.User;
         if (currentUser != null)
         {
             var userId = int.Parse(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");

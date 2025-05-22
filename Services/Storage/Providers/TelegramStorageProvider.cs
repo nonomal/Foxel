@@ -1,10 +1,10 @@
-using Foxel.Services.Attributes;
-using Foxel.Services.Interface;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Foxel.Services.Attributes;
+using Foxel.Services.Configuration;
 
-namespace Foxel.Services.StorageProvider;
+namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.Telegram)]
 public class TelegramStorageProvider(IConfigService configService) : IStorageProvider

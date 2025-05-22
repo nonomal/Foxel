@@ -1,9 +1,7 @@
 using System.Reflection;
-using Foxel.Models.DataBase;
 using Foxel.Services.Attributes;
-using Foxel.Services.Interface;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Storage;
 
 /// <summary>
 /// 统一的存储服务实现

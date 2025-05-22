@@ -1,15 +1,18 @@
+using System.Text.Json;
 using Foxel.Models;
 using Foxel.Models.DataBase;
-using Foxel.Services.Interface;
+using Foxel.Models.Response.Picture;
+using Foxel.Services.AI;
+using Foxel.Services.Attributes;
+using Foxel.Services.Background;
+using Foxel.Services.Configuration;
+using Foxel.Services.Storage;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
-using System.Text.Json;
-using Foxel.Models.Response.Picture;
-using Foxel.Services.Attributes;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Media;
 
 public class PictureService(
     IDbContextFactory<MyDbContext> contextFactory,
@@ -19,8 +22,6 @@ public class PictureService(
     IStorageService storageService)
     : IPictureService
 {
-    private readonly string _serverUrl = configuration["AppSettings:ServerUrl"];
-
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(
         int page = 1,
         int pageSize = 8,
@@ -110,7 +111,7 @@ public class PictureService(
         var paginatedResults = allResults
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(r => MapPictureToResponse(r.Picture, _serverUrl))
+            .Select(r => MapPictureToResponse(r.Picture))
             .ToList();
 
         // 处理收藏信息
@@ -181,7 +182,7 @@ public class PictureService(
 
         // 转换为响应格式
         var pictures = picturesData
-            .Select(p => MapPictureToResponse(p, _serverUrl))
+            .Select(p => MapPictureToResponse(p))
             .ToList();
 
         // 处理收藏信息
@@ -333,7 +334,7 @@ public class PictureService(
     }
 
     // 将数据库实体映射到响应对象
-    private PictureResponse MapPictureToResponse(Picture picture, string serverUrl)
+    private PictureResponse MapPictureToResponse(Picture picture)
     {
         return new PictureResponse
         {
@@ -449,7 +450,7 @@ public class PictureService(
         }
 
         string fileExtension = Path.GetExtension(fileName);
-        string newFileName = $"{Guid.NewGuid()}{fileExtension}";
+        _ = $"{Guid.NewGuid()}{fileExtension}";
 
         // 使用存储服务保存文件
         string relativePath = await storageService.SaveAsync(storageType.Value, fileStream, fileName, contentType);

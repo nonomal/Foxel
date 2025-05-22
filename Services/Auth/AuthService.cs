@@ -2,13 +2,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Foxel.Models.DataBase;
-using Foxel.Services.Interface;
+using Foxel.Models.Request.Auth;
+using Foxel.Services.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Foxel.Models.Request.Auth;
 using static Foxel.Utils.AuthHelper;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Auth;
 
 public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfigService configuration)
     : IAuthService

@@ -1,7 +1,7 @@
 using Foxel.Models;
 using Foxel.Models.Response.Tag;
 
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.Media;
 
 public interface ITagService
 {

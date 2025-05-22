@@ -1,10 +1,9 @@
+using System.Text.Json;
+using Foxel.Models.DataBase;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Foxel.Models.DataBase;
-using Foxel.Services.Interface;
-using System.Text.Json;
 
-namespace Foxel.Services;
+namespace Foxel.Services.Configuration;
 
 public class ConfigService(
     IDbContextFactory<MyDbContext> contextFactory,
@@ -32,7 +31,7 @@ public class ConfigService(
         if (config == null)
         {
             // 尝试从环境变量获取
-            string? envVarKey = key.ToUpper().Replace(".", "_").Replace("-", "_");
+            string envVarKey = key.ToUpper().Replace(".", "_").Replace("-", "_");
             string? envVarValue = Environment.GetEnvironmentVariable(envVarKey);
 
             if (!string.IsNullOrEmpty(envVarValue))

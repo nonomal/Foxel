@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.Request.Album;
 using Foxel.Models.Response.Album;
-using Foxel.Services.Interface;
+using Foxel.Services.Media;
 
 namespace Foxel.Controllers;
 

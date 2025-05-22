@@ -1,9 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text.Json.Serialization;
-using Foxel.Services.Interface;
+using Foxel.Services.Configuration;
 using Foxel.Utils;
 
-namespace Foxel.Services;
+namespace Foxel.Services.AI;
 
 public class AiService : IAiService
 {
@@ -86,7 +86,7 @@ public class AiService : IAiService
             if (availableTags.Count == 0)
                 return new List<string>();
 
-            string model = _configService["AI:Model"] ?? "deepseek-ai/deepseek-vl2"; // Assuming model can still be dynamic or default
+            string model = _configService["AI:Model"]; 
             var tagsText = string.Join(", ", availableTags);
             var textContent = new TextContent
             {
@@ -104,7 +104,7 @@ public class AiService : IAiService
             var requestContent = new ChatCompletionRequest
             {
                 Model = model,
-                Messages = new ChatMessage[] { message },
+                Messages = [message],
                 Stream = false,
                 MaxTokens = 200,
                 Temperature = 0.1, // 降低温度使结果更确定性
@@ -146,7 +146,6 @@ public class AiService : IAiService
                         if (result is { Tags.Length: > 0 })
                         {
                             // 确保返回的标签真的在可用标签列表中
-                            var availableTagsSet = new HashSet<string>(availableTags, StringComparer.OrdinalIgnoreCase);
                             var matchedTags = new List<string>();
 
                             foreach (var tagName in result.Tags)
@@ -191,7 +190,7 @@ public class AiService : IAiService
         try
         {
 
-            string model = _configService["AI:Model"] ?? "deepseek-ai/deepseek-vl2"; // Assuming model can still be dynamic or default
+            string model = _configService["AI:Model"]; 
 
             var imageUrl = new ImageUrl
             {
@@ -239,7 +238,7 @@ public class AiService : IAiService
             var requestContent = new ChatCompletionRequest
             {
                 Model = model,
-                Messages = new ChatMessage[] { message },
+                Messages = [message],
                 Stream = false,
                 MaxTokens = 200,
                 Temperature = 0.1, // 降低温度使结果更确定性
@@ -335,7 +334,7 @@ public class AiService : IAiService
 
             var requestContent = new
             {
-                model = model,
+                model,
                 input = text,
                 encoding_format = "float"
             };

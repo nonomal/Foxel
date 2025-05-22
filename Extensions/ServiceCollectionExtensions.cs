@@ -1,13 +1,19 @@
 using Foxel.Services;
-using Foxel.Services.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Foxel.Services.Attributes;
-using Foxel.Services.StorageProvider;
 using System.Reflection;
+using Foxel.Services.AI;
+using Foxel.Services.Auth;
+using Foxel.Services.Background;
+using Foxel.Services.Configuration;
+using Foxel.Services.Initializer;
+using Foxel.Services.Media;
+using Foxel.Services.Storage;
+using Foxel.Services.Storage.Providers;
 
 namespace Foxel.Extensions;
 

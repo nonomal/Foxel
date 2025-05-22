@@ -1,5 +1,5 @@
 using Foxel.Extensions;
-using Foxel.Services.Interface;
+using Foxel.Services.Initializer;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);

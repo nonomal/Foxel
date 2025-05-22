@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Config;
-using Foxel.Services.Interface;
+using Foxel.Services.Configuration;
 
 namespace Foxel.Controllers;
 

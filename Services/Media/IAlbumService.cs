@@ -1,8 +1,7 @@
 using Foxel.Models;
-using Foxel.Models.Response;
 using Foxel.Models.Response.Album;
 
-namespace Foxel.Services.Interface;
+namespace Foxel.Services.Media;
 
 public interface IAlbumService
 {

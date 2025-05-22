@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
-using Foxel.Services.Interface;
+using Foxel.Services.Background;
 
 namespace Foxel.Controllers;
 
