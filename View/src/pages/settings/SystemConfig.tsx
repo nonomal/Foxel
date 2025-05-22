@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, Card, message, Spin, Select } from 'antd';
-import { CloudOutlined, DatabaseOutlined, CloudServerOutlined } from '@ant-design/icons';
+import { CloudOutlined, DatabaseOutlined, CloudServerOutlined, GlobalOutlined } from '@ant-design/icons';
 import { getAllConfigs, setConfig } from '../../api';
 import ConfigGroup from './ConfigGroup.tsx';
 import useIsMobile from '../../hooks/useIsMobile';
@@ -88,6 +88,7 @@ const SystemConfig: React.FC = () => {
     { value: 'Telegram', label: 'Telegram 频道', icon: <CloudOutlined style={{ color: '#0088cc' }} /> },
     { value: 'S3', label: '亚马逊 S3', icon: <CloudServerOutlined style={{ color: '#ff9900' }} /> },
     { value: 'Cos', label: '腾讯云 COS', icon: <CloudServerOutlined style={{ color: '#00a4ff' }} /> },
+    { value: 'WebDAV', label: 'WebDAV 存储', icon: <GlobalOutlined style={{ color: '#1890ff' }} /> },
   ];
 
   useEffect(() => {
@@ -313,6 +314,28 @@ const SystemConfig: React.FC = () => {
                   "CosStorageBucketName": 'COS存储桶名称',
                   "CosStorageRegion": 'COS区域 (例如:ap-shanghai)',
                   "CosStorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
+                }}
+                isMobile={isMobile}
+              />
+            )}
+            
+            {storageType === 'WebDAV' && (
+              <ConfigGroup
+                groupName="Storage"
+                configs={{
+                  "WebDAVServerUrl": configs.Storage?.WebDAVServerUrl || '',
+                  "WebDAVUserName": configs.Storage?.WebDAVUserName || '',
+                  "WebDAVPassword": configs.Storage?.WebDAVPassword || '',
+                  "WebDAVBasePath": configs.Storage?.WebDAVBasePath || '',
+                  "WebDAVPublicUrl": configs.Storage?.WebDAVPublicUrl || '',
+                }}
+                onSave={handleSaveConfig}
+                descriptions={{
+                  "WebDAVServerUrl": 'WebDAV 服务器 URL (例如: https://dav.example.com)',
+                  "WebDAVUserName": 'WebDAV 用户名',
+                  "WebDAVPassword": 'WebDAV 密码',
+                  "WebDAVBasePath": 'WebDAV 基础路径 (例如: files/upload)',
+                  "WebDAVPublicUrl": 'WebDAV 公共访问 URL (可选,用于文件访问)',
                 }}
                 isMobile={isMobile}
               />

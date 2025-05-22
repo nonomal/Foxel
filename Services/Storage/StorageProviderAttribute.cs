@@ -8,6 +8,7 @@ public enum StorageType
     Telegram = 1,
     S3 = 2,
     Cos = 3,
+    WebDAV = 4,
 }
 
 

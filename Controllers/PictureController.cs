@@ -8,12 +8,15 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Foxel.Services.Configuration;
 using Foxel.Services.Media;
+using Foxel.Services.Storage;
+using System.IO;
+using Foxel.Services.Attributes;
 
 namespace Foxel.Controllers;
 
 [Authorize]
 [Route("api/picture")]
-public class PictureController(IPictureService pictureService,IConfigService configService) : BaseApiController
+public class PictureController(IPictureService pictureService, IConfigService configService, IStorageService storageService) : BaseApiController
 {
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(
@@ -320,5 +323,53 @@ public class PictureController(IPictureService pictureService,IConfigService con
     {
         [JsonPropertyName("file_path")]
         public string? FilePath { get; set; }
+    }
+
+    [HttpGet("proxy")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetWebDavFile([FromQuery] string path)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return BadRequest("文件路径不能为空");
+            }
+
+            // 下载文件到临时位置
+            string filePath = await storageService.DownloadFileAsync(StorageType.WebDAV,path);
+            
+            // 确定内容类型
+            string contentType = GetContentTypeFromPath(path);
+            
+            // 返回文件内容
+            return PhysicalFile(filePath, contentType, Path.GetFileName(path));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"代理获取WebDAV文件失败: {ex.Message}");
+        }
+    }
+
+    private string GetContentTypeFromPath(string path)
+    {
+        string extension = Path.GetExtension(path).ToLowerInvariant();
+        
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            ".mp4" => "video/mp4",
+            ".avi" => "video/x-msvideo",
+            ".mov" => "video/quicktime",
+            ".pdf" => "application/pdf",
+            ".doc" or ".docx" => "application/msword",
+            ".xls" or ".xlsx" => "application/vnd.ms-excel",
+            _ => "application/octet-stream"
+        };
     }
 }

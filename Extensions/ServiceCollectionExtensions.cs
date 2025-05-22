@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TelegramStorageProvider>();
         services.AddSingleton<S3StorageProvider>();
         services.AddSingleton<CosStorageProvider>();
+        services.AddSingleton<WebDavStorageProvider>();
         services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
     }
