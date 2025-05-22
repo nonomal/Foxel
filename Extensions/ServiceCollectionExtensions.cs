@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Foxel.Services.Attributes;
 using Foxel.Services.StorageProvider;
+using System.Reflection;
 
 namespace Foxel.Extensions;
 
@@ -25,7 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TelegramStorageProvider>();
         services.AddSingleton<S3StorageProvider>();
         services.AddSingleton<CosStorageProvider>();
-        services.AddSingleton<IStorageProviderFactory, StorageProviderFactory>();
+        services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
     }
 

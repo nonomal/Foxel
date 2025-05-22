@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Foxel.Models.DataBase;
+using Foxel.Services.Attributes;
 
 namespace Foxel.Models.Request.Picture;
 

@@ -1,3 +1,4 @@
+using Foxel.Services.Attributes;
 using Foxel.Services.Interface;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -5,6 +6,7 @@ using Amazon.S3.Transfer;
 
 namespace Foxel.Services.StorageProvider;
 
+[StorageProvider(StorageType.S3)]
 public class S3StorageProvider : IStorageProvider
 {
     private readonly string _accessKey;
@@ -13,7 +15,6 @@ public class S3StorageProvider : IStorageProvider
     private readonly string _region;
     private readonly string _endpoint;
     private readonly bool _usePathStyleUrls;
-    private readonly string _serverUrl;
     private readonly string _cdnUrl;
 
     public S3StorageProvider(IConfigService configService)
@@ -22,9 +23,8 @@ public class S3StorageProvider : IStorageProvider
         _secretKey = configService["Storage:S3StorageSecretKey"];
         _bucketName = configService["Storage:S3StorageBucketName"];
         _region = configService["Storage:S3StorageRegion"];
-        _serverUrl = configService["AppSettings:ServerUrl"];
-        _cdnUrl = configService["Storage:S3StorageCdnUrl"] ?? string.Empty;
-        _endpoint = configService["Storage:S3StorageEndpoint"] ?? $"https://s3.{_region}.amazonaws.com";
+        _cdnUrl = configService["Storage:S3StorageCdnUrl"];
+        _endpoint = configService["Storage:S3StorageEndpoint"];
         _usePathStyleUrls = bool.TryParse(configService["Storage:S3StorageUsePathStyleUrls"], out var usePathStyle) && usePathStyle;
     }
 
@@ -163,7 +163,7 @@ public class S3StorageProvider : IStorageProvider
             };
 
             using var response = await client.GetObjectAsync(request);
-            using var fileStream = new FileStream(tempFilePath, FileMode.Create);
+            await using var fileStream = new FileStream(tempFilePath, FileMode.Create);
             await response.ResponseStream.CopyToAsync(fileStream);
 
             return tempFilePath;

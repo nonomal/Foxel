@@ -1,3 +1,4 @@
+using Foxel.Services.Attributes;
 using Foxel.Services.Interface;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -5,6 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace Foxel.Services.StorageProvider;
 
+[StorageProvider(StorageType.Telegram)]
 public class TelegramStorageProvider(IConfigService configService) : IStorageProvider
 {
     private readonly string _botToken = configService["Storage:TelegramStorageBotToken"];
@@ -83,7 +85,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
             using var httpClient = new HttpClient();
             var url =
                 $"https://api.telegram.org/bot{_botToken}/deleteMessage?chat_id={metadata.ChatId}&message_id={metadata.MessageId}";
-            var response = await httpClient.GetAsync(url);
+            await httpClient.GetAsync(url);
         }
         catch (Exception ex)
         {
@@ -165,8 +167,8 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
             string tempFilePath = Path.Combine(tempDir, tempFileName);
 
             // 保存文件
-            using var fileStream = await fileResponse.Content.ReadAsStreamAsync();
-            using var outputStream = new FileStream(tempFilePath, FileMode.Create);
+            await using var fileStream = await fileResponse.Content.ReadAsStreamAsync();
+            await using var outputStream = new FileStream(tempFilePath, FileMode.Create);
             await fileStream.CopyToAsync(outputStream);
 
             return tempFilePath;

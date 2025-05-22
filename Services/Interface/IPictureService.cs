@@ -1,6 +1,7 @@
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Response.Picture;
+using Foxel.Services.Attributes;
 
 namespace Foxel.Services.Interface;
 

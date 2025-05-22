@@ -2,10 +2,10 @@ using Foxel.Services.Interface;
 using COSXML;
 using COSXML.Auth;
 using COSXML.Model.Object;
-using COSXML.Model.Bucket;
 using COSXML.Transfer;
 using COSXML.CosException;
 using COSXML.Model.Tag;
+using Foxel.Services.Attributes;
 
 namespace Foxel.Services.StorageProvider;
 
@@ -20,7 +20,7 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
         Refresh();
     }
 
-    public override void Refresh()
+    public sealed override void Refresh()
     {
         try
         {
@@ -29,8 +29,8 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
             string tmpToken = _configService["Storage:CosStorageToken"]; 
             long tmpStartTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long tmpExpiredTime = tmpStartTime + 7200;
-            SetQCloudCredential(tmpSecretId, tmpSecretKey, 
-                String.Format("{0};{1}", tmpStartTime, tmpExpiredTime), tmpToken);
+            SetQCloudCredential(tmpSecretId, tmpSecretKey,
+                $"{tmpStartTime};{tmpExpiredTime}", tmpToken);
         }
         catch (Exception ex)
         {
@@ -39,11 +39,9 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
         }
     }
 }
-
+[StorageProvider(StorageType.Cos)]
 public class CosStorageProvider : IStorageProvider
 {
-    private readonly string _secretId;
-    private readonly string _secretKey;
     private readonly string _bucketName;
     private readonly string _region;
     private readonly string _cdnUrl;
@@ -55,14 +53,12 @@ public class CosStorageProvider : IStorageProvider
     public CosStorageProvider(IConfigService configService)
     {
         _configService = configService;
-        _secretId = configService["Storage:CosStorageSecretId"];
-        _secretKey = configService["Storage:CosStorageSecretKey"];
         _bucketName = configService["Storage:CosStorageBucketName"];
         _region = configService["Storage:CosStorageRegion"];
-        _cdnUrl = configService["Storage:CosStorageCdnUrl"] ?? string.Empty;
+        _cdnUrl = configService["Storage:CosStorageCdnUrl"];
         
         // 检查桶是否为公开读取（从配置获取）
-        bool.TryParse(configService["Storage:CosStoragePublicRead"] ?? "false", out _isPublicRead);
+        bool.TryParse(configService["Storage:CosStoragePublicRead"], out _isPublicRead);
         
         // 在构造函数中初始化客户端，作为单例使用
         _cosXmlClient = CreateClient();
@@ -96,7 +92,7 @@ public class CosStorageProvider : IStorageProvider
             string tempPath = Path.GetTempFileName();
             try
             {
-                using (var fileStream2 = new FileStream(tempPath, FileMode.Create))
+                await using (var fileStream2 = new FileStream(tempPath, FileMode.Create))
                 {
                     await fileStream.CopyToAsync(fileStream2);
                 }
@@ -105,7 +101,7 @@ public class CosStorageProvider : IStorageProvider
                 var transferManager = new TransferManager(_cosXmlClient, transferConfig);
                 var uploadTask = new COSXMLUploadTask(_bucketName, objectKey);
                 uploadTask.SetSrcPath(tempPath);
-                var result = await transferManager.UploadAsync(uploadTask);
+                await transferManager.UploadAsync(uploadTask);
                 return objectKey;
             }
             finally
@@ -216,7 +212,7 @@ public class CosStorageProvider : IStorageProvider
             var transferConfig = new TransferConfig();
             var transferManager = new TransferManager(_cosXmlClient, transferConfig);
             var downloadTask = new COSXMLDownloadTask(_bucketName, storagePath, tempDir, fileName);
-            var result = await transferManager.DownloadAsync(downloadTask);
+            await transferManager.DownloadAsync(downloadTask);
             return localFilePath;
         }
         catch (CosClientException clientEx)

@@ -7,6 +7,7 @@ using Pgvector;
 using Pgvector.EntityFrameworkCore;
 using System.Text.Json;
 using Foxel.Models.Response.Picture;
+using Foxel.Services.Attributes;
 
 namespace Foxel.Services;
 
@@ -15,7 +16,7 @@ public class PictureService(
     IAiService embeddingService,
     IConfigService configuration,
     IBackgroundTaskQueue backgroundTaskQueue,
-    IStorageProviderFactory storageProviderFactory)
+    IStorageService storageService)
     : IPictureService
 {
     private readonly string _serverUrl = configuration["AppSettings:ServerUrl"];
@@ -334,14 +335,12 @@ public class PictureService(
     // 将数据库实体映射到响应对象
     private PictureResponse MapPictureToResponse(Picture picture, string serverUrl)
     {
-        var storageProvider = storageProviderFactory.GetProvider(picture.StorageType);
-
         return new PictureResponse
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageProvider.GetUrl(picture.Path),
-            ThumbnailPath = storageProvider.GetUrl(picture.ThumbnailPath),
+            Path = storageService.GetUrl(picture.StorageType, picture.Path),
+            ThumbnailPath = storageService.GetUrl(picture.StorageType, picture.ThumbnailPath),
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
@@ -452,11 +451,8 @@ public class PictureService(
         string fileExtension = Path.GetExtension(fileName);
         string newFileName = $"{Guid.NewGuid()}{fileExtension}";
 
-        // 获取对应的存储提供者
-        var storageProvider = storageProviderFactory.GetProvider(storageType.Value);
-
-        // 使用存储提供者保存文件
-        string relativePath = await storageProvider.SaveAsync(fileStream, fileName, contentType);
+        // 使用存储服务保存文件
+        string relativePath = await storageService.SaveAsync(storageType.Value, fileStream, fileName, contentType);
 
         // 创建基本的Picture对象，使用文件名作为标题和描述
         string initialTitle = Path.GetFileNameWithoutExtension(fileName);
@@ -522,8 +518,8 @@ public class PictureService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageProvider.GetUrl(relativePath),
-            ThumbnailPath = isAnonymous ? storageProvider.GetUrl(relativePath) : null,  
+            Path = storageService.GetUrl(picture.StorageType, relativePath),
+            ThumbnailPath = isAnonymous ? storageService.GetUrl(picture.StorageType, relativePath) : null,  
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = new List<string>(),
@@ -602,21 +598,13 @@ public class PictureService(
 
                 try
                 {
-                    // 根据存储类型获取相应的存储提供者并删除文件
-                    var storageProvider = storageProviderFactory.GetProvider(storageType);
-                    await storageProvider.DeleteAsync(path);
+                    // 使用存储服务删除文件
+                    await storageService.DeleteAsync(storageType, path);
 
                     // 删除缩略图
-                    if (storageType == StorageType.Local)
+                    if (!string.IsNullOrEmpty(thumbnailPath))
                     {
-                        // 对于本地存储，使用本地存储提供者删除缩略图
-                        await storageProvider.DeleteAsync(thumbnailPath);
-                    }
-                    else
-                    {
-                        // 对于其他存储类型(如Telegram)，使用相同的存储提供者删除缩略图
-                        // 因为缩略图元数据格式与原文件相同
-                        await storageProvider.DeleteAsync(thumbnailPath);
+                        await storageService.DeleteAsync(storageType, thumbnailPath);
                     }
                 }
                 catch (Exception ex)
@@ -697,8 +685,8 @@ public class PictureService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageProviderFactory.GetProvider(picture.StorageType).GetUrl(picture.Path),
-            ThumbnailPath = storageProviderFactory.GetProvider(picture.StorageType).GetUrl(picture.ThumbnailPath),
+            Path = storageService.GetUrl(picture.StorageType, picture.Path),
+            ThumbnailPath = storageService.GetUrl(picture.StorageType, picture.ThumbnailPath),
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = picture.Tags?.Select(t => t.Name).ToList() ?? new List<string>(),

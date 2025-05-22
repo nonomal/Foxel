@@ -1,7 +1,9 @@
+using Foxel.Services.Attributes;
 using Foxel.Services.Interface;
 
 namespace Foxel.Services.StorageProvider;
 
+[StorageProvider(StorageType.Local)]
 public class LocalStorageProvider(IConfigService config) : IStorageProvider
 {
     private readonly string _baseDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");

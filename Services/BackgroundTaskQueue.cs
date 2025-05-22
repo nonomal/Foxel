@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Foxel.Models.DataBase;
+using Foxel.Services.Attributes;
 using Foxel.Services.Interface;
 using Foxel.Utils;
-using Foxel.Services.StorageProvider;
 
 namespace Foxel.Services;
 
@@ -200,9 +200,8 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
         try
         {
             using var scope = _serviceProvider.CreateScope();
-            var pictureService = scope.ServiceProvider.GetRequiredService<IPictureService>();
             var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
-            var storageProviderFactory = scope.ServiceProvider.GetRequiredService<IStorageProviderFactory>();
+            var storageService = scope.ServiceProvider.GetRequiredService<IStorageService>();
 
             // 1. 获取图片信息
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 10);
@@ -214,9 +213,6 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 throw new Exception($"找不到ID为{task.PictureId}的图片");
             }
 
-            // 根据存储类型获取文件处理路径
-            var storageProvider = storageProviderFactory.GetProvider(picture.StorageType);
-
             // 处理文件获取逻辑
             if (picture.StorageType == StorageType.Local)
             {
@@ -227,7 +223,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             {
                 // 非本地存储需要先下载文件
                 await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 15);
-                localFilePath = await storageProvider.DownloadFileAsync(picture.Path);
+                localFilePath = await storageService.DownloadFileAsync(picture.StorageType, picture.Path);
                 isTempFile = true;
             }
 
@@ -257,12 +253,13 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             else
             {
                 // 非本地存储，上传缩略图到对应的存储服务
-                using var thumbnailFileStream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read);
+                await using var thumbnailFileStream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read);
                 var thumbnailFileName = Path.GetFileName(thumbnailPath);
                 var thumbnailContentType = Path.GetExtension(thumbnailPath).ToLower() == ".png" ? "image/png" : "image/jpeg";
 
                 // 上传缩略图并获取存储路径或元数据
-                string thumbnailStoragePath = await storageProvider.SaveAsync(
+                string thumbnailStoragePath = await storageService.SaveAsync(
+                    picture.StorageType,
                     thumbnailFileStream,
                     thumbnailFileName,
                     thumbnailContentType);

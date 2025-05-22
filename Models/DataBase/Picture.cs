@@ -1,17 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+using Foxel.Services.Attributes;
 using Vector = Pgvector.Vector;
 
 namespace Foxel.Models.DataBase;
-
-public enum StorageType
-{
-    Local = 0,
-    Telegram = 1,
-    S3 = 2,
-    Cos = 3,
-}
 
 public class Picture : BaseModel
 {
