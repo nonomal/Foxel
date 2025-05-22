@@ -137,21 +137,43 @@ const SystemConfig: React.FC = () => {
             />
           </TabPane>
 
-          <TabPane tab="JWT 设置" key="Jwt">
-            <ConfigGroup
-              groupName="Jwt"
-              configs={{
-                SecretKey: configs.Jwt?.SecretKey || '',
-                Issuer: configs.Jwt?.Issuer || '',
-                Audience: configs.Jwt?.Audience || '',
-              }}
-              onSave={handleSaveConfig}
-              descriptions={{
-                SecretKey: 'JWT 加密密钥',
-                Issuer: 'JWT 签发者',
-                Audience: 'JWT 接收者',
-              }}
-            />
+          <TabPane tab="授权配置" key="Authorization">
+            <Tabs defaultActiveKey="jwt" type="card" size={isMobile ? "small" : "middle"}>
+              <TabPane tab="JWT 设置" key="jwt">
+                <ConfigGroup
+                  groupName="Jwt"
+                  configs={{
+                    SecretKey: configs.Jwt?.SecretKey || '',
+                    Issuer: configs.Jwt?.Issuer || '',
+                    Audience: configs.Jwt?.Audience || '',
+                  }}
+                  onSave={handleSaveConfig}
+                  descriptions={{
+                    SecretKey: 'JWT 加密密钥',
+                    Issuer: 'JWT 签发者',
+                    Audience: 'JWT 接收者',
+                  }}
+                  isMobile={isMobile}
+                />
+              </TabPane>
+              <TabPane tab="GitHub认证" key="github">
+                <ConfigGroup
+                  groupName="Authentication"
+                  configs={{
+                    "GitHubClientId": configs.Authentication?.["GitHubClientId"] || '',
+                    "GitHubClientSecret": configs.Authentication?.["GitHubClientSecret"] || '',
+                    "GitHubCallbackUrl": configs.Authentication?.["GitHubCallbackUrl"] || ''
+                  }}
+                  onSave={(_group, key, value) => handleSaveConfig('Authentication', key, value)}
+                  descriptions={{
+                    "GitHubClientId": 'GitHub OAuth 应用客户端ID',
+                    "GitHubClientSecret": 'GitHub OAuth 应用客户端密钥',
+                    "GitHubCallbackUrl": 'GitHub OAuth 认证回调地址'
+                  }}
+                  isMobile={isMobile}
+                />
+              </TabPane>
+            </Tabs>
           </TabPane>
 
           <TabPane tab="应用设置" key="AppSettings">
@@ -163,23 +185,6 @@ const SystemConfig: React.FC = () => {
               onSave={handleSaveConfig}
               descriptions={{
                 ServerUrl: '服务器URL'
-              }}
-            />
-          </TabPane>
-
-          <TabPane tab="GitHub认证" key="Authentication">
-            <ConfigGroup
-              groupName="Authentication"
-              configs={{
-                "GitHubClientId": configs.Authentication?.["GitHubClientId"] || '',
-                "GitHubClientSecret": configs.Authentication?.["GitHubClientSecret"] || '',
-                "GitHubCallbackUrl": configs.Authentication?.["GitHubCallbackUrl"] || ''
-              }}
-              onSave={(_group, key, value) => handleSaveConfig('Authentication', key, value)}
-              descriptions={{
-                "GitHubClientId": 'GitHub OAuth 应用客户端ID',
-                "GitHubClientSecret": 'GitHub OAuth 应用客户端密钥',
-                "GitHubCallbackUrl": 'GitHub OAuth 认证回调地址'
               }}
             />
           </TabPane>

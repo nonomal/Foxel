@@ -14,9 +14,17 @@ public class AiService : IAiService
     {
         _httpClient = httpClient;
         _configService = configService;
+    }
+
+    private void ConfigureHttpClient()
+    {
         string apiKey = _configService["AI:ApiKey"];
         string baseUrl = _configService["AI:ApiEndpoint"];
-        _httpClient.BaseAddress = new Uri(baseUrl);
+
+        if (_httpClient.BaseAddress?.ToString() != baseUrl)
+        {
+            _httpClient.BaseAddress = new Uri(baseUrl);
+        }
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
     }
 
@@ -24,6 +32,7 @@ public class AiService : IAiService
     {
         try
         {
+            ConfigureHttpClient();
             string model = _configService["AI:Model"];
             var imageUrl = new ImageUrl
             {
@@ -83,10 +92,13 @@ public class AiService : IAiService
     {
         try
         {
+            // 确保使用最新配置
+            ConfigureHttpClient();
+
             if (availableTags.Count == 0)
                 return new List<string>();
 
-            string model = _configService["AI:Model"]; 
+            string model = _configService["AI:Model"];
             var tagsText = string.Join(", ", availableTags);
             var textContent = new TextContent
             {
@@ -189,8 +201,10 @@ public class AiService : IAiService
     {
         try
         {
+            // 确保使用最新配置
+            ConfigureHttpClient();
 
-            string model = _configService["AI:Model"]; 
+            string model = _configService["AI:Model"];
 
             var imageUrl = new ImageUrl
             {
@@ -329,6 +343,8 @@ public class AiService : IAiService
     {
         try
         {
+            // 确保使用最新配置
+            ConfigureHttpClient();
 
             string model = _configService["AI:EmbeddingModel"];
 

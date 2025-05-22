@@ -6,52 +6,49 @@ using Foxel.Services.Configuration;
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.WebDAV)]
-public class WebDavStorageProvider : IStorageProvider
+public class WebDavStorageProvider(IConfigService configService) : IStorageProvider
 {
-    private readonly string _webDavServerUrl;
-    private readonly string _serverUrl;
-    private readonly string _basePath;
-    private readonly string _publicUrl;
-    private readonly HttpClient _httpClient;
-
-    public WebDavStorageProvider(IConfigService configService)
+    private HttpClient CreateClient()
     {
-        _webDavServerUrl = configService["Storage:WebDAVServerUrl"].TrimEnd('/');
+        var httpClient = new HttpClient();
         var userName = configService["Storage:WebDAVUserName"];
         var password = configService["Storage:WebDAVPassword"];
-        _basePath = configService["Storage:WebDAVBasePath"].Trim('/');
-        _publicUrl = configService["Storage:WebDAVPublicUrl"].TrimEnd('/');
-        _serverUrl = configService["AppSettings:ServerUrl"];
-        _httpClient = new HttpClient();
+
         if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(password))
         {
             var authValue = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{userName}:{password}"));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
         }
+
+        return httpClient;
     }
 
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {
         try
         {
+            string webDavServerUrl = configService["Storage:WebDAVServerUrl"].TrimEnd('/');
+            string basePath = configService["Storage:WebDAVBasePath"].Trim('/');
+
             // 创建唯一的文件存储路径
             string currentDate = DateTime.Now.ToString("yyyy/MM");
             string ext = Path.GetExtension(fileName);
             string newFileName = $"{Guid.NewGuid()}{ext}";
-            string relativePath = $"{_basePath}/{currentDate}/{newFileName}";
+            string relativePath = $"{basePath}/{currentDate}/{newFileName}";
 
             // 确保目录存在
-            await EnsureDirectoryExistsAsync($"{_basePath}/{currentDate}");
+            await EnsureDirectoryExistsAsync($"{basePath}/{currentDate}");
 
             // 上传文件内容
-            var requestUri = $"{_webDavServerUrl}/{relativePath}";
+            var requestUri = $"{webDavServerUrl}/{relativePath}";
+            using var client = CreateClient();
             using var content = new StreamContent(fileStream);
             content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
             using var request = new HttpRequestMessage(HttpMethod.Put, requestUri);
             request.Content = content;
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
             return relativePath;
@@ -70,8 +67,11 @@ public class WebDavStorageProvider : IStorageProvider
             if (string.IsNullOrEmpty(storagePath))
                 return;
 
-            var requestUri = $"{_webDavServerUrl}/{storagePath}";
-            var response = await _httpClient.DeleteAsync(requestUri);
+            string webDavServerUrl = configService["Storage:WebDAVServerUrl"].TrimEnd('/');
+            var requestUri = $"{webDavServerUrl}/{storagePath}";
+
+            using var client = CreateClient();
+            var response = await client.DeleteAsync(requestUri);
 
             if (response.StatusCode != System.Net.HttpStatusCode.NotFound)
             {
@@ -91,12 +91,15 @@ public class WebDavStorageProvider : IStorageProvider
             if (string.IsNullOrEmpty(storagePath))
                 return "/images/unavailable.gif";
 
-            if (!string.IsNullOrEmpty(_publicUrl))
+            string publicUrl = configService["Storage:WebDAVPublicUrl"].TrimEnd('/');
+            string serverUrl = configService["AppSettings:ServerUrl"];
+
+            if (!string.IsNullOrEmpty(publicUrl))
             {
-                return $"{_publicUrl}/{storagePath}";
+                return $"{publicUrl}/{storagePath}";
             }
 
-            return $"{_serverUrl}/api/picture/proxy?path={Uri.EscapeDataString(storagePath)}";
+            return $"{serverUrl}/api/picture/proxy?path={Uri.EscapeDataString(storagePath)}";
         }
         catch (Exception ex)
         {
@@ -114,6 +117,8 @@ public class WebDavStorageProvider : IStorageProvider
                 throw new ArgumentException("存储路径不能为空");
             }
 
+            string webDavServerUrl = configService["Storage:WebDAVServerUrl"].TrimEnd('/');
+
             // 创建临时目录
             var tempDir = Path.Combine(Path.GetTempPath(), "FoxelWebDAVTemp");
             if (!Directory.Exists(tempDir))
@@ -126,9 +131,10 @@ public class WebDavStorageProvider : IStorageProvider
             string tempFilePath = Path.Combine(tempDir, fileName);
 
             // 下载文件
-            var requestUri = $"{_webDavServerUrl}/{storagePath}";
+            var requestUri = $"{webDavServerUrl}/{storagePath}";
+            using var client = CreateClient();
             using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-            var response = await _httpClient.SendAsync(request);
+            var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
             await using var fileStream = new FileStream(tempFilePath, FileMode.Create);
@@ -150,18 +156,20 @@ public class WebDavStorageProvider : IStorageProvider
     {
         try
         {
-            var requestUri = $"{_webDavServerUrl}/{directoryPath}";
+            string webDavServerUrl = configService["Storage:WebDAVServerUrl"].TrimEnd('/');
+            var requestUri = $"{webDavServerUrl}/{directoryPath}";
+            using var client = CreateClient();
 
             // 检查目录是否存在 - 使用新的请求对象
             using var headRequest = new HttpRequestMessage(HttpMethod.Head, requestUri);
-            var response = await _httpClient.SendAsync(headRequest);
+            var response = await client.SendAsync(headRequest);
 
             if (response.IsSuccessStatusCode)
                 return;
 
             // 创建目录 - 使用新的请求对象
             using var mkcolRequest = new HttpRequestMessage(new HttpMethod("MKCOL"), requestUri);
-            response = await _httpClient.SendAsync(mkcolRequest);
+            response = await client.SendAsync(mkcolRequest);
 
             // 处理状态码
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict ||
@@ -174,13 +182,13 @@ public class WebDavStorageProvider : IStorageProvider
                     await EnsureDirectoryExistsAsync(parentPath);
 
                     using var retryRequest = new HttpRequestMessage(new HttpMethod("MKCOL"), requestUri);
-                    response = await _httpClient.SendAsync(retryRequest);
+                    response = await client.SendAsync(retryRequest);
 
                     if (response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed)
                     {
                         using var putRequest = new HttpRequestMessage(HttpMethod.Put, $"{requestUri}/.dummy");
                         putRequest.Content = new StringContent(string.Empty);
-                        await _httpClient.SendAsync(putRequest);
+                        await client.SendAsync(putRequest);
                     }
                     else
                     {
@@ -192,7 +200,7 @@ public class WebDavStorageProvider : IStorageProvider
             {
                 using var putRequest = new HttpRequestMessage(HttpMethod.Put, $"{requestUri}/.dummy");
                 putRequest.Content = new StringContent(string.Empty);
-                var putResponse = await _httpClient.SendAsync(putRequest);
+                var putResponse = await client.SendAsync(putRequest);
                 putResponse.EnsureSuccessStatusCode();
             }
             else

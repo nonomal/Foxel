@@ -39,42 +39,19 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
         }
     }
 }
+
 [StorageProvider(StorageType.Cos)]
-public class CosStorageProvider : IStorageProvider
+public class CosStorageProvider(IConfigService configService) : IStorageProvider
 {
-    private readonly string _bucketName;
-    private readonly string _region;
-    private readonly string _cdnUrl;
-    private readonly IConfigService _configService;
-    private readonly CosXml _cosXmlClient;
-
-    private readonly bool _isPublicRead;
-
-    public CosStorageProvider(IConfigService configService)
-    {
-        _configService = configService;
-        _bucketName = configService["Storage:CosStorageBucketName"];
-        _region = configService["Storage:CosStorageRegion"];
-        _cdnUrl = configService["Storage:CosStorageCdnUrl"];
-        
-        // 检查桶是否为公开读取（从配置获取）
-        bool.TryParse(configService["Storage:CosStoragePublicRead"], out _isPublicRead);
-        
-        // 在构造函数中初始化客户端，作为单例使用
-        _cosXmlClient = CreateClient();
-    }
-
     private CosXml CreateClient()
     {
-        // 优化配置：启用HTTPS和日志
         var config = new CosXmlConfig.Builder()
-            .IsHttps(true)  // 设置默认HTTPS请求
-            .SetRegion(_region)
-            .SetDebugLog(true)  // 显示日志
+            .IsHttps(true) 
+            .SetRegion(configService["Storage:CosStorageRegion"])
+            .SetDebugLog(true) 
             .Build();
             
-        // 使用自定义凭证提供者，支持持续更新临时密钥
-        var cosCredentialProvider = new CustomQCloudCredentialProvider(_configService);
+        var cosCredentialProvider = new CustomQCloudCredentialProvider(configService);
         
         return new CosXmlServer(config, cosCredentialProvider);
     }
@@ -97,9 +74,10 @@ public class CosStorageProvider : IStorageProvider
                     await fileStream.CopyToAsync(fileStream2);
                 }
 
+                var cosXmlClient = CreateClient();
                 var transferConfig = new TransferConfig();
-                var transferManager = new TransferManager(_cosXmlClient, transferConfig);
-                var uploadTask = new COSXMLUploadTask(_bucketName, objectKey);
+                var transferManager = new TransferManager(cosXmlClient, transferConfig);
+                var uploadTask = new COSXMLUploadTask(configService["Storage:CosStorageBucketName"], objectKey);
                 uploadTask.SetSrcPath(tempPath);
                 await transferManager.UploadAsync(uploadTask);
                 return objectKey;
@@ -137,8 +115,9 @@ public class CosStorageProvider : IStorageProvider
             if (string.IsNullOrEmpty(storagePath))
                 return;
 
-            var request = new DeleteObjectRequest(_bucketName, storagePath);
-            await Task.Run(() => _cosXmlClient.DeleteObject(request));
+            var cosXmlClient = CreateClient();
+            var request = new DeleteObjectRequest(configService["Storage:CosStorageBucketName"], storagePath);
+            await Task.Run(() => cosXmlClient.DeleteObject(request));
         }
         catch (CosClientException clientEx)
         {
@@ -161,27 +140,33 @@ public class CosStorageProvider : IStorageProvider
             if (string.IsNullOrEmpty(storagePath))
                 return "/images/unavailable.gif";
 
+            string cdnUrl = configService["Storage:CosStorageCdnUrl"];
+            string bucketName = configService["Storage:CosStorageBucketName"];
+            string region = configService["Storage:CosStorageRegion"];
+            bool isPublicRead = bool.TryParse(configService["Storage:CosStoragePublicRead"], out var publicRead) && publicRead;
+
             // 优先使用CDN
-            if (!string.IsNullOrEmpty(_cdnUrl))
-                return $"{_cdnUrl}/{storagePath}";
+            if (!string.IsNullOrEmpty(cdnUrl))
+                return $"{cdnUrl}/{storagePath}";
 
             // 公开读取的桶可直接访问
-            if (_isPublicRead)
-                return $"https://{_bucketName}.cos.{_region}.myqcloud.com/{storagePath}";
+            if (isPublicRead)
+                return $"https://{bucketName}.cos.{region}.myqcloud.com/{storagePath}";
 
-            var bucketParts = _bucketName.Split('-');
+            var cosXmlClient = CreateClient();
+            var bucketParts = bucketName.Split('-');
             var request = new PreSignatureStruct
             {
                 bucket = bucketParts[0],
                 appid = bucketParts[1],
-                region = _region,
+                region = region,
                 key = storagePath,
                 httpMethod = "GET",
                 isHttps = true,
                 signDurationSecond = 3600 * 24  
             };
             
-            var url = _cosXmlClient.GenerateSignURL(request);
+            var url = cosXmlClient.GenerateSignURL(request);
             return url;
         }
         catch (Exception ex)
@@ -207,13 +192,15 @@ public class CosStorageProvider : IStorageProvider
                 Directory.CreateDirectory(tempDir);
             }
 
+            string bucketName = configService["Storage:CosStorageBucketName"];
             string fileName = Path.GetFileName(storagePath);
-            string localFilePath = Path.Combine(tempDir, fileName);
+            
+            var cosXmlClient = CreateClient();
             var transferConfig = new TransferConfig();
-            var transferManager = new TransferManager(_cosXmlClient, transferConfig);
-            var downloadTask = new COSXMLDownloadTask(_bucketName, storagePath, tempDir, fileName);
+            var transferManager = new TransferManager(cosXmlClient, transferConfig);
+            var downloadTask = new COSXMLDownloadTask(bucketName, storagePath, tempDir, fileName);
             await transferManager.DownloadAsync(downloadTask);
-            return localFilePath;
+            return Path.Combine(tempDir, fileName);
         }
         catch (CosClientException clientEx)
         {

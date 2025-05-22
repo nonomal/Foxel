@@ -4,10 +4,9 @@ using Foxel.Services.Configuration;
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.Local)]
-public class LocalStorageProvider(IConfigService config) : IStorageProvider
+public class LocalStorageProvider(IConfigService configService) : IStorageProvider
 {
     private readonly string _baseDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-    private readonly string _serverUrl = config["AppSettings:ServerUrl"];
 
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {
@@ -36,9 +35,10 @@ public class LocalStorageProvider(IConfigService config) : IStorageProvider
     {
         if (string.IsNullOrEmpty(storagePath))
             return $"/images/unavailable.gif";
-        return $"{_serverUrl}{storagePath}";
-    }
 
+        string serverUrl = configService["AppSettings:ServerUrl"];
+        return $"{serverUrl}{storagePath}";
+    }
 
     public Task<string> DownloadFileAsync(string storagePath)
     {

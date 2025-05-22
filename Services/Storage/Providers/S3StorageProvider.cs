@@ -7,44 +7,31 @@ using Foxel.Services.Configuration;
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.S3)]
-public class S3StorageProvider : IStorageProvider
+public class S3StorageProvider(IConfigService configService) : IStorageProvider
 {
-    private readonly string _accessKey;
-    private readonly string _secretKey;
-    private readonly string _bucketName;
-    private readonly string _region;
-    private readonly string _endpoint;
-    private readonly bool _usePathStyleUrls;
-    private readonly string _cdnUrl;
-
-    public S3StorageProvider(IConfigService configService)
-    {
-        _accessKey = configService["Storage:S3StorageAccessKey"];
-        _secretKey = configService["Storage:S3StorageSecretKey"];
-        _bucketName = configService["Storage:S3StorageBucketName"];
-        _region = configService["Storage:S3StorageRegion"];
-        _cdnUrl = configService["Storage:S3StorageCdnUrl"];
-        _endpoint = configService["Storage:S3StorageEndpoint"];
-        _usePathStyleUrls = bool.TryParse(configService["Storage:S3StorageUsePathStyleUrls"], out var usePathStyle) && usePathStyle;
-    }
-
     private AmazonS3Client CreateClient()
     {
+        string accessKey = configService["Storage:S3StorageAccessKey"];
+        string secretKey = configService["Storage:S3StorageSecretKey"];
+        string endpoint = configService["Storage:S3StorageEndpoint"];
+        string region = configService["Storage:S3StorageRegion"];
+        bool usePathStyleUrls = bool.TryParse(configService["Storage:S3StorageUsePathStyleUrls"], out var usePathStyle) && usePathStyle;
+
         var config = new AmazonS3Config
         {
-            ServiceURL = _endpoint,
-            UseHttp = !_endpoint.StartsWith("https", StringComparison.OrdinalIgnoreCase),
-            ForcePathStyle = _usePathStyleUrls
+            ServiceURL = endpoint,
+            UseHttp = !endpoint.StartsWith("https", StringComparison.OrdinalIgnoreCase),
+            ForcePathStyle = usePathStyleUrls
         };
 
-        if (!string.IsNullOrEmpty(_region) && _endpoint.Contains("amazonaws.com"))
+        if (!string.IsNullOrEmpty(region) && endpoint.Contains("amazonaws.com"))
         {
-            config.RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(_region);
+            config.RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region);
         }
         
         return new AmazonS3Client(
-            _accessKey,
-            _secretKey,
+            accessKey,
+            secretKey,
             config
         );
     }
@@ -65,7 +52,7 @@ public class S3StorageProvider : IStorageProvider
             {
                 InputStream = fileStream,
                 Key = objectKey,
-                BucketName = _bucketName,
+                BucketName = configService["Storage:S3StorageBucketName"],
                 ContentType = contentType
             };
 
@@ -91,7 +78,7 @@ public class S3StorageProvider : IStorageProvider
             using var client = CreateClient();
             var deleteRequest = new DeleteObjectRequest
             {
-                BucketName = _bucketName,
+                BucketName = configService["Storage:S3StorageBucketName"],
                 Key = storagePath
             };
 
@@ -110,17 +97,19 @@ public class S3StorageProvider : IStorageProvider
             if (string.IsNullOrEmpty(storagePath))
                 return "/images/unavailable.gif";
 
+            string cdnUrl = configService["Storage:S3StorageCdnUrl"];
+
             // 如果配置了CDN URL，使用CDN
-            if (!string.IsNullOrEmpty(_cdnUrl))
+            if (!string.IsNullOrEmpty(cdnUrl))
             {
-                return $"{_cdnUrl}/{storagePath}";
+                return $"{cdnUrl}/{storagePath}";
             }
 
             // 否则使用S3直链或生成预签名URL
             using var client = CreateClient();
             var request = new GetPreSignedUrlRequest
             {
-                BucketName = _bucketName,
+                BucketName = configService["Storage:S3StorageBucketName"],
                 Key = storagePath,
                 Expires = DateTime.UtcNow.AddHours(1) // URL有效期1小时
             };
@@ -158,7 +147,7 @@ public class S3StorageProvider : IStorageProvider
             using var client = CreateClient();
             var request = new GetObjectRequest
             {
-                BucketName = _bucketName,
+                BucketName = configService["Storage:S3StorageBucketName"],
                 Key = storagePath
             };
 

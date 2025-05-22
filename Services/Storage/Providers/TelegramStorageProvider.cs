@@ -9,15 +9,14 @@ namespace Foxel.Services.Storage.Providers;
 [StorageProvider(StorageType.Telegram)]
 public class TelegramStorageProvider(IConfigService configService) : IStorageProvider
 {
-    private readonly string _botToken = configService["Storage:TelegramStorageBotToken"];
-    private readonly string _chatId = configService["Storage:TelegramStorageChatId"];
-    private readonly string _serverUrl = configService["AppSettings:ServerUrl"];
-
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {
+        string botToken = configService["Storage:TelegramStorageBotToken"];
+        string chatId = configService["Storage:TelegramStorageChatId"];
+
         using var httpClient = new HttpClient();
         using var formData = new MultipartFormDataContent();
-        formData.Add(new StringContent(_chatId), "chat_id");
+        formData.Add(new StringContent(chatId), "chat_id");
         var safeFileName = Path.GetFileNameWithoutExtension(fileName);
         if (safeFileName.Length > 100)
             safeFileName = safeFileName.Substring(0, 100);
@@ -35,7 +34,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         try
         {
             var response =
-                await httpClient.PostAsync($"https://api.telegram.org/bot{_botToken}/sendDocument", formData);
+                await httpClient.PostAsync($"https://api.telegram.org/bot{botToken}/sendDocument", formData);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -58,7 +57,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
                 FileId = fileId,
                 FileUniqueId = responseObj.Result.Document.FileUniqueId,
                 MessageId = responseObj.Result.MessageId,
-                ChatId = _chatId,
+                ChatId = chatId,
                 OriginalFileName = fileName,
                 UploadDate = DateTime.UtcNow,
                 MimeType = contentType
@@ -82,9 +81,11 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
                 return;
             }
 
+            string botToken = configService["Storage:TelegramStorageBotToken"];
+
             using var httpClient = new HttpClient();
             var url =
-                $"https://api.telegram.org/bot{_botToken}/deleteMessage?chat_id={metadata.ChatId}&message_id={metadata.MessageId}";
+                $"https://api.telegram.org/bot{botToken}/deleteMessage?chat_id={metadata.ChatId}&message_id={metadata.MessageId}";
             await httpClient.GetAsync(url);
         }
         catch (Exception ex)
@@ -103,7 +104,8 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
                 throw new ApplicationException("无效的存储路径或元数据");
             }
 
-            return $"{_serverUrl}/api/picture/get_telegram_file?fileId={metadata.FileId}";
+            string serverUrl = configService["AppSettings:ServerUrl"];
+            return $"{serverUrl}/api/picture/get_telegram_file?fileId={metadata.FileId}";
         }
         catch (Exception ex)
         {
@@ -127,8 +129,10 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
                 throw new ApplicationException("无效的存储路径或元数据");
             }
 
+            string botToken = configService["Storage:TelegramStorageBotToken"];
+
             using var httpClient = new HttpClient();
-            var getFileUrl = $"https://api.telegram.org/bot{_botToken}/getFile?file_id={metadata.FileId}";
+            var getFileUrl = $"https://api.telegram.org/bot{botToken}/getFile?file_id={metadata.FileId}";
             var getFileResponse = await httpClient.GetAsync(getFileUrl);
 
             if (!getFileResponse.IsSuccessStatusCode)
@@ -145,7 +149,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
             }
 
             var filePath = getFileResult.Result.FilePath;
-            var fileUrl = $"https://api.telegram.org/file/bot{_botToken}/{filePath}";
+            var fileUrl = $"https://api.telegram.org/file/bot{botToken}/{filePath}";
 
             var fileResponse = await httpClient.GetAsync(fileUrl);
             if (!fileResponse.IsSuccessStatusCode)
