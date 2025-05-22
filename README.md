@@ -83,6 +83,7 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 - 📡 Telegram Channel
 - ☁️ Amazon S3
 - 🔐 Tencent Cloud COS
+- 🌐 WebDAV
 
 未来将持续适配更多主流云存储平台，欢迎社区贡献新的存储适配器！
 
