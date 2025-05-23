@@ -27,7 +27,6 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         {
             return (false, "该用户名已被使用", null);
         }
-
         var user = new User
         {
             UserName = request.UserName,
@@ -36,6 +35,11 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+        var userCount = await context.Users.CountAsync();
+        if (userCount == 0)
+        {
+            user.RoleId = 1;
+        }
         context.Users.Add(user);
         await context.SaveChangesAsync();
         return (true, "用户注册成功", user);
@@ -277,7 +281,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         }
 
         var (isSuccess, message, user) = await FindOrCreateGitHubUserAsync(githubUserId, name ?? loginName, email);
-        
+
         if (!isSuccess || user == null)
         {
             Console.WriteLine($"创建或查找GitHub用户失败: {message}");

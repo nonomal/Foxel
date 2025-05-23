@@ -91,33 +91,7 @@ public class DatabaseInitializer(
             await context.Roles.AddAsync(adminRole);
             await context.SaveChangesAsync();
         }
-
-        // 检查并创建管理员用户
-        var adminUser = await context.Users.FirstOrDefaultAsync(u => u.UserName == "Admin");
-        if (adminUser == null)
-        {
-            // 生成随机6位密码
-            string password = GenerateRandomPassword(6);
-            string passwordHash = HashPassword(password);
-
-            logger.LogInformation("创建管理员用户，邮箱: you@foxel.cc，密码: {Password}", password);
-            adminUser = new User
-            {
-                UserName = "Admin",
-                Email = "you@foxel.cc",
-                PasswordHash = passwordHash,
-                RoleId = adminRole.Id,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            await context.Users.AddAsync(adminUser);
-
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[重要] 管理员账户初始密码: {password}，请及时修改");
-            Console.WriteLine($"[重要] 请及时登录后台修改AI相关配置，系统才可正常运行");
-            Console.ResetColor();
-            await context.SaveChangesAsync();
-        }
+        logger.LogInformation("请注意，第一个注册的用户将自动成为管理员");
     }
 
     private string GenerateRandomPassword(int length)
