@@ -2,7 +2,7 @@ using Foxel.Models.Response.Picture;
 
 namespace Foxel.Models.Response.Album;
 
-public class AlbumResponse
+public record AlbumResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

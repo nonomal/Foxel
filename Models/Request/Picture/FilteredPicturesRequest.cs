@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Foxel.Models.Request.Picture
 {
-    public class FilteredPicturesRequest
+    public record FilteredPicturesRequest
     {
         [Range(1, int.MaxValue, ErrorMessage = "页码必须大于0")]
         public int Page { get; set; } = 1;

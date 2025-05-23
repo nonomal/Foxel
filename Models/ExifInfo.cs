@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Foxel.Models;
 
-public class ExifInfo
+public record ExifInfo
 {
     // 基本图像信息
     public int Width { get; set; }

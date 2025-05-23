@@ -1,6 +1,6 @@
 namespace Foxel.Models.Request.Picture;
 
-public class UpdatePictureRequestWithId : UpdatePictureRequest
+public record UpdatePictureRequestWithId : UpdatePictureRequest
 {
     public int Id { get; set; }
 }

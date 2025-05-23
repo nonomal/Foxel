@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Foxel.Models.Request.Album;
 
-public class CreateAlbumRequest
+public record CreateAlbumRequest
 {
     [Required]
     [StringLength(100)]

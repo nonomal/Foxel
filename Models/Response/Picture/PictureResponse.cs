@@ -2,7 +2,7 @@ using Foxel.Models.DataBase;
 
 namespace Foxel.Models.Response.Picture;
 
-public class PictureResponse
+public record PictureResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

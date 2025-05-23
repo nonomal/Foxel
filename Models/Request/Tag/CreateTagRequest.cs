@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Foxel.Models.Request.Tag;
 
-public class CreateTagRequest
+public record CreateTagRequest
 {
     [Required]
     [StringLength(50)]

@@ -1,6 +1,6 @@
 namespace Foxel.Models.Request.Album;
 
-public class UpdateAlbumRequest : CreateAlbumRequest
+public record UpdateAlbumRequest : CreateAlbumRequest
 {
     public int Id { get; set; }
 }

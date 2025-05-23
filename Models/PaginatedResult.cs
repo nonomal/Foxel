@@ -1,6 +1,6 @@
 namespace Foxel.Models;
 
-public class PaginatedResult<T> : BaseResult<List<T>>
+public record PaginatedResult<T> : BaseResult<List<T>>
 {
 
 

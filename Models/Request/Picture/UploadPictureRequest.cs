@@ -4,7 +4,7 @@ using Foxel.Services.Attributes;
 
 namespace Foxel.Models.Request.Picture;
 
-public class UploadPictureRequest
+public record UploadPictureRequest
 {
     [Required] public IFormFile File { get; set; } = null!;
 

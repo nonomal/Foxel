@@ -1,6 +1,6 @@
 namespace Foxel.Models.Response.Tag;
 
-public class TagResponse
+public record TagResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -10,7 +10,7 @@ public class TagResponse
     public DateTime UpdatedAt { get; set; }
 }
 
-public class TagWithCount
+public record TagWithCount
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

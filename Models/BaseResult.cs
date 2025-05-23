@@ -1,6 +1,6 @@
 namespace Foxel.Models;
 
-public class BaseResult<T>
+public record BaseResult<T>
 {
     public string Message { get; set; } = string.Empty;
     public bool Success { get; set; } = true;
@@ -8,7 +8,7 @@ public class BaseResult<T>
     public int StatusCode { get; set; } = 200;
 }
 
-public class BaseResult
+public record BaseResult
 {
     public string Message { get; set; } = string.Empty;
     public bool Success { get; set; } = true;

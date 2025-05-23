@@ -1,6 +1,6 @@
 namespace Foxel.Models.Response.Auth;
 
-public class UserProfile
+public record UserProfile
 {
     public int Id { get; set; }
     public string UserName { get; set; } = string.Empty;
@@ -8,7 +8,7 @@ public class UserProfile
     public string? RoleName { get; set; }
 }
 
-public class AuthResponse
+public record AuthResponse
 {
     public string Token { get; set; } = string.Empty;
     public UserProfile User { get; set; } = new();

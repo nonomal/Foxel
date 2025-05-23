@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Foxel.Models.Request.Config;
 
-public class SetConfigRequest
+public record SetConfigRequest
 {
     [Required(ErrorMessage = "配置键不能为空")]
     [StringLength(50, ErrorMessage = "配置键长度不能超过50个字符")]

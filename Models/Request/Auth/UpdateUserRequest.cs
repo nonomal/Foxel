@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Foxel.Models.Request.Auth;
 
-public class UpdateUserRequest
+public record UpdateUserRequest
 {
     [StringLength(50)]
     public string? UserName { get; set; }

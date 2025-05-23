@@ -1,6 +1,6 @@
 namespace Foxel.Models.Request.Picture;
 
-public class SearchPicturesByTextRequest
+public record SearchPicturesByTextRequest
 {
     public string Query { get; set; } = string.Empty;
     public int Page { get; set; } = 1;
