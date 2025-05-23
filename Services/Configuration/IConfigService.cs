@@ -16,4 +16,8 @@ public interface IConfigService
     Task<bool> DeleteConfigAsync(string key);
     
     Task<bool> ExistsAsync(string key);
+    
+    Task<Dictionary<string, string>> BackupConfigsAsync();
+    
+    Task<bool> RestoreConfigsAsync(Dictionary<string, string> configBackup);
 }

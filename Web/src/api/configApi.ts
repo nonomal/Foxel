@@ -72,3 +72,32 @@ export const hasRole = (userRole: string | undefined, requiredRole: UserRole): b
   // 精确匹配角色
   return userRole === requiredRole;
 };
+
+// 备份所有配置
+export const backupConfigs = async (): Promise<BaseResult<Record<string, string>>> => {
+  try {
+    return await fetchApi<Record<string, string>>('/config/backup');
+  } catch (error: any) {
+    return {
+      success: false,
+      message: `备份配置失败: ${error.message}`,
+      code: 500
+    };
+  }
+};
+
+// 恢复配置
+export const restoreConfigs = async (configBackup: Record<string, string>): Promise<BaseResult<boolean>> => {
+  try {
+    return await fetchApi<boolean>('/config/restore', {
+      method: 'POST',
+      body: JSON.stringify(configBackup),
+    });
+  } catch (error: any) {
+    return {
+      success: false,
+      message: `恢复配置失败: ${error.message}`,
+      code: 500
+    };
+  }
+};

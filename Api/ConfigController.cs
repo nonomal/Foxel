@@ -87,4 +87,39 @@ public class ConfigController(IConfigService configService) : BaseApiController
             return Error<bool>($"删除配置失败: {ex.Message}", 500);
         }
     }
+
+    [HttpGet("backup")]
+    public async Task<ActionResult<BaseResult<Dictionary<string, string>>>> BackupConfigs()
+    {
+        try
+        {
+            var backup = await configService.BackupConfigsAsync();
+            return Success(backup, "配置备份成功");
+        }
+        catch (Exception ex)
+        {
+            return Error<Dictionary<string, string>>($"配置备份失败: {ex.Message}", 500);
+        }
+    }
+
+    [HttpPost("restore")]
+    public async Task<ActionResult<BaseResult<bool>>> RestoreConfigs([FromBody] Dictionary<string, string> configBackup)
+    {
+        try
+        {
+            if (configBackup == null || configBackup.Count == 0)
+                return Error<bool>("配置备份数据无效");
+                
+            var result = await configService.RestoreConfigsAsync(configBackup);
+            
+            if (result)
+                return Success(true, "配置恢复成功");
+            else
+                return Error<bool>("配置恢复失败", 500);
+        }
+        catch (Exception ex)
+        {
+            return Error<bool>($"配置恢复失败: {ex.Message}", 500);
+        }
+    }
 }

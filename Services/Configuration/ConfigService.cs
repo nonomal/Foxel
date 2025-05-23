@@ -136,4 +136,50 @@ public class ConfigService(
         await using var context = await contextFactory.CreateDbContextAsync();
         return await context.Configs.AnyAsync(c => c.Key == key);
     }
+
+    public async Task<Dictionary<string, string>> BackupConfigsAsync()
+    {
+        var configs = await GetAllConfigsAsync();
+        var backup = new Dictionary<string, string>();
+        
+        foreach (var config in configs)
+        {
+            backup[config.Key] = config.Value;
+        }
+        
+        return backup;
+    }
+
+    public async Task<bool> RestoreConfigsAsync(Dictionary<string, string> configBackup)
+    {
+        if (configBackup == null || configBackup.Count == 0)
+            return false;
+            
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            
+            try
+            {
+                foreach (var (key, value) in configBackup)
+                {
+                    await SetConfigAsync(key, value);
+                }
+                
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "恢复配置时出错");
+            return false;
+        }
+    }
 }

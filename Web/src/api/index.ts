@@ -51,6 +51,8 @@ export {
     getConfig,
     setConfig,
     deleteConfig,
-    hasRole
+    hasRole,
+    backupConfigs,
+    restoreConfigs
 } from './configApi';
 

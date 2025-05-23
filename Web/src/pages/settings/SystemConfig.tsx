@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, Card, message, Spin, Select } from 'antd';
-import { CloudOutlined, DatabaseOutlined, CloudServerOutlined, GlobalOutlined } from '@ant-design/icons';
-import { getAllConfigs, setConfig } from '../../api';
+import { Tabs, Card, message, Spin, Select, Button, Upload, Modal, Space, Tooltip } from 'antd';
+import { CloudOutlined, DatabaseOutlined, CloudServerOutlined, GlobalOutlined, DownloadOutlined, UploadOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { getAllConfigs, setConfig, backupConfigs, restoreConfigs } from '../../api';
 import ConfigGroup from './ConfigGroup.tsx';
 import useIsMobile from '../../hooks/useIsMobile';
 
@@ -20,6 +20,10 @@ const SystemConfig: React.FC = () => {
   const [configs, setConfigs] = useState<ConfigStructure>({});
   const [activeKey, setActiveKey] = useState('AI');
   const [storageType, setStorageType] = useState('Telegram');
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreModalVisible, setRestoreModalVisible] = useState(false);
+  const [restoreConfig, setRestoreConfig] = useState<Record<string, string> | null>(null);
 
   // 获取所有配置项
   const fetchConfigs = async () => {
@@ -82,6 +86,83 @@ const SystemConfig: React.FC = () => {
     }
   };
 
+  // 备份配置
+  const handleBackupConfigs = async () => {
+    setBackupLoading(true);
+    try {
+      const response = await backupConfigs();
+      if (response.success && response.data) {
+        const configData = JSON.stringify(response.data, null, 2);
+        const blob = new Blob([configData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        a.download = `foxel-config-backup-${timestamp}.json`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        message.success('配置备份已下载');
+      } else {
+        message.error('备份配置失败: ' + response.message);
+      }
+    } catch (error) {
+      message.error('备份配置出错');
+      console.error(error);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  // 上传配置文件
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const config = JSON.parse(content);
+        setRestoreConfig(config);
+        setRestoreModalVisible(true);
+      } catch (error) {
+        message.error('无效的配置文件格式');
+      }
+    };
+    reader.readAsText(file);
+    return false; // 阻止自动上传
+  };
+
+  // 确认恢复配置
+  const handleRestoreConfigs = async () => {
+    if (!restoreConfig) return;
+    
+    setRestoreLoading(true);
+    try {
+      const response = await restoreConfigs(restoreConfig);
+      if (response.success) {
+        message.success('配置恢复成功，将在3秒后刷新页面');
+        setRestoreModalVisible(false);
+        
+        // 重新加载配置
+        setTimeout(() => {
+          fetchConfigs();
+          // 可选：刷新页面以确保所有配置生效
+          // window.location.reload();
+        }, 3000);
+      } else {
+        message.error('恢复配置失败: ' + response.message);
+      }
+    } catch (error) {
+      message.error('恢复配置出错');
+      console.error(error);
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
   // 存储类型选项
   const storageOptions = [
     { value: 'Local', label: '本地存储', icon: <DatabaseOutlined style={{ color: '#52c41a' }} /> },
@@ -97,7 +178,38 @@ const SystemConfig: React.FC = () => {
 
   return (
     <Card 
-      title="系统配置" 
+      title={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>系统配置</span>
+          <Space>
+            <Tooltip title="下载当前所有配置的备份">
+              <Button 
+                icon={<DownloadOutlined />} 
+                onClick={handleBackupConfigs} 
+                loading={backupLoading}
+                size={isMobile ? "small" : "middle"}
+              >
+                {isMobile ? '' : '备份配置'}
+              </Button>
+            </Tooltip>
+            
+            <Upload 
+              beforeUpload={handleFileUpload} 
+              showUploadList={false}
+              accept=".json"
+            >
+              <Tooltip title="从备份文件恢复配置">
+                <Button 
+                  icon={<UploadOutlined />} 
+                  size={isMobile ? "small" : "middle"}
+                >
+                  {isMobile ? '' : '恢复配置'}
+                </Button>
+              </Tooltip>
+            </Upload>
+          </Space>
+        </div>
+      }
       className="system-config-card"
       bodyStyle={{ 
         padding: isMobile ? '12px 8px' : '24px' 
@@ -427,6 +539,43 @@ const SystemConfig: React.FC = () => {
           </TabPane>
         </Tabs>
       )}
+      
+      {/* 恢复配置确认对话框 */}
+      <Modal
+        title={
+          <div>
+            <span>确认恢复配置</span>
+            <Tooltip title="恢复配置将覆盖当前所有配置设置，请确认备份文件正确无误">
+              <QuestionCircleOutlined style={{ marginLeft: 8 }} />
+            </Tooltip>
+          </div>
+        }
+        open={restoreModalVisible}
+        onCancel={() => setRestoreModalVisible(false)}
+        footer={[
+          <>
+            <Button key="cancel" onClick={() => setRestoreModalVisible(false)}>
+              取消
+            </Button>
+            <Button
+              key="submit"
+              type="primary"
+              loading={restoreLoading}
+              onClick={handleRestoreConfigs}
+            >
+              确认恢复
+            </Button>
+          </>
+        ]}
+      >
+        <p>您确定要从上传的备份文件恢复配置吗？</p>
+        <p style={{ color: '#ff4d4f' }}>警告：此操作将覆盖当前系统中的所有配置设置！</p>
+        {restoreConfig && (
+          <div>
+            <p>备份文件包含 {Object.keys(restoreConfig).length} 条配置项</p>
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 };
