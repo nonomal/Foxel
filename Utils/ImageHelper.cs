@@ -3,6 +3,7 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using System.Globalization;
 using Foxel.Models;
+using Foxel.Models.Enums;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace Foxel.Utils;
@@ -53,54 +54,26 @@ public static class ImageHelper
             Mode = ResizeMode.Max
         }));
 
-        string extension = Path.GetExtension(thumbnailPath).ToLower();
+        // 强制使用 WebP 格式，修改缩略图路径扩展名
+        string webpThumbnailPath = Path.ChangeExtension(thumbnailPath, ".webp");
 
-        // 根据原图大小动态调整质量
-        int adjustedQuality = AdjustQualityByFileSize(originalSize, extension, quality);
+        int adjustedQuality = AdjustQualityByFileSize(originalSize, ".webp", quality);
 
-        if (extension == ".jpg" || extension == ".jpeg")
+        await image.SaveAsWebpAsync(webpThumbnailPath, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder
         {
-            await image.SaveAsJpegAsync(thumbnailPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
-            {
-                Quality = adjustedQuality
-            });
-        }
-        else if (extension == ".png")
-        {
-            await image.SaveAsPngAsync(thumbnailPath, new SixLabors.ImageSharp.Formats.Png.PngEncoder
-            {
-                CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression,
-                ColorType = SixLabors.ImageSharp.Formats.Png.PngColorType.RgbWithAlpha, // 确保使用最优的颜色类型
-                FilterMethod = SixLabors.ImageSharp.Formats.Png.PngFilterMethod.Adaptive // 使用自适应过滤
-            });
-        }
-        else
-        {
-            await image.SaveAsync(thumbnailPath);
-        }
+            Quality = adjustedQuality,
+            Method = SixLabors.ImageSharp.Formats.Webp.WebpEncodingMethod.BestQuality
+        });
 
-        var thumbnailFileInfo = new FileInfo(thumbnailPath);
+        var thumbnailFileInfo = new FileInfo(webpThumbnailPath);
         if (thumbnailFileInfo.Length < originalSize) return thumbnailFileInfo.Length;
 
-        // 再次尝试优化，但不改变扩展名
-        if (extension == ".png")
+        await image.SaveAsWebpAsync(webpThumbnailPath, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder
         {
-            await image.SaveAsPngAsync(thumbnailPath, new SixLabors.ImageSharp.Formats.Png.PngEncoder
-            {
-                CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression,
-                FilterMethod = SixLabors.ImageSharp.Formats.Png.PngFilterMethod.Adaptive
-            });
-            thumbnailFileInfo = new FileInfo(thumbnailPath);
-        }
-        else if (extension == ".jpg" || extension == ".jpeg")
-        {
-            // 如果是 JPEG，尝试降低质量进一步压缩
-            await image.SaveAsJpegAsync(thumbnailPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
-            {
-                Quality = Math.Max(adjustedQuality - 10, 60) // 再降低质量但不低于60
-            });
-            thumbnailFileInfo = new FileInfo(thumbnailPath);
-        }
+            Quality = Math.Max(adjustedQuality - 15, 50),
+            Method = SixLabors.ImageSharp.Formats.Webp.WebpEncodingMethod.BestQuality
+        });
+        thumbnailFileInfo = new FileInfo(webpThumbnailPath);
 
         return thumbnailFileInfo.Length;
     }
@@ -162,7 +135,16 @@ public static class ImageHelper
     /// </summary>
     private static int AdjustQualityByFileSize(long originalSize, string extension, int baseQuality)
     {
-        if (extension == ".jpg" || extension == ".jpeg")
+        if (extension == ".webp")
+        {
+            if (originalSize > 10 * 1024 * 1024) // 10MB
+                return Math.Min(baseQuality, 70);
+            else if (originalSize > 5 * 1024 * 1024) // 5MB
+                return Math.Min(baseQuality, 75);
+            else if (originalSize > 1 * 1024 * 1024) // 1MB
+                return Math.Min(baseQuality, 80);
+        }
+        else if (extension == ".jpg" || extension == ".jpeg")
         {
             if (originalSize > 10 * 1024 * 1024) // 10MB
                 return Math.Min(baseQuality, 65);
@@ -341,5 +323,126 @@ public static class ImageHelper
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 转换图片格式（无损转换并保留EXIF信息）
+    /// </summary>
+    /// <param name="inputPath">输入图片路径</param>
+    /// <param name="outputPath">输出图片路径</param>
+    /// <param name="targetFormat">目标格式</param>
+    /// <param name="quality">压缩质量(仅对JPEG和WebP有效，1-100)</param>
+    /// <returns>转换后的文件路径</returns>
+    public static async Task<string> ConvertImageFormatAsync(string inputPath, string outputPath, ImageFormat targetFormat, int quality = 95)
+    {
+        if (targetFormat == ImageFormat.Original)
+        {
+            // 如果是原格式，直接返回输入路径
+            return inputPath;
+        }
+
+        using var image = await Image.LoadAsync(inputPath);
+
+        // 保留原始EXIF信息
+        var originalExifProfile = image.Metadata.ExifProfile;
+
+        // 根据目标格式确定文件扩展名和输出路径
+        string extension = GetFileExtensionFromFormat(targetFormat);
+        string finalOutputPath = Path.ChangeExtension(outputPath, extension);
+
+        switch (targetFormat)
+        {
+            case ImageFormat.Jpeg:
+                await image.SaveAsJpegAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
+                {
+                    Quality = quality
+                });
+                break;
+
+            case ImageFormat.Png:
+                await image.SaveAsPngAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Png.PngEncoder
+                {
+                    CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression,
+                    ColorType = SixLabors.ImageSharp.Formats.Png.PngColorType.RgbWithAlpha
+                });
+                break;
+
+            case ImageFormat.WebP:
+                await image.SaveAsWebpAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder
+                {
+                    Quality = quality,
+                    Method = SixLabors.ImageSharp.Formats.Webp.WebpEncodingMethod.BestQuality
+                });
+                break;
+            default:
+                throw new NotSupportedException($"不支持的图片格式: {targetFormat}");
+        }
+
+        // 如果原图有EXIF信息，保存到转换后的图片中
+        if (originalExifProfile != null)
+        {
+            using var convertedImage = await Image.LoadAsync(finalOutputPath);
+            convertedImage.Metadata.ExifProfile = originalExifProfile;
+
+            switch (targetFormat)
+            {
+            case ImageFormat.Jpeg:
+                await convertedImage.SaveAsJpegAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
+                {
+                Quality = quality
+                });
+                break;
+
+            case ImageFormat.Png:
+                await convertedImage.SaveAsPngAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Png.PngEncoder
+                {
+                CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression,
+                ColorType = SixLabors.ImageSharp.Formats.Png.PngColorType.RgbWithAlpha
+                });
+                break;
+
+            case ImageFormat.WebP:
+                await convertedImage.SaveAsWebpAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder
+                {
+                Quality = quality,
+                Method = SixLabors.ImageSharp.Formats.Webp.WebpEncodingMethod.BestQuality
+                });
+                break;
+            }
+        }
+
+        return finalOutputPath;
+    }
+
+    /// <summary>
+    /// 根据图片格式获取文件扩展名
+    /// </summary>
+    /// <param name="format">图片格式</param>
+    /// <returns>文件扩展名</returns>
+    public static string GetFileExtensionFromFormat(ImageFormat format)
+    {
+        return format switch
+        {
+            ImageFormat.Jpeg => ".jpg",
+            ImageFormat.Png => ".png",
+            ImageFormat.WebP => ".webp",
+            _ => throw new NotSupportedException($"不支持的图片格式: {format}")
+        };
+    }
+
+    /// <summary>
+    /// 根据图片格式获取MIME类型
+    /// </summary>
+    /// <param name="format">图片格式</param>
+    /// <returns>MIME类型</returns>
+    public static string GetMimeTypeFromFormat(ImageFormat format)
+    {
+        return format switch
+        {
+            ImageFormat.Jpeg => "image/jpeg",
+            ImageFormat.Png => "image/png",
+            ImageFormat.WebP => "image/webp",
+            _ => throw new NotSupportedException($"不支持的图片格式: {format}")
+        };
     }
 }

@@ -238,8 +238,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 20);
             var thumbnailPath = Path.Combine(
                 Path.GetDirectoryName(localFilePath)!,
-                Path.GetFileNameWithoutExtension(Path.GetFileName(localFilePath)) + "_thumb" +
-                Path.GetExtension(localFilePath));
+                Path.GetFileNameWithoutExtension(Path.GetFileName(localFilePath)) + "_thumb.webp");
 
             await ImageHelper.CreateThumbnailAsync(localFilePath, thumbnailPath, 500);
 
@@ -257,7 +256,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 // 非本地存储，上传缩略图到对应的存储服务
                 await using var thumbnailFileStream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read);
                 var thumbnailFileName = Path.GetFileName(thumbnailPath);
-                var thumbnailContentType = Path.GetExtension(thumbnailPath).ToLower() == ".png" ? "image/png" : "image/jpeg";
+                var thumbnailContentType = "image/webp";
 
                 // 上传缩略图并获取存储路径或元数据
                 string thumbnailStoragePath = await storageService.SaveAsync(

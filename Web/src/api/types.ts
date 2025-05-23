@@ -103,10 +103,24 @@ export interface UploadFile {
   response?: PictureResponse;  // 上传成功后的响应
 }
 
-// 上传图片请求参数
+// 图片格式类型
+export type ImageFormat = 0 | 1 | 2 | 3;
+
+// 添加常量对象提供运行时值
+export const ImageFormat = {
+  Original: 0 as ImageFormat,
+  Jpeg: 1 as ImageFormat,
+  Png: 2 as ImageFormat,
+  WebP: 3 as ImageFormat
+};
+
+// 上传图片参数
 export interface UploadPictureParams {
-  permission?: number;  // 权限设置，默认为0（公开）
-  albumId?: number;     // 相册ID，可选
+  permission?: number;
+  albumId?: number;
+  convertToFormat?: ImageFormat;
+  quality?: number;
+  onProgress?: (percent: number) => void;
 }
 
 // 相册响应数据
