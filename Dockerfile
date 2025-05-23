@@ -1,29 +1,21 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
-EXPOSE 8080  
-EXPOSE 8081
 EXPOSE 80    
 
 FROM oven/bun:alpine AS build-frontend
-WORKDIR /src/View
-COPY View/package*.json ./
+WORKDIR /src/Web
+COPY Web/package*.json ./
 RUN bun install
-COPY View/ ./
+COPY Web/ ./
 RUN bun run build
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
-ENV DEFAULT_CONNECTION="Host=yourhost;Username=foxel;Password=foxel;Database=foxel"
 WORKDIR /src
 COPY ["Foxel.csproj", "./"]
 RUN dotnet restore "Foxel.csproj"
 COPY . .
 WORKDIR "/src/"
-# 安装EF Core工具并执行数据库迁移
-RUN dotnet tool install --global dotnet-ef
-ENV PATH="$PATH:/root/.dotnet/tools"
-RUN dotnet ef migrations add InitialCreate -- --environment Production
-RUN dotnet ef database update -- --environment Production
 RUN dotnet build "./Foxel.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
@@ -32,11 +24,10 @@ RUN dotnet publish "./Foxel.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:U
 
 FROM base AS final
 WORKDIR /app
-ENV DEFAULT_CONNECTION="Host=yourhost;Username=foxel;Password=foxel;Database=foxel"
 COPY --from=publish /app/publish .
 RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
-COPY --from=build-frontend /src/View/dist /var/www/html
-COPY /View/nginx.conf /etc/nginx/nginx.conf
+COPY --from=build-frontend /src/Web/dist /var/www/html
+COPY /Web/nginx.conf /etc/nginx/nginx.conf
 
 RUN mkdir -p /var/lib/nginx/body /var/cache/nginx /var/run/nginx /app/Uploads \
     && chown -R $APP_UID:$APP_UID /var/lib/nginx /var/cache/nginx /var/run/nginx /var/log/nginx /etc/nginx /var/www/html /app/Uploads \

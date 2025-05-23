@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Foxel.Models.DataBase;
 using Foxel.Services.Configuration;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +15,9 @@ public class DatabaseInitializer(
     public async Task InitializeAsync()
     {
         logger.LogInformation("开始检查数据库初始化状态...");
+
+        // 执行数据库迁移
+        await MigrateDatabaseAsync();
 
         // 检查是否已经完成初始化
         if (await configService.ExistsAsync(InitializationFlag) &&
@@ -41,7 +42,8 @@ public class DatabaseInitializer(
         // 初始化GitHub认证配置
         await EnsureConfigExistsAsync("Authentication:GitHubClientId", "placeholder_replace_with_actual_github_client_id");
         await EnsureConfigExistsAsync("Authentication:GitHubClientSecret", "placeholder_replace_with_actual_github_client_secret");
-        await EnsureConfigExistsAsync("Authentication:GitHubClientSecret", "");
+        await EnsureConfigExistsAsync("Authentication:GitHubCallbackUrl", "");
+        
         // 初始化AI相关配置
         await EnsureConfigExistsAsync("AI:ApiEndpoint", "");
         await EnsureConfigExistsAsync("AI:ApiKey", "");
@@ -61,6 +63,24 @@ public class DatabaseInitializer(
         await configService.SetConfigAsync(InitializationFlag, "true", "系统初始化完成标志");
 
         logger.LogInformation("数据库配置初始化完成");
+    }
+
+    private async Task MigrateDatabaseAsync()
+    {
+        logger.LogInformation("开始执行数据库迁移...");
+        try
+        {
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            logger.LogInformation("数据库迁移完成");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("数据库迁移过程中出现警告或错误: {Error}", ex.Message);
+            logger.LogInformation("尝试确保数据库已创建...");
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.EnsureCreatedAsync();
+        }
     }
 
     private async Task EnsureConfigExistsAsync(string key, string value)
@@ -92,26 +112,5 @@ public class DatabaseInitializer(
             await context.SaveChangesAsync();
         }
         logger.LogInformation("请注意，第一个注册的用户将自动成为管理员");
-    }
-
-    private string GenerateRandomPassword(int length)
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        var random = new Random();
-        var password = new StringBuilder(length);
-
-        for (int i = 0; i < length; i++)
-        {
-            password.Append(chars[random.Next(chars.Length)]);
-        }
-
-        return password.ToString();
-    }
-
-    private string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(hashedBytes);
     }
 }

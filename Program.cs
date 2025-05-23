@@ -1,6 +1,8 @@
+using Foxel;
 using Foxel.Extensions;
 using Foxel.Services.Initializer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var environment = builder.Environment;

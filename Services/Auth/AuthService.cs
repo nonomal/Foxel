@@ -38,7 +38,9 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         var userCount = await context.Users.CountAsync();
         if (userCount == 0)
         {
+            var role = await context.Roles.FirstOrDefaultAsync(r => r.Id == 1);
             user.RoleId = 1;
+            user.Role = role;
         }
         context.Users.Add(user);
         await context.SaveChangesAsync();
