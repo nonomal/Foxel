@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="View/public/logo.png" alt="Foxel Logo" width="150"><br>
+    <img src="Web/public/logo.png" alt="Foxel Logo" width="150"><br>
     <strong>Foxel - 智能图像检索与管理系统</strong>
 </p>
 <p align="center">
