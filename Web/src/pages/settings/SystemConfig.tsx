@@ -190,161 +190,240 @@ const SystemConfig: React.FC = () => {
           </TabPane>
 
           <TabPane tab="存储设置" key="Storage">
-            <div style={{ 
-              marginBottom: isMobile ? 16 : 20,
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              alignItems: isMobile ? 'flex-start' : 'center',
-              gap: isMobile ? 8 : 0
-            }}>
-              <span style={{ 
-                marginRight: isMobile ? 0 : 8, 
-                display: 'inline-block', 
-                width: isMobile ? 'auto' : 100,
-                marginBottom: isMobile ? 4 : 0
+            {/* 存储类型配置卡片 */}
+            <Card 
+              size="small" 
+              title="存储类型配置" 
+              style={{ marginBottom: isMobile ? 16 : 24 }}
+              bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
+            >
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: isMobile ? 12 : 16,
+                marginBottom: 0
               }}>
-                默认存储:
-              </span>
-              <Select 
-                value={configs.Storage?.DefaultStorage || 'Local'} 
-                onChange={(value) => {
-                  handleSaveConfig('Storage', 'DefaultStorage', value);
-                }}
-                style={{ width: isMobile ? '100%' : 200 }}
-                size={isMobile ? "middle" : "large"}
-              >
-                {storageOptions.map(option => (
-                  <Option key={option.value} value={option.value}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      {option.icon}
-                      <span style={{ marginLeft: 8 }}>{option.label}</span>
-                    </div>
-                  </Option>
-                ))}
-              </Select>
-            </div>
-            
-            <div style={{ 
-              marginBottom: isMobile ? 16 : 20,
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              alignItems: isMobile ? 'flex-start' : 'center',
-              gap: isMobile ? 8 : 0
-            }}>
-              <span style={{ 
-                marginRight: isMobile ? 0 : 8,
-                display: 'inline-block', 
-                width: isMobile ? 'auto' : 100,
-                marginBottom: isMobile ? 4 : 0
+                {/* 登录用户默认存储 */}
+                <div>
+                  <div style={{ 
+                    marginBottom: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#666'
+                  }}>
+                    登录用户默认存储
+                  </div>
+                  <Select 
+                    value={configs.Storage?.DefaultStorage || 'Local'} 
+                    onChange={(value) => {
+                      handleSaveConfig('Storage', 'DefaultStorage', value);
+                    }}
+                    style={{ width: '100%' }}
+                    size="large"
+                    placeholder="选择登录用户的默认存储方式"
+                  >
+                    {storageOptions.map(option => (
+                      <Option key={option.value} value={option.value}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          {option.icon}
+                          <span style={{ marginLeft: 8 }}>{option.label}</span>
+                        </div>
+                      </Option>
+                    ))}
+                  </Select>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 4 
+                  }}>
+                    已登录用户上传文件时的默认存储位置
+                  </div>
+                </div>
+
+                {/* 匿名用户默认存储 */}
+                <div>
+                  <div style={{ 
+                    marginBottom: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#666'
+                  }}>
+                    匿名用户默认存储
+                  </div>
+                  <Select 
+                    value={configs.Storage?.AnonymousDefaultStorage || 'Local'} 
+                    onChange={(value) => {
+                      handleSaveConfig('Storage', 'AnonymousDefaultStorage', value);
+                    }}
+                    style={{ width: '100%' }}
+                    size="large"
+                    placeholder="选择匿名用户的默认存储方式"
+                  >
+                    {storageOptions.map(option => (
+                      <Option key={option.value} value={option.value}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          {option.icon}
+                          <span style={{ marginLeft: 8 }}>{option.label}</span>
+                        </div>
+                      </Option>
+                    ))}
+                  </Select>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 4 
+                  }}>
+                    未登录用户上传文件时的默认存储位置
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* 存储服务配置卡片 */}
+            <Card 
+              size="small" 
+              title="存储服务配置" 
+              style={{ marginBottom: isMobile ? 16 : 24 }}
+              bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
+            >
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ 
+                  marginBottom: 8,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: '#666'
+                }}>
+                  选择要配置的存储服务
+                </div>
+                <Select 
+                  value={storageType} 
+                  onChange={(value) => {
+                    setStorageType(value);
+                  }}
+                  style={{ width: isMobile ? '100%' : '300px' }}
+                  size="large"
+                  placeholder="选择需要配置的存储服务类型"
+                >
+                  {storageOptions.map(option => (
+                    <Option key={option.value} value={option.value}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {option.icon}
+                        <span style={{ marginLeft: 8 }}>{option.label}</span>
+                      </div>
+                    </Option>
+                  ))}
+                </Select>
+                <div style={{ 
+                  fontSize: 12, 
+                  color: '#999', 
+                  marginTop: 4 
+                }}>
+                  选择后将显示对应存储服务的详细配置选项
+                </div>
+              </div>
+
+              {/* 存储服务具体配置 */}
+              <div style={{ 
+                border: '1px solid #f0f0f0',
+                borderRadius: 6,
+                padding: isMobile ? 12 : 16,
+                backgroundColor: '#fafafa'
               }}>
-                配置存储:
-              </span>
-              <Select 
-                value={storageType} 
-                onChange={(value) => {
-                  setStorageType(value);
-                }}
-                style={{ width: isMobile ? '100%' : 200 }}
-                size={isMobile ? "middle" : "large"}
-              >
-                {storageOptions.map(option => (
-                  <Option key={option.value} value={option.value}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      {option.icon}
-                      <span style={{ marginLeft: 8 }}>{option.label}</span>
-                    </div>
-                  </Option>
-                ))}
-              </Select>
-            </div>
+                {storageType === 'Local' && (
+                  <div style={{ textAlign: 'center', color: '#999', padding: '20px 0' }}>
+                    本地存储无需额外配置
+                  </div>
+                )}
 
-            {storageType === 'Telegram' && (
-              <ConfigGroup
-                groupName="Storage"
-                configs={{
-                  "TelegramStorageBotToken": configs.Storage?.TelegramStorageBotToken || '',
-                  "TelegramStorageChatId": configs.Storage?.TelegramStorageChatId || ''
-                }}
-                onSave={handleSaveConfig}
-                descriptions={{
-                  "TelegramStorageBotToken": 'Telegram 机器人令牌',
-                  "TelegramStorageChatId": 'Telegram 聊天ID'
-                }}
-                isMobile={isMobile}
-              />
-            )}
+                {storageType === 'Telegram' && (
+                  <ConfigGroup
+                    groupName="Storage"
+                    configs={{
+                      "TelegramStorageBotToken": configs.Storage?.TelegramStorageBotToken || '',
+                      "TelegramStorageChatId": configs.Storage?.TelegramStorageChatId || ''
+                    }}
+                    onSave={handleSaveConfig}
+                    descriptions={{
+                      "TelegramStorageBotToken": 'Telegram 机器人令牌',
+                      "TelegramStorageChatId": 'Telegram 聊天ID'
+                    }}
+                    isMobile={isMobile}
+                  />
+                )}
 
-            {storageType === 'S3' && (
-              <ConfigGroup
-                groupName="Storage"
-                configs={{
-                  "S3StorageAccessKey": configs.Storage?.S3StorageAccessKey || '',
-                  "S3StorageSecretKey": configs.Storage?.S3StorageSecretKey || '',
-                  "S3StorageBucketName": configs.Storage?.S3StorageBucketName || '',
-                  "S3StorageRegion": configs.Storage?.S3StorageRegion || '',
-                  "S3StorageEndpoint": configs.Storage?.S3StorageEndpoint || '',
-                  "S3StorageCdnUrl": configs.Storage?.S3StorageCdnUrl || '',
-                  "S3StorageUsePathStyleUrls": configs.Storage?.S3StorageUsePathStyleUrls || 'false'
-                }}
-                onSave={handleSaveConfig}
-                descriptions={{
-                  "S3StorageAccessKey": 'S3访问密钥',
-                  "S3StorageSecretKey": 'S3私有密钥',
-                  "S3StorageBucketName": 'S3存储桶名称',
-                  "S3StorageRegion": 'S3区域 (例如:us-east-1)',
-                  "S3StorageEndpoint": 'S3端点URL (可选,默认为AWS S3)',
-                  "S3StorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
-                  "S3StorageUsePathStyleUrls": '使用路径形式URLs (true/false,兼容非AWS服务)'
-                }}
-                isMobile={isMobile}
-              />
-            )}
+                {storageType === 'S3' && (
+                  <ConfigGroup
+                    groupName="Storage"
+                    configs={{
+                      "S3StorageAccessKey": configs.Storage?.S3StorageAccessKey || '',
+                      "S3StorageSecretKey": configs.Storage?.S3StorageSecretKey || '',
+                      "S3StorageBucketName": configs.Storage?.S3StorageBucketName || '',
+                      "S3StorageRegion": configs.Storage?.S3StorageRegion || '',
+                      "S3StorageEndpoint": configs.Storage?.S3StorageEndpoint || '',
+                      "S3StorageCdnUrl": configs.Storage?.S3StorageCdnUrl || '',
+                      "S3StorageUsePathStyleUrls": configs.Storage?.S3StorageUsePathStyleUrls || 'false'
+                    }}
+                    onSave={handleSaveConfig}
+                    descriptions={{
+                      "S3StorageAccessKey": 'S3访问密钥',
+                      "S3StorageSecretKey": 'S3私有密钥',
+                      "S3StorageBucketName": 'S3存储桶名称',
+                      "S3StorageRegion": 'S3区域 (例如:us-east-1)',
+                      "S3StorageEndpoint": 'S3端点URL (可选,默认为AWS S3)',
+                      "S3StorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
+                      "S3StorageUsePathStyleUrls": '使用路径形式URLs (true/false,兼容非AWS服务)'
+                    }}
+                    isMobile={isMobile}
+                  />
+                )}
 
-            {storageType === 'Cos' && (
-              <ConfigGroup
-                groupName="Storage"
-                configs={{
-                  "CosStorageSecretId": configs.Storage?.CosStorageSecretId || '',
-                  "CosStorageSecretKey": configs.Storage?.CosStorageSecretKey || '',
-                  "CosStorageToken": configs.Storage?.CosStorageToken || '',
-                  "CosStorageBucketName": configs.Storage?.CosStorageBucketName || '',
-                  "CosStorageRegion": configs.Storage?.CosStorageRegion || '',
-                  "CosStorageCdnUrl": configs.Storage?.CosStorageCdnUrl || '',
-                }}
-                onSave={handleSaveConfig}
-                descriptions={{
-                  "CosStorageSecretId": '腾讯云COS密钥ID',
-                  "CosStorageSecretKey": '腾讯云COS私有密钥',
-                  "CosStorageToken": '腾讯云COS临时令牌(可选)',
-                  "CosStorageBucketName": 'COS存储桶名称',
-                  "CosStorageRegion": 'COS区域 (例如:ap-shanghai)',
-                  "CosStorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
-                }}
-                isMobile={isMobile}
-              />
-            )}
-            
-            {storageType === 'WebDAV' && (
-              <ConfigGroup
-                groupName="Storage"
-                configs={{
-                  "WebDAVServerUrl": configs.Storage?.WebDAVServerUrl || '',
-                  "WebDAVUserName": configs.Storage?.WebDAVUserName || '',
-                  "WebDAVPassword": configs.Storage?.WebDAVPassword || '',
-                  "WebDAVBasePath": configs.Storage?.WebDAVBasePath || '',
-                  "WebDAVPublicUrl": configs.Storage?.WebDAVPublicUrl || '',
-                }}
-                onSave={handleSaveConfig}
-                descriptions={{
-                  "WebDAVServerUrl": 'WebDAV 服务器 URL (例如: https://dav.example.com)',
-                  "WebDAVUserName": 'WebDAV 用户名',
-                  "WebDAVPassword": 'WebDAV 密码',
-                  "WebDAVBasePath": 'WebDAV 基础路径 (例如: files/upload)',
-                  "WebDAVPublicUrl": 'WebDAV 公共访问 URL (可选,用于文件访问)',
-                }}
-                isMobile={isMobile}
-              />
-            )}
+                {storageType === 'Cos' && (
+                  <ConfigGroup
+                    groupName="Storage"
+                    configs={{
+                      "CosStorageSecretId": configs.Storage?.CosStorageSecretId || '',
+                      "CosStorageSecretKey": configs.Storage?.CosStorageSecretKey || '',
+                      "CosStorageToken": configs.Storage?.CosStorageToken || '',
+                      "CosStorageBucketName": configs.Storage?.CosStorageBucketName || '',
+                      "CosStorageRegion": configs.Storage?.CosStorageRegion || '',
+                      "CosStorageCdnUrl": configs.Storage?.CosStorageCdnUrl || '',
+                    }}
+                    onSave={handleSaveConfig}
+                    descriptions={{
+                      "CosStorageSecretId": '腾讯云COS密钥ID',
+                      "CosStorageSecretKey": '腾讯云COS私有密钥',
+                      "CosStorageToken": '腾讯云COS临时令牌(可选)',
+                      "CosStorageBucketName": 'COS存储桶名称',
+                      "CosStorageRegion": 'COS区域 (例如:ap-shanghai)',
+                      "CosStorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
+                    }}
+                    isMobile={isMobile}
+                  />
+                )}
+                
+                {storageType === 'WebDAV' && (
+                  <ConfigGroup
+                    groupName="Storage"
+                    configs={{
+                      "WebDAVServerUrl": configs.Storage?.WebDAVServerUrl || '',
+                      "WebDAVUserName": configs.Storage?.WebDAVUserName || '',
+                      "WebDAVPassword": configs.Storage?.WebDAVPassword || '',
+                      "WebDAVBasePath": configs.Storage?.WebDAVBasePath || '',
+                      "WebDAVPublicUrl": configs.Storage?.WebDAVPublicUrl || '',
+                    }}
+                    onSave={handleSaveConfig}
+                    descriptions={{
+                      "WebDAVServerUrl": 'WebDAV 服务器 URL (例如: https://dav.example.com)',
+                      "WebDAVUserName": 'WebDAV 用户名',
+                      "WebDAVPassword": 'WebDAV 密码',
+                      "WebDAVBasePath": 'WebDAV 基础路径 (例如: files/upload)',
+                      "WebDAVPublicUrl": 'WebDAV 公共访问 URL (可选,用于文件访问)',
+                    }}
+                    isMobile={isMobile}
+                  />
+                )}
+              </div>
+            </Card>
           </TabPane>
         </Tabs>
       )}

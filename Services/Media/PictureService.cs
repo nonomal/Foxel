@@ -441,15 +441,22 @@ public class PictureService(
         ImageFormat convertToFormat = ImageFormat.Original,
         int quality = 95)
     {
-        // 如果未指定存储类型，则从配置中获取默认存储类型
-        if (storageType == null)
+        StorageType GetConfigStorageType(string configKey)
         {
-            var defaultStorageTypeStr = configuration["Storage:DefaultStorage"];
-            if (string.IsNullOrEmpty(defaultStorageTypeStr) || !Enum.TryParse<StorageType>(defaultStorageTypeStr, out var defaultStorageType))
-            {
-                defaultStorageType = StorageType.Local; // 如果配置中没有或解析失败，使用本地存储作为默认
-            }
-            storageType = defaultStorageType;
+            string? configValue = configuration[configKey];
+            return !string.IsNullOrEmpty(configValue) && 
+                   Enum.TryParse<StorageType>(configValue, out var configStorageType)
+                   ? configStorageType 
+                   : StorageType.Local;
+        }
+        
+        if (userId == null)
+        {
+            storageType = GetConfigStorageType("Storage:AnonymousDefaultStorage");
+        }
+        else if (storageType == null)
+        {
+            storageType = GetConfigStorageType("Storage:DefaultStorage");
         }
 
         string originalFileName = fileName;
