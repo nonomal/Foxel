@@ -43,7 +43,7 @@
 1. **拉取并运行容器**
     ```bash
     docker run -d -p 80:80 --name foxel \
-    -e 'DEFAULT_CONNECTION=Host=foxel;\nUsername=foxel_dev;\nPassword=foxel;\nDatabase=foxel_dev' \
+    -e 'DEFAULT_CONNECTION=Host=foxel;Username=foxel_dev;Password=foxel;Database=foxel_dev' \
     ghcr.io/drizzletime/foxel:dev
     ```
 
