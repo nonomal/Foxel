@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Foxel.Models;
 using Foxel.Models.DataBase;
+using Foxel.Models.Enums;
 using Foxel.Models.Response.Picture;
 using Foxel.Services.AI;
 using Foxel.Services.Attributes;
@@ -436,7 +437,9 @@ public class PictureService(
         int? userId,
         PermissionType permission = PermissionType.Public,
         int? albumId = null,
-        StorageType? storageType = null)
+        StorageType? storageType = null,
+        ImageFormat convertToFormat = ImageFormat.Original,
+        int quality = 95)
     {
         // 如果未指定存储类型，则从配置中获取默认存储类型
         if (storageType == null)
@@ -449,88 +452,143 @@ public class PictureService(
             storageType = defaultStorageType;
         }
 
-        string fileExtension = Path.GetExtension(fileName);
-        _ = $"{Guid.NewGuid()}{fileExtension}";
+        string originalFileName = fileName;
+        string finalFileName = fileName;
+        string finalContentType = contentType;
+        Stream finalStream = fileStream;
 
-        // 使用存储服务保存文件
-        string relativePath = await storageService.SaveAsync(storageType.Value, fileStream, fileName, contentType);
-
-        // 创建基本的Picture对象，使用文件名作为标题和描述
-        string initialTitle = Path.GetFileNameWithoutExtension(fileName);
-        string initialDescription = $"Uploaded on {DateTime.UtcNow}";
-
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        // 获取用户
-        User? user = null;
-        if (userId is not null)
+        // 如果需要格式转换
+        if (convertToFormat != ImageFormat.Original)
         {
-            user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null)
+            // 创建临时文件保存原始上传内容
+            string tempOriginalFile = Path.GetTempFileName();
+            string tempConvertedFile = Path.GetTempFileName();
+
+            try
             {
-                throw new Exception("找不到指定的用户");
+                // 保存原始文件到临时位置
+                await using (var tempFileStream = new FileStream(tempOriginalFile, FileMode.Create))
+                {
+                    await fileStream.CopyToAsync(tempFileStream);
+                }
+
+                // 转换格式
+                string convertedFilePath = await ImageHelper.ConvertImageFormatAsync(
+                    tempOriginalFile, tempConvertedFile, convertToFormat, quality);
+
+                // 更新文件信息
+                string newExtension = ImageHelper.GetFileExtensionFromFormat(convertToFormat);
+                finalFileName = Path.ChangeExtension(Path.GetFileNameWithoutExtension(originalFileName), newExtension);
+                finalContentType = ImageHelper.GetMimeTypeFromFormat(convertToFormat);
+
+                // 创建新的流用于上传转换后的文件
+                finalStream = new FileStream(convertedFilePath, FileMode.Open, FileAccess.Read);
+            }
+            catch
+            {
+                // 清理临时文件
+                if (File.Exists(tempOriginalFile)) File.Delete(tempOriginalFile);
+                if (File.Exists(tempConvertedFile)) File.Delete(tempConvertedFile);
+                throw;
             }
         }
 
-        // 检查相册是否存在并且属于当前用户
-        Album? album = null;
-        if (albumId.HasValue)
+        try
         {
-            album = await dbContext.Albums.Include(a => a.User)
-                .FirstOrDefaultAsync(a => a.Id == albumId.Value);
+            // 使用存储服务保存文件
+            string relativePath = await storageService.SaveAsync(storageType.Value, finalStream, finalFileName, finalContentType);
 
-            if (album == null)
+            // 创建基本的Picture对象，使用文件名作为标题和描述
+            string initialTitle = Path.GetFileNameWithoutExtension(originalFileName);
+            string initialDescription = $"Uploaded on {DateTime.UtcNow}";
+
+            await using var dbContext = await contextFactory.CreateDbContextAsync();
+
+            // 获取用户
+            User? user = null;
+            if (userId is not null)
             {
-                throw new KeyNotFoundException($"找不到ID为{albumId.Value}的相册");
+                user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
+                {
+                    throw new Exception("找不到指定的用户");
+                }
             }
 
-            if (album.User.Id != userId)
+            // 检查相册是否存在并且属于当前用户
+            Album? album = null;
+            if (albumId.HasValue)
             {
-                throw new Exception("您无权将图片添加到此相册");
+                album = await dbContext.Albums.Include(a => a.User)
+                    .FirstOrDefaultAsync(a => a.Id == albumId.Value);
+
+                if (album == null)
+                {
+                    throw new KeyNotFoundException($"找不到ID为{albumId.Value}的相册");
+                }
+
+                if (album.User.Id != userId)
+                {
+                    throw new Exception("您无权将图片添加到此相册");
+                }
+            }
+
+            bool isAnonymous = userId == null;
+
+            // 创建图片对象并保存到数据库
+            var picture = new Picture
+            {
+                Name = initialTitle,
+                Description = initialDescription,
+                Path = relativePath,
+                User = user,
+                Permission = permission,
+                AlbumId = albumId,
+                StorageType = storageType.Value,
+                ProcessingStatus = isAnonymous ? ProcessingStatus.Completed : ProcessingStatus.Pending,
+                ThumbnailPath = isAnonymous ? relativePath : null  
+            };
+
+            dbContext.Pictures.Add(picture);
+            await dbContext.SaveChangesAsync();
+
+            if (!isAnonymous)
+            {
+                await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, relativePath);
+            }
+
+            // 返回图片基本信息
+            var pictureResponse = new PictureResponse
+            {
+                Id = picture.Id,
+                Name = picture.Name,
+                Path = storageService.GetUrl(picture.StorageType, relativePath),
+                ThumbnailPath = isAnonymous ? storageService.GetUrl(picture.StorageType, relativePath) : null,  
+                Description = picture.Description,
+                CreatedAt = picture.CreatedAt,
+                Tags = new List<string>(),
+                Permission = permission,
+                AlbumId = albumId,
+                AlbumName = album?.Name,
+                ProcessingStatus = picture.ProcessingStatus
+            };
+
+            return (pictureResponse, picture.Id);
+        }
+        finally
+        {
+            // 清理转换后的临时流
+            if (finalStream != fileStream && finalStream is FileStream tempFileStream)
+            {
+                string tempFilePath = tempFileStream.Name;
+                finalStream.Dispose();
+                if (File.Exists(tempFilePath)) File.Delete(tempFilePath);
+                
+                // 同时清理原始临时文件
+                string tempOriginalFile = Path.ChangeExtension(tempFilePath, null);
+                if (File.Exists(tempOriginalFile)) File.Delete(tempOriginalFile);
             }
         }
-
-        bool isAnonymous = userId == null;
-
-        // 创建图片对象并保存到数据库
-        var picture = new Picture
-        {
-            Name = initialTitle,
-            Description = initialDescription,
-            Path = relativePath,
-            User = user,
-            Permission = permission,
-            AlbumId = albumId,
-            StorageType = storageType.Value,
-            ProcessingStatus = isAnonymous ? ProcessingStatus.Completed : ProcessingStatus.Pending,
-            ThumbnailPath = isAnonymous ? relativePath : null  
-        };
-
-        dbContext.Pictures.Add(picture);
-        await dbContext.SaveChangesAsync();
-
-        if (!isAnonymous)
-        {
-            await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, relativePath);
-        }
-
-        // 返回图片基本信息
-        var pictureResponse = new PictureResponse
-        {
-            Id = picture.Id,
-            Name = picture.Name,
-            Path = storageService.GetUrl(picture.StorageType, relativePath),
-            ThumbnailPath = isAnonymous ? storageService.GetUrl(picture.StorageType, relativePath) : null,  
-            Description = picture.Description,
-            CreatedAt = picture.CreatedAt,
-            Tags = new List<string>(),
-            Permission = permission,
-            AlbumId = albumId,
-            AlbumName = album?.Name,
-            ProcessingStatus = picture.ProcessingStatus
-        };
-
-        return (pictureResponse, picture.Id);
     }
 
     public async Task<ExifInfo> GetPictureExifInfoAsync(int pictureId)

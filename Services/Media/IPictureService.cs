@@ -1,5 +1,6 @@
 using Foxel.Models;
 using Foxel.Models.DataBase;
+using Foxel.Models.Enums;
 using Foxel.Models.Response.Picture;
 using Foxel.Services.Attributes;
 
@@ -33,7 +34,9 @@ public interface IPictureService
         int? userId, 
         PermissionType permission = PermissionType.Public, 
         int? albumId = null,
-        StorageType? storageType = null
+        StorageType? storageType = null,
+        ImageFormat convertToFormat = ImageFormat.Original,
+        int quality = 95
         );
     
     Task<ExifInfo> GetPictureExifInfoAsync(int pictureId);
