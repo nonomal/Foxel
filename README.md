@@ -40,28 +40,19 @@
 
 ### ⚙️ 一键部署
 
-1. **克隆仓库**
+1. **拉取并运行容器**
     ```bash
-    git clone https://github.com/DrizzleTime/Foxel.git
-    cd Foxel
+    docker pull ghcr.io/drizzletime/foxel:dev
+    docker run -d -p 80:80 --name foxel ghcr.io/drizzletime/foxel:dev
     ```
 
-2. **构建并运行容器**
-    ```bash
-    docker build -t foxel .
-    docker run -d -p 80:80 --name foxel foxel
-    ```
+2. **访问服务**
+    
+    打开浏览器访问 `http://localhost` 或您的服务器 IP 地址即可使用 Foxel。
 
-3. **访问服务**
-
-   打开浏览器访问您的域名或者IP 即可使用 Foxel。
-
-4. **获取管理员账号信息**
-
-   容器启动后，可通过以下命令查看日志，获取管理员邮箱和初始密码：
-   ```bash
-   docker logs foxel
-   ```
+3. **获取管理员权限**
+    
+    容器启动后，第一个注册的用户将自动获得管理员权限。
 
 > ⚠️ **注意：**  
 > Foxel 依赖 PostgreSQL 数据库，并需要在数据库中启用 [vector 扩展](https://github.com/pgvector/pgvector)。  
