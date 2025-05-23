@@ -42,25 +42,35 @@
 
 1. **拉取并运行容器**
     ```bash
-    docker pull ghcr.io/drizzletime/foxel:dev
-    docker run -d -p 80:80 --name foxel ghcr.io/drizzletime/foxel:dev
+    docker run -d -p 80:80 --name foxel \
+    -e 'DEFAULT_CONNECTION=Host=foxel;\nUsername=foxel_dev;\nPassword=foxel;\nDatabase=foxel_dev' \
+    ghcr.io/drizzletime/foxel:dev
     ```
 
+   > ⚠️ **重要提示：**  
+   > 请根据您的实际数据库配置替换上述命令中的 `DEFAULT_CONNECTION` 环境变量值，包括：
+   > - `Host`：数据库主机地址
+   > - `Username`：数据库用户名  
+   > - `Password`：数据库密码
+   > - `Database`：数据库名称
+
 2. **访问服务**
-    
-    打开浏览器访问 `http://localhost` 或您的服务器 IP 地址即可使用 Foxel。
+
+   打开浏览器访问 `http://localhost` 或您的服务器 IP 地址即可使用 Foxel。
 
 3. **获取管理员权限**
-    
-    容器启动后，第一个注册的用户将自动获得管理员权限。
+
+   容器启动后，第一个注册的用户将自动获得管理员权限。
 
 > ⚠️ **注意：**  
 > Foxel 依赖 PostgreSQL 数据库，并需要在数据库中启用 [vector 扩展](https://github.com/pgvector/pgvector)。  
-> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则图像检索功能无法正常使用。  
-> 可通过如下命令在数据库中启用扩展：
-> ```sql
-> CREATE EXTENSION IF NOT EXISTS vector;
-> ```
+> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则图像检索功能无法正常使用。
+
+可通过如下命令在数据库中启用扩展：
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
 
 > 如需自定义数据库等配置，可通过修改 `Dockerfile` 或挂载配置文件实现。
 
@@ -82,7 +92,8 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 
 ## 🤝 贡献指南
 
-> ⚠️ 注意：Foxel 目前处于早期实验阶段，数据库结构和各项功能仍在持续迭代中，未来版本可能会有**较大变动**。建议在生产环境使用前充分测试，并关注项目更新动态。
+> ⚠️ 注意：Foxel 目前处于早期实验阶段，数据库结构和各项功能仍在持续迭代中，未来版本可能会有**较大变动**
+> 。建议在生产环境使用前充分测试，并关注项目更新动态。
 
 我们欢迎所有对 Foxel 感兴趣的开发者加入贡献，共同改进和提升这个项目。
 

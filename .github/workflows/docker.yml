@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: startsWith(github.event.head_commit.message, 'pub(docker)')
 
     permissions:
       contents: read
