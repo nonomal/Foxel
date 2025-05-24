@@ -47,6 +47,7 @@
 docker run -d -p 80:80 --name foxel \
 -v /path/to/uploads:/app/Uploads \
 -e 'DEFAULT_CONNECTION=Host=foxel;Username=foxel_dev;Password=foxel;Database=foxel_dev' \
+--pull always \
 ghcr.io/drizzletime/foxel:dev
 ```
 
