@@ -99,14 +99,7 @@ ghcr.io/drizzletime/foxel:dev
 
 > ⚠️ **注意：**  
 > Foxel 依赖 PostgreSQL 数据库，并需要在数据库中启用 [vector 扩展](https://github.com/pgvector/pgvector)。  
-> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则图像检索功能无法正常使用。
-
-可通过如下命令在数据库中启用扩展：
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
+> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则安装失败。
 ---
 
 ## 📖 适配存储
