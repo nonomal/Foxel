@@ -13,8 +13,26 @@
     <strong>Foxel</strong> 是一个基于 <strong>.NET 9</strong> 开发的现代化智能图像检索与管理系统，集成先进的 <strong>AI 视觉模型</strong> 和 <strong>向量嵌入技术</strong>，提供高效的图像搜索与管理功能。
 </p>
 
+## 🌐 社区交流
+
+加入我们的社区，与其他用户交流使用心得，获取技术支持，参与项目讨论：
+
+|     平台     | 群组信息              | 联系方式             |
+|:----------:|:------------------|:-----------------|
+| 💬 **QQ群** | **群名：** Foxel 小狐狸 | 群号：458449115     |
+| 📱 **微信群** | **群名：** Foxel 小狐狸 | 添加微信：drizzle2001 |
+
+> 💡 **社区规则：**
+> - 保持友善，互相帮助
+> - 发布问题时请提供详细信息
+> - 禁止发布与项目无关的广告内容
+> - 遵守各平台社区准则
+
+---
+
 > 🖥️ **在线演示：**  
 > 访问 [https://foxel.cc](https://foxel.cc) 体验 Foxel 部分功能。  
+> 管理员账号：`demo@foxel.cc` 密码: `foxel_demo`  
 > ⚠️ **注意：演示环境数据可能不定期清理，请勿存放重要信息。**
 
 ---
@@ -41,29 +59,31 @@
 ### ⚙️ 一键部署
 
 1. **拉取并运行容器**
+
 ```bash
 docker run -d -p 80:80 --name foxel \
 -v /path/to/uploads:/app/Uploads \
 -e 'DEFAULT_CONNECTION=Host=foxel;Username=foxel_dev;Password=foxel;Database=foxel_dev' \
+--pull always \
 ghcr.io/drizzletime/foxel:dev
 ```
 
-  > ⚠️ **重要提示：**  
-  > 请根据您的实际配置替换上述命令中的参数：
-  > 
-  > **数据库连接配置 (`DEFAULT_CONNECTION`)：**
-  > - `Host`：数据库主机地址
-  > - `Username`：数据库用户名  
-  > - `Password`：数据库密码
-  > - `Database`：数据库名称
-  > 
-  > **端口映射配置 (`-p`)：**
-  > - `-p 80:80`：将容器的 80 端口映射到主机的 80 端口
-  > - 可根据需要修改为其他端口，如 `-p 8080:80`
-  > 
-  > **数据挂载配置 (`-v`)：**
-  > - `-v /path/to/uploads:/app/Uploads`：将主机目录挂载到容器的上传目录
-  > - 请将 `/path/to/uploads` 替换为您希望存储图片的实际主机路径
+> ⚠️ **重要提示：**  
+> 请根据您的实际配置替换上述命令中的参数：
+>
+> **数据库连接配置 (`DEFAULT_CONNECTION`)：**
+> - `Host`：数据库主机地址
+> - `Username`：数据库用户名
+> - `Password`：数据库密码
+> - `Database`：数据库名称
+>
+> **端口映射配置 (`-p`)：**
+> - `-p 80:80`：将容器的 80 端口映射到主机的 80 端口
+> - 可根据需要修改为其他端口，如 `-p 8080:80`
+>
+> **数据挂载配置 (`-v`)：**
+> - `-v /path/to/uploads:/app/Uploads`：将主机目录挂载到容器的上传目录
+> - 请将 `/path/to/uploads` 替换为您希望存储图片的实际主机路径
 
 2. **访问服务**
 
@@ -79,15 +99,7 @@ ghcr.io/drizzletime/foxel:dev
 
 > ⚠️ **注意：**  
 > Foxel 依赖 PostgreSQL 数据库，并需要在数据库中启用 [vector 扩展](https://github.com/pgvector/pgvector)。  
-> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则图像检索功能无法正常使用。
-
-可通过如下命令在数据库中启用扩展：
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-
+> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则安装失败。
 ---
 
 ## 📖 适配存储
@@ -118,24 +130,7 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 
 ---
 
-<picture>
-  <source
-    media="(prefers-color-scheme: dark)"
-    srcset="
-      https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date&theme=dark
-    "
-  />
-  <source
-    media="(prefers-color-scheme: light)"
-    srcset="
-      https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date
-    "
-  />
-  <img
-    alt="Star History Chart"
-    src="https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date"
-  />
-</picture>
+![Star History Chart](https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date)
 
 <p align="center">
     <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=for-the-badge" alt="MIT License" style="display:inline-block; vertical-align:middle;">

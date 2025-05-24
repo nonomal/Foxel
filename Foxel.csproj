@@ -29,6 +29,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Include=".github\workflows\deployment.yml" />
       <Content Include=".github\workflows\docker.yml" />
     </ItemGroup>
 
