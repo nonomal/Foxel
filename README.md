@@ -41,18 +41,29 @@
 ### ⚙️ 一键部署
 
 1. **拉取并运行容器**
-    ```bash
-    docker run -d -p 80:80 --name foxel \
-    -e 'DEFAULT_CONNECTION=Host=foxel;Username=foxel_dev;Password=foxel;Database=foxel_dev' \
-    ghcr.io/drizzletime/foxel:dev
-    ```
+```bash
+docker run -d -p 80:80 --name foxel \
+-v /path/to/uploads:/app/Uploads \
+-e 'DEFAULT_CONNECTION=Host=foxel;Username=foxel_dev;Password=foxel;Database=foxel_dev' \
+ghcr.io/drizzletime/foxel:dev
+```
 
-   > ⚠️ **重要提示：**  
-   > 请根据您的实际数据库配置替换上述命令中的 `DEFAULT_CONNECTION` 环境变量值，包括：
-   > - `Host`：数据库主机地址
-   > - `Username`：数据库用户名  
-   > - `Password`：数据库密码
-   > - `Database`：数据库名称
+  > ⚠️ **重要提示：**  
+  > 请根据您的实际配置替换上述命令中的参数：
+  > 
+  > **数据库连接配置 (`DEFAULT_CONNECTION`)：**
+  > - `Host`：数据库主机地址
+  > - `Username`：数据库用户名  
+  > - `Password`：数据库密码
+  > - `Database`：数据库名称
+  > 
+  > **端口映射配置 (`-p`)：**
+  > - `-p 80:80`：将容器的 80 端口映射到主机的 80 端口
+  > - 可根据需要修改为其他端口，如 `-p 8080:80`
+  > 
+  > **数据挂载配置 (`-v`)：**
+  > - `-v /path/to/uploads:/app/Uploads`：将主机目录挂载到容器的上传目录
+  > - 请将 `/path/to/uploads` 替换为您希望存储图片的实际主机路径
 
 2. **访问服务**
 
