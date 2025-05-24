@@ -12,4 +12,6 @@ public record SetConfigRequest
     
     [StringLength(255, ErrorMessage = "描述长度不能超过255个字符")]
     public string? Description { get; set; }
+    
+    public bool? IsSecret { get; set; }
 }

@@ -70,13 +70,39 @@ public class ConfigService(
     public async Task<Config?> GetConfigAsync(string key)
     {
         await using var context = await contextFactory.CreateDbContextAsync();
-        return await context.Configs.FirstOrDefaultAsync(c => c.Key == key);
+        var config = await context.Configs.FirstOrDefaultAsync(c => c.Key == key);
+        
+        // 如果配置是私密的，返回值设为空字符串
+        if (config?.IsSecret == true)
+        {
+            // 创建一个新的实例，避免修改数据库中的值
+            var displayConfig = new Config
+            {
+                Id = config.Id,
+                Key = config.Key,
+                Value = string.Empty, // 私密配置的值设为空
+                Description = config.Description,
+                IsSecret = config.IsSecret,
+                CreatedAt = config.CreatedAt,
+                UpdatedAt = config.UpdatedAt
+            };
+            return displayConfig;
+        }
+        
+        return config;
     }
 
     public async Task<List<Config>> GetAllConfigsAsync()
     {
         await using var context = await contextFactory.CreateDbContextAsync();
-        return await context.Configs.OrderBy(c => c.Key).ToListAsync();
+        var configs = await context.Configs.OrderBy(c => c.Key).ToListAsync();
+        
+        foreach (var config in configs.Where(c => c.IsSecret))
+        {
+            config.Value = string.Empty;
+        }
+        
+        return configs;
     }
 
     public async Task<Config> SetConfigAsync(string key, string value, string? description = null)
@@ -90,12 +116,12 @@ public class ConfigService(
 
         if (config == null)
         {
-            // 创建新配置
             config = new Config
             {
                 Key = key,
                 Value = value,
                 Description = description ?? string.Empty,
+                IsSecret = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -104,8 +130,11 @@ public class ConfigService(
         }
         else
         {
-            // 更新现有配置
-            config.Value = value;
+            if (!(config.IsSecret && string.IsNullOrEmpty(value)))
+            {
+                config.Value = value;
+            }
+            
             if (description != null)
             {
                 config.Description = description;
@@ -113,7 +142,10 @@ public class ConfigService(
             config.UpdatedAt = DateTime.UtcNow;
         }
         await context.SaveChangesAsync();
-        memoryCache.Set($"config:{key}", value, _cacheExpiration);
+        if (!config.IsSecret)
+        {
+            memoryCache.Set($"config:{key}", value, _cacheExpiration);
+        }
         return config;
     }
 
