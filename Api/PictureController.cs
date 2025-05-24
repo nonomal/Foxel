@@ -74,7 +74,6 @@ public class PictureController(IPictureService pictureService, IConfigService co
         try
         {
             var userId = GetCurrentUserId();
-            
             await using var stream = request.File.OpenReadStream();
             var result = await pictureService.UploadPictureAsync(
                 request.File.FileName,
@@ -83,9 +82,7 @@ public class PictureController(IPictureService pictureService, IConfigService co
                 userId,
                 (PermissionType)request.Permission!,
                 request.AlbumId,
-                request.StorageType,
-                request.ConvertToFormat,
-                request.Quality
+                request.StorageType
             );
 
             var picture = result.Picture;

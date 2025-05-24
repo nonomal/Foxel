@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Upload, Button, Progress, message, Form, Select, Radio, Slider, Divider, Alert } from 'antd';
+import { Modal, Upload, Button, Progress, message, Form, Select, Radio, Slider } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import { v4 as uuidv4 } from 'uuid';
 import type { UploadFile, AlbumResponse } from '../../api';
-import { uploadPicture, getAlbums, ImageFormat } from '../../api';
+import { uploadPicture, getAlbums } from '../../api';
 
 const { Dragger } = Upload;
 const { Option } = Select;
@@ -20,8 +20,6 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
   const [form] = Form.useForm();
   const [albums, setAlbums] = useState<AlbumResponse[]>([]);
   const [concurrentUploads, setConcurrentUploads] = useState<number>(3);
-  const [convertFormat, setConvertFormat] = useState<ImageFormat>(ImageFormat.Original);
-  const [quality, setQuality] = useState<number>(95);
   
   useEffect(() => {
     if (visible) {
@@ -77,11 +75,9 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
       setUploading(true);
       const values = await form.validateFields();
       
-      const params: { // 修改此处的类型定义
+      const params: {
         permission?: number;
         albumId?: number;
-        convertToFormat?: string; // 允许 string 类型
-        quality?: number;
       } = {};
 
       if (values.permission !== undefined) {
@@ -89,10 +85,6 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
       }
       if (values.albumId) {
         params.albumId = values.albumId;
-      }
-      if (convertFormat !== ImageFormat.Original) {
-        params.convertToFormat = convertFormat.toString(); // 现在类型匹配
-        params.quality = quality;
       }
       
       let successCount = 0;
@@ -110,7 +102,7 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
 
         try {
           // 上传文件
-          const result = await uploadPicture(item.file, { // 此处 params 类型现在匹配
+          const result = await uploadPicture(item.file, {
             ...params,
             onProgress: (percent) => {
               setUploadQueue((prev) => 
@@ -214,17 +206,6 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
     } else {
       setUploadQueue([]);
       onClose();
-    }
-  };
-
-  // 获取格式名称
-  const getFormatName = (format: ImageFormat) => {
-    switch (format) {
-      case ImageFormat.Original: return '保持原格式';
-      case ImageFormat.Jpeg: return 'JPEG';
-      case ImageFormat.Png: return 'PNG';
-      case ImageFormat.WebP: return 'WebP';
-      default: return '未知格式';
     }
   };
 
@@ -361,51 +342,6 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
             <Radio value={2}>仅自己</Radio>
           </Radio.Group>
         </Form.Item>
-
-        <Divider orientation="left">格式转换设置</Divider>
-        
-        <Form.Item label="输出格式">
-          <Radio.Group
-            value={convertFormat}
-            onChange={(e) => setConvertFormat(e.target.value)}
-            optionType="button"
-            buttonStyle="solid"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}
-          >
-            <Radio.Button value={ImageFormat.Original}>保持原格式</Radio.Button>
-            <Radio.Button value={ImageFormat.Jpeg}>JPEG (.jpg)</Radio.Button>
-            <Radio.Button value={ImageFormat.Png}>PNG (.png)</Radio.Button>
-            <Radio.Button value={ImageFormat.WebP}>WebP (.webp)</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
-
-        {convertFormat !== ImageFormat.Original && (
-          <>
-            {convertFormat === ImageFormat.Png ? (
-              <Alert
-                message="提示"
-                description={`${getFormatName(convertFormat)} 格式为无损压缩，不支持质量调节。`}
-                type="info"
-                showIcon
-                style={{ marginBottom: '16px' }}
-              />
-            ) : (
-              <Form.Item label={`图片质量 (${quality}%)`}>
-                <Slider
-                  min={50}
-                  max={100}
-                  value={quality}
-                  onChange={setQuality}
-                  marks={{ 50: '50%', 75: '75%', 90: '90%', 95: '95%', 100: '100%' }}
-                  tooltip={{ formatter: (value) => `${value}%` }}
-                />
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                  质量越高文件越大，建议使用 85-95% 的质量设置
-                </div>
-              </Form.Item>
-            )}
-          </>
-        )}
         
         <Form.Item
           name="concurrentUploads"
@@ -434,14 +370,10 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
         <p className="ant-upload-text">点击或拖拽图片到此区域上传</p>
         <p className="ant-upload-hint">
           支持单个或批量上传，图片大小不超过10MB
-          {convertFormat !== ImageFormat.Original && (
-            <> 
-              <br />
-              <span style={{ color: '#1890ff' }}>
-                将转换为 {getFormatName(convertFormat)} 格式
-              </span>
-            </>
-          )}
+          <br />
+          <span style={{ color: '#888' }}>
+            图片将按系统默认设置进行处理
+          </span>
         </p>
       </Dragger>
 

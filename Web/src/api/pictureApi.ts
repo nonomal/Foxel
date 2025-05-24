@@ -119,8 +119,6 @@ export async function uploadPicture(
   data: {
     permission?: number;
     albumId?: number;
-    convertToFormat?: string;
-    quality?: number;
     onProgress?: (percent: number) => void
   } = {}
 ): Promise<BaseResult<PictureResponse>> {
@@ -133,14 +131,6 @@ export async function uploadPicture(
 
   if (data.albumId !== undefined) {
     formData.append('albumId', data.albumId.toString());
-  }
-
-  if (data.convertToFormat !== undefined) {
-    formData.append('convertToFormat', data.convertToFormat.toString());
-  }
-
-  if (data.quality !== undefined) {
-    formData.append('quality', data.quality.toString());
   }
 
   try {

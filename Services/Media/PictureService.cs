@@ -437,19 +437,17 @@ public class PictureService(
         int? userId,
         PermissionType permission = PermissionType.Public,
         int? albumId = null,
-        StorageType? storageType = null,
-        ImageFormat convertToFormat = ImageFormat.Original,
-        int quality = 95)
+        StorageType? storageType = null)
     {
         StorageType GetConfigStorageType(string configKey)
         {
             string? configValue = configuration[configKey];
-            return !string.IsNullOrEmpty(configValue) && 
+            return !string.IsNullOrEmpty(configValue) &&
                    Enum.TryParse<StorageType>(configValue, out var configStorageType)
-                   ? configStorageType 
+                   ? configStorageType
                    : StorageType.Local;
         }
-        
+
         if (userId == null)
         {
             storageType = GetConfigStorageType("Storage:AnonymousDefaultStorage");
@@ -458,7 +456,21 @@ public class PictureService(
         {
             storageType = GetConfigStorageType("Storage:DefaultStorage");
         }
-
+        ImageFormat convertToFormat = ImageFormat.Original;
+        string defaultFormatConfig = configuration["Upload:DefaultImageFormat"];
+        if (!string.IsNullOrEmpty(defaultFormatConfig))
+        {
+            if (Enum.TryParse<ImageFormat>(defaultFormatConfig, true, out var parsedFormat))
+            {
+                convertToFormat = parsedFormat;
+            }
+        }
+        int quality = 100;
+        string defaultQualityConfig = configuration["Upload:DefaultImageQuality"];
+        if (!string.IsNullOrEmpty(defaultQualityConfig))
+        {
+            quality = int.Parse(defaultQualityConfig);
+        }
         string originalFileName = fileName;
         string finalFileName = fileName;
         string finalContentType = contentType;
@@ -553,7 +565,7 @@ public class PictureService(
                 AlbumId = albumId,
                 StorageType = storageType.Value,
                 ProcessingStatus = isAnonymous ? ProcessingStatus.Completed : ProcessingStatus.Pending,
-                ThumbnailPath = isAnonymous ? relativePath : null  
+                ThumbnailPath = isAnonymous ? relativePath : null
             };
 
             dbContext.Pictures.Add(picture);
@@ -570,7 +582,7 @@ public class PictureService(
                 Id = picture.Id,
                 Name = picture.Name,
                 Path = storageService.GetUrl(picture.StorageType, relativePath),
-                ThumbnailPath = isAnonymous ? storageService.GetUrl(picture.StorageType, relativePath) : null,  
+                ThumbnailPath = isAnonymous ? storageService.GetUrl(picture.StorageType, relativePath) : null,
                 Description = picture.Description,
                 CreatedAt = picture.CreatedAt,
                 Tags = new List<string>(),
@@ -590,7 +602,7 @@ public class PictureService(
                 string tempFilePath = tempFileStream.Name;
                 finalStream.Dispose();
                 if (File.Exists(tempFilePath)) File.Delete(tempFilePath);
-                
+
                 // 同时清理原始临时文件
                 string tempOriginalFile = Path.ChangeExtension(tempFilePath, null);
                 if (File.Exists(tempOriginalFile)) File.Delete(tempOriginalFile);

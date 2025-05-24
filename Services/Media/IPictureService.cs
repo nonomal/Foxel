@@ -34,9 +34,7 @@ public interface IPictureService
         int? userId, 
         PermissionType permission = PermissionType.Public, 
         int? albumId = null,
-        StorageType? storageType = null,
-        ImageFormat convertToFormat = ImageFormat.Original,
-        int quality = 95
+        StorageType? storageType = null
         );
     
     Task<ExifInfo> GetPictureExifInfoAsync(int pictureId);

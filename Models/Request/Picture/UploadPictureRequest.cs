@@ -16,15 +16,4 @@ public record UploadPictureRequest
     public int? AlbumId { get; set; }
 
     public StorageType? StorageType { get; set; }
-
-    /// <summary>
-    /// 目标图片格式，默认为保持原格式
-    /// </summary>
-    public ImageFormat ConvertToFormat { get; set; } = ImageFormat.Original;
-
-    /// <summary>
-    /// 图片质量（仅对JPEG和WebP有效，1-100）
-    /// </summary>
-    [Range(1, 100, ErrorMessage = "图片质量必须在1-100之间")]
-    public int Quality { get; set; } = 95;
 }

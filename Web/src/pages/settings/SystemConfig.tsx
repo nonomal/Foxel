@@ -391,6 +391,90 @@ const SystemConfig: React.FC = () => {
               </div>
             </Card>
 
+            {/* 上传设置卡片 - 新增 */}
+            <Card 
+              size="small" 
+              title="上传设置配置" 
+              style={{ marginBottom: isMobile ? 16 : 24 }}
+              bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
+            >
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: isMobile ? 12 : 16,
+                marginBottom: 0
+              }}>
+                {/* 图片默认格式 */}
+                <div>
+                  <div style={{ 
+                    marginBottom: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#666'
+                  }}>
+                    默认图片格式
+                  </div>
+                  <Select 
+                    value={configs.Upload?.DefaultImageFormat || 'Original'} 
+                    onChange={(value) => {
+                      handleSaveConfig('Upload', 'DefaultImageFormat', value);
+                    }}
+                    style={{ width: '100%' }}
+                    size="large"
+                    placeholder="选择上传图片的默认处理格式"
+                  >
+                    <Option value="Original">保持原始格式</Option>
+                    <Option value="Jpeg">转换为JPEG</Option>
+                    <Option value="Png">转换为PNG</Option>
+                    <Option value="Webp">转换为WebP</Option>
+                  </Select>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 4 
+                  }}>
+                    上传图片时的默认处理格式，选择合适的格式可以优化存储和显示
+                  </div>
+                </div>
+
+                {/* 图片压缩质量 */}
+                <div>
+                  <div style={{ 
+                    marginBottom: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#666'
+                  }}>
+                    默认压缩质量
+                  </div>
+                  <Select 
+                    value={configs.Upload?.DefaultImageQuality || '95'} 
+                    onChange={(value) => {
+                      handleSaveConfig('Upload', 'DefaultImageQuality', value);
+                    }}
+                    style={{ width: '100%' }}
+                    size="large"
+                    placeholder="选择图片压缩质量"
+                  >
+                    <Option value="100">100% - 最高质量</Option>
+                    <Option value="95">95% - 高质量</Option>
+                    <Option value="90">90% - 优质</Option>
+                    <Option value="85">85% - 良好</Option>
+                    <Option value="80">80% - 节省空间</Option>
+                    <Option value="75">75% - 平衡</Option>
+                    <Option value="70">70% - 压缩</Option>
+                  </Select>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 4 
+                  }}>
+                    适用于JPEG和WebP格式的图片质量设置，越高图片质量越好但文件越大
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             {/* 存储服务配置卡片 */}
             <Card 
               size="small" 
