@@ -15,6 +15,7 @@
 
 > 🖥️ **在线演示：**  
 > 访问 [https://foxel.cc](https://foxel.cc) 体验 Foxel 部分功能。  
+> 管理员账号：`demo@foxel.cc` 密码: `foxel_demo`  
 > ⚠️ **注意：演示环境数据可能不定期清理，请勿存放重要信息。**
 
 ---
@@ -41,6 +42,7 @@
 ### ⚙️ 一键部署
 
 1. **拉取并运行容器**
+
 ```bash
 docker run -d -p 80:80 --name foxel \
 -v /path/to/uploads:/app/Uploads \
@@ -48,22 +50,22 @@ docker run -d -p 80:80 --name foxel \
 ghcr.io/drizzletime/foxel:dev
 ```
 
-  > ⚠️ **重要提示：**  
-  > 请根据您的实际配置替换上述命令中的参数：
-  > 
-  > **数据库连接配置 (`DEFAULT_CONNECTION`)：**
-  > - `Host`：数据库主机地址
-  > - `Username`：数据库用户名  
-  > - `Password`：数据库密码
-  > - `Database`：数据库名称
-  > 
-  > **端口映射配置 (`-p`)：**
-  > - `-p 80:80`：将容器的 80 端口映射到主机的 80 端口
-  > - 可根据需要修改为其他端口，如 `-p 8080:80`
-  > 
-  > **数据挂载配置 (`-v`)：**
-  > - `-v /path/to/uploads:/app/Uploads`：将主机目录挂载到容器的上传目录
-  > - 请将 `/path/to/uploads` 替换为您希望存储图片的实际主机路径
+> ⚠️ **重要提示：**  
+> 请根据您的实际配置替换上述命令中的参数：
+>
+> **数据库连接配置 (`DEFAULT_CONNECTION`)：**
+> - `Host`：数据库主机地址
+> - `Username`：数据库用户名
+> - `Password`：数据库密码
+> - `Database`：数据库名称
+>
+> **端口映射配置 (`-p`)：**
+> - `-p 80:80`：将容器的 80 端口映射到主机的 80 端口
+> - 可根据需要修改为其他端口，如 `-p 8080:80`
+>
+> **数据挂载配置 (`-v`)：**
+> - `-v /path/to/uploads:/app/Uploads`：将主机目录挂载到容器的上传目录
+> - 请将 `/path/to/uploads` 替换为您希望存储图片的实际主机路径
 
 2. **访问服务**
 
@@ -86,7 +88,6 @@ ghcr.io/drizzletime/foxel:dev
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
-
 
 ---
 
@@ -118,24 +119,7 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 
 ---
 
-<picture>
-  <source
-    media="(prefers-color-scheme: dark)"
-    srcset="
-      https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date&theme=dark
-    "
-  />
-  <source
-    media="(prefers-color-scheme: light)"
-    srcset="
-      https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date
-    "
-  />
-  <img
-    alt="Star History Chart"
-    src="https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date"
-  />
-</picture>
+![Star History Chart](https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date)
 
 <p align="center">
     <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=for-the-badge" alt="MIT License" style="display:inline-block; vertical-align:middle;">
