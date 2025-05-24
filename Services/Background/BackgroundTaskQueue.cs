@@ -198,6 +198,8 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
         string localFilePath = "";
         bool isTempFile = false;
+        var dbContext = await _contextFactory.CreateDbContextAsync();
+        var picture = await dbContext.Pictures.FindAsync(task.PictureId);
 
         try
         {
@@ -207,9 +209,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             // 1. 获取图片信息
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 10);
-            var dbContext = await _contextFactory.CreateDbContextAsync();
-            var picture = await dbContext.Pictures.FindAsync(task.PictureId);
-
+            
             if (picture == null)
             {
                 throw new Exception($"找不到ID为{task.PictureId}的图片");
@@ -276,6 +276,9 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             // 4. 从EXIF中提取拍摄时间并确保是UTC格式
             picture.TakenAt = ImageHelper.ParseExifDateTime(exifInfo.DateTimeOriginal);
+            
+            // 保存缩略图和EXIF信息的更改，确保这些基本信息即使在后续步骤失败时也能保存
+            await dbContext.SaveChangesAsync();
 
             // 5. 将缩略图转换为Base64并调用AI分析
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 50);
@@ -359,6 +362,22 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
         {
             // 更新状态为失败
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Failed, 0, ex.Message);
+
+            // 确保图片对象存在且已有的处理结果被保存
+            if (picture != null)
+            {
+                picture.ProcessingStatus = ProcessingStatus.Failed;
+                picture.ProcessingError = ex.Message;
+                
+                try
+                {
+                    await dbContext.SaveChangesAsync();
+                }
+                catch (Exception saveEx)
+                {
+                    Console.WriteLine($"保存失败状态时出错: {saveEx.Message}");
+                }
+            }
 
             // 记录错误日志
             Console.WriteLine($"图片处理失败: 图片ID={task.PictureId}, 错误: {ex.Message}");
