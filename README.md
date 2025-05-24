@@ -63,6 +63,10 @@
    容器启动后，第一个注册的用户将自动获得管理员权限。
 
 > ⚠️ **注意：**  
+> Foxel 目前处于早期实验阶段，数据库结构和各项功能仍在持续迭代中，未来版本可能会有**较大变动**。建议在生产环境使用前充分测试，并关注项目更新动态。
+
+
+> ⚠️ **注意：**  
 > Foxel 依赖 PostgreSQL 数据库，并需要在数据库中启用 [vector 扩展](https://github.com/pgvector/pgvector)。  
 > 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则图像检索功能无法正常使用。
 
@@ -72,7 +76,6 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-> 如需自定义数据库等配置，可通过修改 `Dockerfile` 或挂载配置文件实现。
 
 ---
 
@@ -92,9 +95,6 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 
 ## 🤝 贡献指南
 
-> ⚠️ 注意：Foxel 目前处于早期实验阶段，数据库结构和各项功能仍在持续迭代中，未来版本可能会有**较大变动**
-> 。建议在生产环境使用前充分测试，并关注项目更新动态。
-
 我们欢迎所有对 Foxel 感兴趣的开发者加入贡献，共同改进和提升这个项目。
 
 |      步骤      | 说明                                                                                          |
@@ -107,10 +107,27 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 
 ---
 
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="
+      https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date&theme=dark
+    "
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="
+      https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date
+    "
+  />
+  <img
+    alt="Star History Chart"
+    src="https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date"
+  />
+</picture>
+
 <p align="center">
     <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=for-the-badge" alt="MIT License" style="display:inline-block; vertical-align:middle;">
     <span style="display:inline-block; width:20px;"></span>
     <img src="https://img.shields.io/badge/感谢您的支持-Thanks-yellow?style=for-the-badge" alt="感谢" style="display:inline-block; vertical-align:middle;">
 </p>
-
-[![Star History Chart](https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date)](https://www.star-history.com/#DrizzleTime/Foxel&Date)
