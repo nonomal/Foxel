@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Tabs, Switch, Select, Slider, Space, Button, Typography, Tooltip, message, Divider } from 'antd';
+import { Modal, Input, Tabs, Switch, Select, Slider, Space, Button, Typography, Tooltip, message } from 'antd';
 import { SearchOutlined, FileImageOutlined, ClearOutlined } from '@ant-design/icons';
 import ImageGrid from '../image/ImageGrid';
 import type { PictureResponse } from '../../api';
