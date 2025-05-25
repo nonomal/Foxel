@@ -10,15 +10,13 @@ const { Title } = Typography;
 
 function AllImages() {
   const isMobile = useIsMobile();
-  const [images, setImages] = useState<PictureResponse[]>([]);
+  const [, setImages] = useState<PictureResponse[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<string>('uploadDate_desc');
   const [isUploadDialogVisible, setIsUploadDialogVisible] = useState(false);
-
-  // 使用useRef记忆sortBy值，避免重复渲染
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const sortByRef = useRef(sortBy);
-
   // 优化handleSortChange，减少不必要的状态更新
   const handleSortChange = (newSortBy: string) => {
     if (sortBy !== newSortBy) {
@@ -27,10 +25,12 @@ function AllImages() {
     }
   };
 
-  // 使用useMemo创建稳定的queryParams对象
   const queryParamsObject = useMemo(() => {
-    return { sortBy };
-  }, [sortBy]);
+    return { 
+      sortBy,
+      refreshTrigger 
+    };
+  }, [sortBy, refreshTrigger]);
 
   const handleToggleFavorite = (image: PictureResponse) => {
     // 只需处理 viewer 中的图片
@@ -49,6 +49,8 @@ function AllImages() {
 
   const handleUploadComplete = () => {
     message.success('图片上传完成，刷新列表');
+    setRefreshTrigger(prev => prev + 1);
+    setImages([]);
   };
 
   // 当分页变化时，保存当前浏览的页码
@@ -58,10 +60,8 @@ function AllImages() {
   };
 
   const handleImagesLoaded = useCallback((loadedImages: PictureResponse[]) => {
-    if (images.length === 0) {
-      setImages(loadedImages);
-    }
-  }, [images.length]);
+    setImages(loadedImages);
+  }, []); 
 
   const sortMenu = {
     items: [
