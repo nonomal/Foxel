@@ -58,48 +58,35 @@
 
 ### ⚙️ 一键部署
 
-1. **拉取并运行容器**
+> ⚠️ **重要提示：**  
+> Foxel 目前处于早期实验阶段，功能和数据库结构仍在持续迭代中。建议在生产环境使用前充分测试。
+
+**1. 准备数据库**
+
+Foxel 依赖 PostgreSQL 数据库，需要启用 [vector 扩展](https://github.com/pgvector/pgvector)：
+
+**2. 拉取并运行容器**
 
 ```bash
 docker run -d -p 80:80 --name foxel \
--v /path/to/uploads:/app/Uploads \
--e 'DEFAULT_CONNECTION=Host=foxel;Username=foxel_dev;Password=foxel;Database=foxel_dev' \
---pull always \
-ghcr.io/drizzletime/foxel:dev
+    -v /path/to/uploads:/app/Uploads \
+    -e DEFAULT_CONNECTION="Host=your_host;Username=your_user;Password=your_password;Database=your_db" \
+    --pull always \
+    ghcr.io/drizzletime/foxel:dev
 ```
 
-> ⚠️ **重要提示：**  
-> 请根据您的实际配置替换上述命令中的参数：
->
-> **数据库连接配置 (`DEFAULT_CONNECTION`)：**
-> - `Host`：数据库主机地址
-> - `Username`：数据库用户名
-> - `Password`：数据库密码
-> - `Database`：数据库名称
->
-> **端口映射配置 (`-p`)：**
-> - `-p 80:80`：将容器的 80 端口映射到主机的 80 端口
-> - 可根据需要修改为其他端口，如 `-p 8080:80`
->
-> **数据挂载配置 (`-v`)：**
-> - `-v /path/to/uploads:/app/Uploads`：将主机目录挂载到容器的上传目录
-> - 请将 `/path/to/uploads` 替换为您希望存储图片的实际主机路径
+**参数说明：**
 
-2. **访问服务**
+- `-p 80:80`：端口映射（可修改为 `-p 8080:80` 等）
+- `-v /path/to/uploads:/app/Uploads`：数据目录挂载
+- `DEFAULT_CONNECTION`：PostgreSQL 数据库连接字符串
 
-   打开浏览器访问 `http://localhost` 或您的服务器 IP 地址即可使用 Foxel。
+**3. 访问服务**
 
-3. **获取管理员权限**
-
-   容器启动后，第一个注册的用户将自动获得管理员权限。
-
-> ⚠️ **注意：**  
-> Foxel 目前处于早期实验阶段，数据库结构和各项功能仍在持续迭代中，未来版本可能会有**较大变动**。建议在生产环境使用前充分测试，并关注项目更新动态。
+打开浏览器访问您的域名或者IP，**第一个注册的用户将自动获得管理员权限**。
 
 
-> ⚠️ **注意：**  
-> Foxel 依赖 PostgreSQL 数据库，并需要在数据库中启用 [vector 扩展](https://github.com/pgvector/pgvector)。  
-> 请确保您的 PostgreSQL 实例已正确安装并启用 `vector` 扩展，否则安装失败。
+
 ---
 
 ## 📖 适配存储
