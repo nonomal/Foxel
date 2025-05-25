@@ -63,6 +63,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   const [shareDialogVisible, setShareDialogVisible] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentLoading, setCurrentLoading] = useState(false);
+  const [fadeTransition, setFadeTransition] = useState(false);
+  const [, setActiveImage] = useState<string | null>(null);
   
   const [zoomPanState, setZoomPanState] = useState<ZoomPanState>({
     scale: 1,
@@ -79,6 +81,9 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const imageCache = useRef<ImageCache>({});
   const sessionKey = useRef<string>(Date.now().toString());
+  const currentLoadingUrl = useRef<string | null>(null);
+  const preloadedImagesRef = useRef<{[key: string]: HTMLImageElement}>({});
+  const favoriteOperationsInProgress = useRef<Map<number, boolean>>(new Map());
   
   const currentImage = localImages[currentIndex];
   const preloadRange = 2;
@@ -103,19 +108,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     });
   }, []);
 
-  // 当前加载中的图片URL追踪
-  const currentLoadingUrl = useRef<string | null>(null);
-  
-  // 预渲染图片容器
-  const preloadedImagesRef = useRef<{[key: string]: HTMLImageElement}>({});
-  
-  // 图片过渡状态
-  const [fadeTransition, setFadeTransition] = useState(false);
-  const [, setActiveImage] = useState<string | null>(null);
-
   const loadImage = useCallback((imageUrl: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
-      // 检查缓存
       if (imageCache.current[imageUrl]?.loaded) {
         if (currentImage && imageUrl === currentImage.path) {
           setImageLoaded(true);
@@ -152,13 +146,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     });
   }, [currentImage]);
 
-  // 图片切换逻辑优化
   useEffect(() => {
     setImageLoaded(false);
     setCurrentLoading(true);
     setFadeTransition(true);
     
-    // 利用缓存快速显示
     if (currentImage && imageCache.current[currentImage.path]?.loaded) {
       setActiveImage(currentImage.path);
       setImageLoaded(true);
@@ -167,7 +159,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       setTimeout(() => setFadeTransition(false), 100);
     }
     
-    // 重置缩放状态
     setZoomPanState(prev => ({
       ...prev,
       scale: 1,
@@ -177,7 +168,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     }));
   }, [currentIndex]);
 
-  // 可见性变化处理
   useEffect(() => {
     if (visible && !wasVisible.current) {
       resetViewerState();
@@ -188,14 +178,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     wasVisible.current = visible;
   }, [visible, resetViewerState]);
   
-  // 初始索引处理
   useEffect(() => {
     if (visible && initialIndex >= 0 && initialIndex < images.length) {
       setCurrentIndex(initialIndex);
     }
   }, [visible, initialIndex, images.length]);
 
-  // 图片加载逻辑
   useEffect(() => {
     if (!currentImage || !visible) return;
 
@@ -218,7 +206,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         setCurrentLoading(false);
       });
     
-    // 预加载相邻图片
     if (localImages.length > 1) {
       setTimeout(() => {
         for (let i = 1; i <= preloadRange; i++) {
@@ -272,29 +259,39 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const handleFavoriteClick = useCallback(async () => {
     if (!currentImage) return;
-
+    
+    if (favoriteOperationsInProgress.current.get(currentImage.id)) {
+      return;
+    }
+    
     try {
+      favoriteOperationsInProgress.current.set(currentImage.id, true);
+      
       if (onFavorite) {
         onFavorite(currentImage);
         return;
       }
-
+      
       const isFavorited = currentImage.isFavorited;
+      
       const result = isFavorited 
         ? await unfavoritePicture(currentImage.id)
         : await favoritePicture(currentImage.id);
       
       if (result.success) {
         message.success(isFavorited ? '已取消收藏' : '已添加到收藏');
+        
+        const updatedImage = {
+          ...currentImage,
+          isFavorited: !isFavorited,
+          favoriteCount: isFavorited
+            ? Math.max(0, (currentImage.favoriteCount || 0) - 1)
+            : (currentImage.favoriteCount || 0) + 1
+        };
+        
         setLocalImages(prevImages =>
           prevImages.map(img =>
-            img.id === currentImage.id ? {
-              ...img,
-              isFavorited: !isFavorited,
-              favoriteCount: isFavorited
-                ? Math.max(0, (img.favoriteCount || 0) - 1)
-                : (img.favoriteCount || 0) + 1
-            } : img
+            img.id === currentImage.id ? updatedImage : img
           )
         );
       } else {
@@ -303,6 +300,10 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     } catch (error) {
       console.error('收藏操作失败:', error);
       message.error('操作失败，请重试');
+    } finally {
+      setTimeout(() => {
+        favoriteOperationsInProgress.current.delete(currentImage.id);
+      }, 300);
     }
   }, [currentImage, onFavorite]);
 
@@ -484,7 +485,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     }
   }, [visible, handleMouseUp, handleTouchEnd]);
 
-  // 渲染优化：减少重绘和提高性能
   if (images.length === 0 || !currentImage) {
     return null;
   }
@@ -595,21 +595,20 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         <div className="image-name">{currentImage.name}</div>
 
         <div className="footer-actions">
-          {onFavorite && (
-            <Button
-              type="text"
-              icon={currentImage.isFavorited ?
-                <HeartFilled style={{ color: '#ff4d4f' }} /> :
-                <HeartOutlined style={{ color: '#fff' }} />
-              }
-              onClick={handleFavoriteClick}
-              className="footer-btn"
-            >
-              {showFavoriteCount && typeof currentImage.favoriteCount === 'number' && (
-                <span>{currentImage.favoriteCount}</span>
-              )}
-            </Button>
-          )}
+          <Button
+            type="text"
+            icon={currentImage.isFavorited ?
+              <HeartFilled style={{ color: '#ff4d4f' }} /> :
+              <HeartOutlined style={{ color: '#fff' }} />
+            }
+            onClick={handleFavoriteClick}
+            className="footer-btn"
+          >
+            {showFavoriteCount && typeof currentImage.favoriteCount === 'number' && (
+              <span>{currentImage.favoriteCount}</span>
+            )}
+          </Button>
+          
           <Dropdown menu={{ items: albumItems }} disabled={loadingAlbums || albums.length === 0}>
             <Button
               type="text"

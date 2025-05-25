@@ -200,12 +200,15 @@
   border: none;
   background: transparent !important;
   font-size: 18px;
-  border-radius: 50%;
+  border-radius: 8px; 
   height: 40px;
-  width: 40px;
+  min-width: 40px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  transition: background-color 0.2s ease;
 }
 
 .footer-btn:hover {
@@ -213,8 +216,14 @@
 }
 
 .footer-btn span {
-  margin-left: 4px;
   font-size: 14px;
+  line-height: 1;
+}
+
+.footer-btn .anticon + span {
+  display: inline-block;
+  min-width: 16px;
+  text-align: center;
 }
 
 .image-info-drawer {

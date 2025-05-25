@@ -19,7 +19,7 @@ type OutletContextType = {
 function AlbumDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { updateBreadcrumbTitle } = useOutletContext<OutletContextType>();
+  const { updateBreadcrumbTitle = () => {} } = useOutletContext<OutletContextType>();
   
   const [album, setAlbum] = useState<AlbumResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +28,7 @@ function AlbumDetail() {
   const [selectedPictures, setSelectedPictures] = useState<number[]>([]);
   const [editForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // 添加刷新触发器
 
   const loadAlbum = async () => {
     if (!id) return;
@@ -36,8 +37,10 @@ function AlbumDetail() {
       const result = await getAlbumById(parseInt(id));
       if (result.success && result.data) {
         setAlbum(result.data);
-        // 更新面包屑标题
-        updateBreadcrumbTitle(result.data.name);
+        // 添加检查确保 updateBreadcrumbTitle 是一个函数
+        if (typeof updateBreadcrumbTitle === 'function') {
+          updateBreadcrumbTitle(result.data.name);
+        }
       } else {
         message.error(result.message || '获取相册失败');
       }
@@ -114,6 +117,7 @@ function AlbumDetail() {
         message.success(`已添加 ${selectedPictures.length} 张图片到相册`);
         setSelectedPictures([]); 
         loadAlbum(); 
+        setRefreshTrigger(prev => prev + 1); // 更新刷新触发器
       } else {
         message.error(result.message || '添加图片到相册失败');
       }
@@ -289,7 +293,8 @@ function AlbumDetail() {
       </div>
 
       <ImageGrid 
-        queryParams={{ albumId: parseInt(id || '0') }} // 直接传入albumId参数获取相册图片
+        key={refreshTrigger} 
+        queryParams={{ albumId: parseInt(id || '0') }}
         onToggleFavorite={handleToggleFavorite}
         showFavoriteCount={true}
         showPagination={true}

@@ -194,9 +194,22 @@ public class AlbumService(
         if (album == null)
             return false;
             
-        // 注意：相册删除前，需要确保关联的图片被正确处理
-        // 这里只移除相册，而不删除图片
+        // 先找出所有属于这个相册的图片
+        var pictures = await dbContext.Pictures
+            .Where(p => p.AlbumId == id)
+            .ToListAsync();
+            
+        // 将这些图片的AlbumId设置为null
+        foreach (var picture in pictures)
+        {
+            picture.AlbumId = null;
+            picture.Album = null;
+        }
         
+        // 保存图片更改
+        await dbContext.SaveChangesAsync();
+        
+        // 然后删除相册
         dbContext.Albums.Remove(album);
         await dbContext.SaveChangesAsync();
         

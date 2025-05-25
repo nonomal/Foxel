@@ -178,42 +178,36 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   const requestState = useRef({ 
     inProgress: false, 
     lastParams: '',
-    noResultsFor: '' // 新增：记录哪些查询参数没有返回结果
+    noResultsFor: ''
   });
 
-  // 优化构建查询参数函数
-  const buildQueryParams = useCallback((): PaginationParams => {
-    const params: PaginationParams = {
-      page: currentPage,
-      pageSize,
-      ...queryParams,
-      searchQuery: queryParams.searchQuery,
-      tags: Array.isArray(queryParams.tags) ? queryParams.tags.join(',') : undefined,
-      useVectorSearch: queryParams.useVectorSearch,
-      similarityThreshold: queryParams.similarityThreshold
-    };
-    return params;
-  }, [currentPage, pageSize, queryParams]);
+  const favoriteOperationsInProgress = useRef<Map<number, boolean>>(new Map());
+  
+  const buildQueryParams = useCallback((): PaginationParams => ({
+    page: currentPage,
+    pageSize,
+    ...queryParams,
+    searchQuery: queryParams.searchQuery,
+    tags: Array.isArray(queryParams.tags) ? queryParams.tags.join(',') : undefined,
+    useVectorSearch: queryParams.useVectorSearch,
+    similarityThreshold: queryParams.similarityThreshold
+  }), [currentPage, pageSize, queryParams]);
 
-  // 优化加载数据函数，减少依赖项
   const loadImages = useCallback(async () => {
     if (isUsingExternalData || requestState.current.inProgress) return;
 
     const params = buildQueryParams();
     const paramsString = JSON.stringify(params);
 
-    // 检查是否是已知没有结果的查询
+    if (requestState.current.noResultsFor === paramsString && images.length === 0) {
+      return;
+    }
+    
     if (requestState.current.noResultsFor === paramsString) {
-      // 如果这个查询之前没有结果，且当前还是空结果状态，不再重复请求
-      if (images.length === 0) {
-        return;
-      }
-      // 如果之前没结果但现在有图片显示，重置noResultsFor让新查询可以执行
       requestState.current.noResultsFor = '';
     }
 
     if (requestState.current.lastParams === paramsString) {
-      // 如果参数没变且已有数据或无数据状态已确认，跳过请求
       return;
     }
 
@@ -228,16 +222,13 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     try {
       const result = await getPictures(params);
 
-      // 无论成功与否，都更新lastParams以避免相同参数的重复请求
       requestState.current.lastParams = paramsString;
       
       if (result.success) {
-        // 更新图片数据
         setImages(result.data || []);
         setTotalImages(result.totalCount || 0);
         onImagesLoaded?.(result.data || [], result.totalCount || 0);
         
-        // 如果结果为空，记录到noResultsFor
         if (!result.data || result.data.length === 0) {
           requestState.current.noResultsFor = paramsString;
         }
@@ -264,10 +255,20 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     if (isUsingExternalData && dataSource) setImages(dataSource);
   }, [dataSource, isUsingExternalData]);
 
-  // 优化收藏/取消收藏逻辑
+  // 优化收藏/取消收藏逻辑，添加防抖功能
   const handleToggleFavorite = async (image: PictureResponse) => {
+    const { id, isFavorited } = image;
+    
+    // 检查此图片是否有收藏操作正在进行中
+    if (favoriteOperationsInProgress.current.get(id)) {
+      // 如果有操作正在进行中，直接返回，不执行新的操作
+      return;
+    }
+    
     try {
-      const { id, isFavorited } = image;
+      // 设置操作锁定状态
+      favoriteOperationsInProgress.current.set(id, true);
+      
       const api = isFavorited ? unfavoritePicture : favoritePicture;
       const result = await api(id);
 
@@ -293,6 +294,11 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       }
     } catch (error) {
       message.error('操作失败，请重试');
+    } finally {
+      // 操作完成后，延迟300ms释放锁定状态，进一步防止快速重复点击
+      setTimeout(() => {
+        favoriteOperationsInProgress.current.delete(id);
+      }, 300);
     }
   };
 
@@ -382,12 +388,20 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
   // 处理图片更新成功
   const handleImageUpdateSuccess = (updatedImage: PictureResponse) => {
-    // 更新本地图片列表中对应的图片
     setImages(prevImages =>
-      prevImages.map(img =>
-        img.id === updatedImage.id ? { ...img, ...updatedImage } : img
-      )
+      prevImages.map(img => {
+        if (img.id === updatedImage.id) {
+          return {
+            ...img,                
+            ...updatedImage,        
+            userId: img.userId,    
+            permission: updatedImage.permission ?? img.permission 
+          };
+        }
+        return img;
+      })
     );
+    closeContextMenu();
   };
   
   // 修改handleMenuAction中的编辑处理
@@ -716,7 +730,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         onClose={() => setViewerState({ ...viewerState, visible: false })}
         images={images}
         initialIndex={viewerState.index}
-        onFavorite={onToggleFavorite || handleToggleFavorite}
+        onFavorite={handleToggleFavorite} // 总是传递本地的handleToggleFavorite而不是条件判断
         showFavoriteCount={showFavoriteCount}
         onShare={handleShareImage}
       />
