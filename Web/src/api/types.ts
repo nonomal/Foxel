@@ -220,3 +220,10 @@ export interface UpdateUserRequest {
   currentPassword?: string;
   newPassword?: string;
 }
+
+export interface UpdatePictureRequest {
+  id: number;
+  name?: string;
+  description?: string;
+  tags?: string[];
+}

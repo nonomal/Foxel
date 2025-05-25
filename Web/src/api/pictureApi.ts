@@ -1,4 +1,4 @@
-import type { PaginatedResult, PictureResponse, FilteredPicturesRequest, BaseResult } from './types';
+import type { PaginatedResult, PictureResponse, FilteredPicturesRequest, BaseResult, UpdatePictureRequest } from './types';
 import { fetchApi, BASE_URL } from './fetchClient';
 
 // 获取图片列表
@@ -193,6 +193,14 @@ export async function deleteMultiplePictures(pictureIds: number[]): Promise<Base
   return fetchApi<object>('/picture/delete_pictures', {
     method: 'POST',
     body: JSON.stringify({ pictureIds }),
+  });
+}
+
+// 更新图片信息
+export async function updatePicture(request: UpdatePictureRequest): Promise<BaseResult<PictureResponse>> {
+  return fetchApi<PictureResponse>('/picture/update_picture', {
+    method: 'POST',
+    body: JSON.stringify(request),
   });
 }
 

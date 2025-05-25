@@ -8,6 +8,7 @@ import type { PictureResponse } from '../../api';
 import { favoritePicture, unfavoritePicture, getPictures, deleteMultiplePictures } from '../../api';
 import ImageViewer from './ImageViewer';
 import ShareImageDialog from './ShareImageDialog';
+import EditImageDialog from './EditImageDialog';
 import './ImageGrid.css';
 import { useAuth } from '../../api/AuthContext';
 
@@ -157,6 +158,15 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     visible: false,
     x: 0,
     y: 0,
+  });
+
+  // 添加编辑对话框状态
+  const [editDialogState, setEditDialogState] = useState<{
+    visible: boolean;
+    image: PictureResponse | null;
+  }>({
+    visible: false,
+    image: null
   });
 
 
@@ -354,7 +364,33 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     });
   };
 
-  // 修改handleMenuAction中的分享处理
+  // 处理编辑图片
+  const handleEditImage = (image: PictureResponse) => {
+    setEditDialogState({
+      visible: true,
+      image
+    });
+  };
+
+  // 关闭编辑对话框
+  const handleCloseEditDialog = () => {
+    setEditDialogState({
+      ...editDialogState,
+      visible: false
+    });
+  };
+
+  // 处理图片更新成功
+  const handleImageUpdateSuccess = (updatedImage: PictureResponse) => {
+    // 更新本地图片列表中对应的图片
+    setImages(prevImages =>
+      prevImages.map(img =>
+        img.id === updatedImage.id ? { ...img, ...updatedImage } : img
+      )
+    );
+  };
+  
+  // 修改handleMenuAction中的编辑处理
   const handleMenuAction = (action: string) => {
     if (!contextMenu.image) return;
 
@@ -366,7 +402,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         handleDeleteImage(contextMenu.image);
         break;
       case 'edit':
-        onEdit?.(contextMenu.image);
+        handleEditImage(contextMenu.image);
         break;
       case 'download':
         onDownload?.(contextMenu.image);
@@ -497,7 +533,11 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                               className="custom-card-action-item"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onEdit && onEdit(image);
+                                if (onEdit) {
+                                  onEdit(image);
+                                } else {
+                                  handleEditImage(image);
+                                }
                               }}
                             >
                               <EditOutlined style={{ fontSize: 16, color: '#ffffff' }} />
@@ -685,6 +725,13 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         visible={shareDialogState.visible}
         onClose={handleCloseShareDialog}
         image={shareDialogState.image}
+      />
+
+      <EditImageDialog
+        visible={editDialogState.visible}
+        onClose={handleCloseEditDialog}
+        image={editDialogState.image}
+        onSuccess={handleImageUpdateSuccess}
       />
     </>
   );

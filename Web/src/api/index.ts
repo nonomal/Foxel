@@ -24,7 +24,8 @@ export {
     unfavoritePicture,
     getUserFavorites,
     uploadPicture,
-    deleteMultiplePictures,  // 添加导出删除图片函数
+    deleteMultiplePictures, 
+    updatePicture, 
 } from './pictureApi';
 
 // 导出Album API

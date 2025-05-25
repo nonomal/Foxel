@@ -766,11 +766,31 @@ public class PictureService(
             picture.Description = description.Trim();
         }
 
+        // 只有当名称或描述发生变化时才更新嵌入向量
         if (!string.IsNullOrWhiteSpace(name) || !string.IsNullOrWhiteSpace(description))
         {
-            var combinedText = $"{picture.Name}. {picture.Description}";
-            var embedding = await embeddingService.GetEmbeddingAsync(combinedText);
-            picture.Embedding = new Vector(embedding);
+            try
+            {
+                var combinedText = $"{picture.Name}. {picture.Description}";
+                var embedding = await embeddingService.GetEmbeddingAsync(combinedText);
+                
+                // 只有在成功获取到非空嵌入向量时才更新
+                if (embedding != null && embedding.Length > 0)
+                {
+                    picture.Embedding = new Vector(embedding);
+                }
+                else
+                {
+                    // 记录获取到空向量的警告
+                    Console.WriteLine($"警告: 图片 {pictureId} 的嵌入向量为空，跳过向量更新");
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录错误但不抛出异常，允许其他字段的更新继续进行
+                Console.WriteLine($"更新图片 {pictureId} 的嵌入向量时出错: {ex.Message}");
+                // 不设置 picture.Embedding，保持原值不变
+            }
         }
 
         if (tags != null)
