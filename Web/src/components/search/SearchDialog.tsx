@@ -126,6 +126,17 @@ const SearchDialog: React.FC<SearchDialogProps> = ({
     }
   };
 
+  // 处理标签页切换，同时更新 useVectorSearch 状态
+  const handleTabChange = (key: string) => {
+    setActiveTabKey(key);
+    // 根据标签页自动设置向量搜索状态
+    if (key === 'vector') {
+      setUseVectorSearch(true);
+    } else {
+      setUseVectorSearch(false);
+    }
+  };
+
   return (
     <Modal
       title={
@@ -143,7 +154,7 @@ const SearchDialog: React.FC<SearchDialogProps> = ({
     >
       <Tabs
         activeKey={activeTabKey}
-        onChange={setActiveTabKey}
+        onChange={handleTabChange}
         className="search-tabs"
         items={[
           {
@@ -163,9 +174,6 @@ const SearchDialog: React.FC<SearchDialogProps> = ({
                     autoFocus={activeTabKey === 'text'}
                   />
                 </div>
-                
-                <Divider orientation="left" plain>筛选选项</Divider>
-                
                 <div className="search-option-group">
                   <Text strong className="option-label">标签筛选:</Text>
                   <Select
@@ -212,9 +220,6 @@ const SearchDialog: React.FC<SearchDialogProps> = ({
                     autoFocus={activeTabKey === 'vector'}
                   />
                 </div>
-                
-                <Divider orientation="left" plain>高级选项</Divider>
-                
                 <div className="search-option-group vector-options">
                   <div className="vector-switch-container">
                     <Switch 

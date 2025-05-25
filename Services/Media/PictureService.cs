@@ -50,18 +50,31 @@ public class PictureService(
         // 决定是使用向量搜索还是普通搜索
         if (useVectorSearch && !string.IsNullOrWhiteSpace(searchQuery))
         {
-            return await PerformVectorSearchAsync(
-                dbContext, page, pageSize, searchQuery, tags,
-                startDate, endDate, userId, onlyWithGps, similarityThreshold,
-                excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
+            try
+            {
+                return await PerformVectorSearchAsync(
+                    dbContext, page, pageSize, searchQuery, tags,
+                    startDate, endDate, userId, onlyWithGps, similarityThreshold,
+                    excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
+            }
+            catch (Exception ex)
+            {
+                // 如果向量搜索失败，记录错误并回退到标准搜索
+                Console.WriteLine($"向量搜索失败，回退到标准搜索: {ex.Message}");
+                
+                // 如果是明确的配置错误，则向上抛出异常
+                if (ex.Message.Contains("请检查嵌入模型配置"))
+                {
+                    throw;
+                }
+            }
         }
-        else
-        {
-            return await PerformStandardSearchAsync(
-                dbContext, page, pageSize, searchQuery, tags,
-                startDate, endDate, userId, sortBy, onlyWithGps,
-                excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
-        }
+        
+        // 执行标准搜索（作为默认方法或向量搜索的回退选项）
+        return await PerformStandardSearchAsync(
+            dbContext, page, pageSize, searchQuery, tags,
+            startDate, endDate, userId, sortBy, onlyWithGps,
+            excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
     }
 
     // 执行向量搜索
@@ -82,55 +95,78 @@ public class PictureService(
         int? ownerId,
         bool includeAllPublic)
     {
-        var queryEmbedding = await embeddingService.GetEmbeddingAsync(searchQuery);
-        var queryVector = new Vector(queryEmbedding);
-
-        // 构建基础查询
-        var query = dbContext.Pictures
-            .Include(p => p.Tags)
-            .Include(p => p.User)
-            .Where(p => p.Embedding != null);
-
-        // 应用共通的查询条件
-        query = ApplyCommonFilters(query, tags, startDate, endDate, userId, onlyWithGps,
-            excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
-
-        // 执行向量搜索
-        var allResults = await query
-            .Select(p => new
+        try
+        {
+            float[]? queryEmbedding = null;
+            try
             {
-                Picture = p,
-                Similarity = 1.0 - p.Embedding!.CosineDistance(queryVector)
-            })
-            .Where(p => p.Similarity >= similarityThreshold)
-            .OrderByDescending(p => p.Similarity)
-            .ToListAsync();
+                queryEmbedding = await embeddingService.GetEmbeddingAsync(searchQuery);
+                
+                // 检查嵌入向量是否有效
+                if (queryEmbedding == null || queryEmbedding.Length == 0)
+                {
+                    throw new InvalidOperationException("嵌入模型返回了空向量");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"向量搜索失败，请检查嵌入模型配置: {ex.Message}", ex);
+            }
+            
+            var queryVector = new Vector(queryEmbedding);
 
-        // 计算总数并分页
-        var totalCount = allResults.Count;
+            // 构建基础查询
+            var query = dbContext.Pictures
+                .Include(p => p.Tags)
+                .Include(p => p.User)
+                .Where(p => p.Embedding != null);
 
-        var paginatedResults = allResults
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(r => MapPictureToResponse(r.Picture))
-            .ToList();
+            // 应用共通的查询条件
+            query = ApplyCommonFilters(query, tags, startDate, endDate, userId, onlyWithGps,
+                excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
 
-        // 处理收藏信息
-        await PopulateFavoriteInfo(dbContext, paginatedResults, userId);
+            // 执行向量搜索
+            var allResults = await query
+                .Select(p => new
+                {
+                    Picture = p,
+                    Similarity = 1.0 - p.Embedding!.CosineDistance(queryVector)
+                })
+                .Where(p => p.Similarity >= similarityThreshold)
+                .OrderByDescending(p => p.Similarity)
+                .ToListAsync();
 
-        // 为当前用户的图片添加相册信息
-        if (userId.HasValue)
-        {
-            await PopulateAlbumInfo(dbContext, paginatedResults, userId.Value);
+            // 计算总数并分页
+            var totalCount = allResults.Count;
+
+            var paginatedResults = allResults
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(r => MapPictureToResponse(r.Picture))
+                .ToList();
+
+            // 处理收藏信息
+            await PopulateFavoriteInfo(dbContext, paginatedResults, userId);
+
+            // 为当前用户的图片添加相册信息
+            if (userId.HasValue)
+            {
+                await PopulateAlbumInfo(dbContext, paginatedResults, userId.Value);
+            }
+
+            return new PaginatedResult<PictureResponse>
+            {
+                Data = paginatedResults,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
         }
-
-        return new PaginatedResult<PictureResponse>
+        catch (Exception ex)
         {
-            Data = paginatedResults,
-            Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount
-        };
+            Console.WriteLine($"向量搜索失败: {ex.Message}");
+            throw new InvalidOperationException($"向量搜索失败: {ex.Message}", ex);
+        }
     }
 
     // 执行标准搜索
