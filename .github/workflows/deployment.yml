@@ -25,5 +25,6 @@ jobs:
           docker stop foxel-container || true
           docker rm foxel-container || true
           docker run -d --name foxel-container -p 8848:80 \
+            -v /var/lib/docker/volumes/Foxel/_data:/app/Uploads \
             -e "DEFAULT_CONNECTION=${{ secrets.DEFAULT_CONNECTION }}" \
             --pull always ghcr.io/drizzletime/foxel:dev
