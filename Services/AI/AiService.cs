@@ -7,32 +7,43 @@ namespace Foxel.Services.AI;
 
 public class AiService : IAiService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfigService _configService;
+    private HttpClient? _httpClient;
+    private string? _currentApiKey;
+    private string? _currentBaseUrl;
 
-    public AiService(HttpClient httpClient, IConfigService configService)
+    public AiService(IHttpClientFactory httpClientFactory, IConfigService configService)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _configService = configService;
     }
 
-    private void ConfigureHttpClient()
+    private HttpClient ConfigureHttpClient()
     {
         string apiKey = _configService["AI:ApiKey"];
         string baseUrl = _configService["AI:ApiEndpoint"];
 
-        if (_httpClient.BaseAddress?.ToString() != baseUrl)
+        // 检查是否需要重新创建 HttpClient
+        if (_httpClient == null || _currentApiKey != apiKey || _currentBaseUrl != baseUrl)
         {
+            _httpClient = _httpClientFactory.CreateClient();
             _httpClient.BaseAddress = new Uri(baseUrl);
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            // 更新当前配置记录
+            _currentApiKey = apiKey;
+            _currentBaseUrl = baseUrl;
         }
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        return _httpClient;
     }
 
     public async Task<(string title, string description)> AnalyzeImageAsync(string base64Image)
     {
         try
         {
-            ConfigureHttpClient();
+            var client = ConfigureHttpClient();
             string model = _configService["AI:Model"];
             var imageUrl = new ImageUrl
             {
@@ -69,7 +80,7 @@ public class AiService : IAiService
                 TopK = 50
             };
 
-            var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", requestContent);
+            var response = await client.PostAsJsonAsync("/v1/chat/completions", requestContent);
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadFromJsonAsync<AiResponse>();
@@ -92,8 +103,8 @@ public class AiService : IAiService
     {
         try
         {
-            // 确保使用最新配置
-            ConfigureHttpClient();
+            // 获取配置好的 HttpClient
+            var client = ConfigureHttpClient();
 
             if (availableTags.Count == 0)
                 return new List<string>();
@@ -124,7 +135,7 @@ public class AiService : IAiService
                 TopK = 50
             };
 
-            var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", requestContent);
+            var response = await client.PostAsJsonAsync("/v1/chat/completions", requestContent);
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadFromJsonAsync<AiResponse>();
@@ -201,8 +212,8 @@ public class AiService : IAiService
     {
         try
         {
-            // 确保使用最新配置
-            ConfigureHttpClient();
+            // 获取配置好的 HttpClient
+            var client = ConfigureHttpClient();
 
             string model = _configService["AI:Model"];
 
@@ -260,7 +271,7 @@ public class AiService : IAiService
                 TopK = 50
             };
 
-            var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", requestContent);
+            var response = await client.PostAsJsonAsync("/v1/chat/completions", requestContent);
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadFromJsonAsync<AiResponse>();
@@ -343,8 +354,8 @@ public class AiService : IAiService
     {
         try
         {
-            // 确保使用最新配置
-            ConfigureHttpClient();
+            // 获取配置好的 HttpClient
+            var client = ConfigureHttpClient();
 
             string model = _configService["AI:EmbeddingModel"];
 
@@ -355,7 +366,7 @@ public class AiService : IAiService
                 encoding_format = "float"
             };
 
-            var response = await _httpClient.PostAsJsonAsync("/v1/embeddings", requestContent);
+            var response = await client.PostAsJsonAsync("/v1/embeddings", requestContent);
             response.EnsureSuccessStatusCode();
 
             var embedResult = await response.Content.ReadFromJsonAsync<EmbeddingResponse>();
