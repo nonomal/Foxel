@@ -24,6 +24,7 @@ const SystemConfig: React.FC = () => {
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [restoreModalVisible, setRestoreModalVisible] = useState(false);
   const [restoreConfig, setRestoreConfig] = useState<Record<string, string> | null>(null);
+  const [secretFields, setSecretFields] = useState<Record<string, string[]>>({}); // 新增状态管理私密字段
 
   // 获取所有配置项
   const fetchConfigs = async () => {
@@ -32,15 +33,27 @@ const SystemConfig: React.FC = () => {
       const response = await getAllConfigs();
       if (response.success && response.data) {
         const configGroups: ConfigStructure = {};
+        const secretFieldsMap: Record<string, string[]> = {}; // 记录每个组的私密字段
+        
         response.data.forEach(config => {
           const [group, key] = config.key.split(':');
           if (!configGroups[group]) {
             configGroups[group] = {};
+            secretFieldsMap[group] = [];
           }
           configGroups[group][key] = config.value;
+          
+          // 记录私密字段
+          if (config.isSecret) {
+            if (!secretFieldsMap[group]) {
+              secretFieldsMap[group] = [];
+            }
+            secretFieldsMap[group].push(key);
+          }
         });
 
         setConfigs(configGroups);
+        setSecretFields(secretFieldsMap);
         
         // 设置初始存储类型
         if (configGroups.Storage?.DefaultStorage) {
@@ -245,6 +258,7 @@ const SystemConfig: React.FC = () => {
                 Model: 'AI 模型名称',
                 EmbeddingModel: '嵌入向量模型名称'
               }}
+              secretFields={secretFields.AI || []}
               isMobile={isMobile}
             />
           </TabPane>
@@ -265,6 +279,7 @@ const SystemConfig: React.FC = () => {
                     Issuer: 'JWT 签发者',
                     Audience: 'JWT 接收者',
                   }}
+                  secretFields={secretFields.Jwt || []}
                   isMobile={isMobile}
                 />
               </TabPane>
@@ -282,6 +297,7 @@ const SystemConfig: React.FC = () => {
                     "GitHubClientSecret": 'GitHub OAuth 应用客户端密钥',
                     "GitHubCallbackUrl": 'GitHub OAuth 认证回调地址'
                   }}
+                  secretFields={secretFields.Authentication || []}
                   isMobile={isMobile}
                 />
               </TabPane>
@@ -543,6 +559,7 @@ const SystemConfig: React.FC = () => {
                       "TelegramStorageBotToken": 'Telegram 机器人令牌',
                       "TelegramStorageChatId": 'Telegram 聊天ID'
                     }}
+                    secretFields={secretFields.Storage || []}
                     isMobile={isMobile}
                   />
                 )}
@@ -569,6 +586,7 @@ const SystemConfig: React.FC = () => {
                       "S3StorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
                       "S3StorageUsePathStyleUrls": '使用路径形式URLs (true/false,兼容非AWS服务)'
                     }}
+                    secretFields={secretFields.Storage || []}
                     isMobile={isMobile}
                   />
                 )}
@@ -593,6 +611,7 @@ const SystemConfig: React.FC = () => {
                       "CosStorageRegion": 'COS区域 (例如:ap-shanghai)',
                       "CosStorageCdnUrl": 'CDN URL (可选,用于加速文件访问)',
                     }}
+                    secretFields={secretFields.Storage || []}
                     isMobile={isMobile}
                   />
                 )}
@@ -615,6 +634,7 @@ const SystemConfig: React.FC = () => {
                       "WebDAVBasePath": 'WebDAV 基础路径 (例如: files/upload)',
                       "WebDAVPublicUrl": 'WebDAV 公共访问 URL (可选,用于文件访问)',
                     }}
+                    secretFields={secretFields.Storage || []}
                     isMobile={isMobile}
                   />
                 )}

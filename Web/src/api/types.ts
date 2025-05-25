@@ -195,6 +195,7 @@ export interface ConfigResponse {
   key: string;
   value: string;
   description: string;
+  isSecret: boolean;
   createdAt: Date;
   updatedAt?: Date;
 }
