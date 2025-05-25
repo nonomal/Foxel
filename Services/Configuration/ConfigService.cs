@@ -11,6 +11,19 @@ public class ConfigService(
     ILogger<ConfigService> logger)
     : IConfigService
 {
+    // 用于存储需要标记为私密的配置键
+    private static readonly HashSet<string> _secretKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AI:ApiKey",
+        "Authentication:GitHubClientSecret",
+        "Storage:TelegramStorageBotToken",
+        "Storage:S3StorageAccessKey",
+        "Storage:S3StorageSecretKey",
+        "Storage:CosStorageSecretId",
+        "Storage:CosStorageSecretKey",
+        "Storage:WebDAVPassword",
+    };
+
     // 缓存过期时间
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(30);
 
@@ -73,16 +86,15 @@ public class ConfigService(
         var config = await context.Configs.FirstOrDefaultAsync(c => c.Key == key);
         
         // 如果配置是私密的，返回值设为空字符串
-        if (config?.IsSecret == true)
+        if (config?.IsSecret == true || _secretKeys.Contains(config.Key))
         {
-            // 创建一个新的实例，避免修改数据库中的值
             var displayConfig = new Config
             {
                 Id = config.Id,
                 Key = config.Key,
-                Value = string.Empty, // 私密配置的值设为空
+                Value = string.Empty,
                 Description = config.Description,
-                IsSecret = config.IsSecret,
+                IsSecret = true,
                 CreatedAt = config.CreatedAt,
                 UpdatedAt = config.UpdatedAt
             };
@@ -121,7 +133,7 @@ public class ConfigService(
                 Key = key,
                 Value = value,
                 Description = description ?? string.Empty,
-                IsSecret = false,
+                IsSecret = _secretKeys.Contains(key), // 如果键在私密列表中，则设为私密
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -130,6 +142,12 @@ public class ConfigService(
         }
         else
         {
+            // 如果键在私密列表中，则设为私密
+            if (_secretKeys.Contains(key))
+            {
+                config.IsSecret = true;
+            }
+            
             if (!(config.IsSecret && string.IsNullOrEmpty(value)))
             {
                 config.Value = value;
