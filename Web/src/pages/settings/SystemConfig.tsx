@@ -659,12 +659,20 @@ const SystemConfig: React.FC = () => {
                     groupName="Storage"
                     configs={{
                       "TelegramStorageBotToken": configs.Storage?.TelegramStorageBotToken || '',
-                      "TelegramStorageChatId": configs.Storage?.TelegramStorageChatId || ''
+                      "TelegramStorageChatId": configs.Storage?.TelegramStorageChatId || '',
+                      "TelegramProxyAddress": configs.Storage?.TelegramProxyAddress || '',
+                      "TelegramProxyPort": configs.Storage?.TelegramProxyPort || '',
+                      "TelegramProxyUsername": configs.Storage?.TelegramProxyUsername || '',
+                      "TelegramProxyPassword": configs.Storage?.TelegramProxyPassword || ''
                     }}
                     onSave={handleSaveConfig}
                     descriptions={{
                       "TelegramStorageBotToken": 'Telegram 机器人令牌',
-                      "TelegramStorageChatId": 'Telegram 聊天ID'
+                      "TelegramStorageChatId": 'Telegram 聊天ID',
+                      "TelegramProxyAddress": '代理服务器地址 (例如: 127.0.0.1)',
+                      "TelegramProxyPort": '代理服务器端口 (例如: 1080)',
+                      "TelegramProxyUsername": '代理用户名 (可选)',
+                      "TelegramProxyPassword": '代理密码 (可选)'
                     }}
                     secretFields={secretFields.Storage || []}
                     isMobile={isMobile}

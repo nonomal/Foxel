@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
+using System.Net;
 
 namespace Foxel.Services.Storage.Providers;
 
@@ -14,7 +15,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         string botToken = configService["Storage:TelegramStorageBotToken"];
         string chatId = configService["Storage:TelegramStorageChatId"];
 
-        using var httpClient = new HttpClient();
+        using var httpClient = CreateHttpClient();
         using var formData = new MultipartFormDataContent();
         formData.Add(new StringContent(chatId), "chat_id");
         var safeFileName = Path.GetFileNameWithoutExtension(fileName);
@@ -83,7 +84,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
 
             string botToken = configService["Storage:TelegramStorageBotToken"];
 
-            using var httpClient = new HttpClient();
+            using var httpClient = CreateHttpClient();
             var url =
                 $"https://api.telegram.org/bot{botToken}/deleteMessage?chat_id={metadata.ChatId}&message_id={metadata.MessageId}";
             await httpClient.GetAsync(url);
@@ -131,7 +132,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
 
             string botToken = configService["Storage:TelegramStorageBotToken"];
 
-            using var httpClient = new HttpClient();
+            using var httpClient = CreateHttpClient();
             var getFileUrl = $"https://api.telegram.org/bot{botToken}/getFile?file_id={metadata.FileId}";
             var getFileResponse = await httpClient.GetAsync(getFileUrl);
 
@@ -182,6 +183,54 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
             Console.WriteLine($"下载 Telegram 文件时出错: {ex.Message}");
             throw;
         }
+    }
+    
+    /// <summary>
+    /// 创建配置了代理的HttpClient
+    /// </summary>
+    /// <returns>已配置的HttpClient</returns>
+    private HttpClient CreateHttpClient()
+    {
+        HttpClient client;
+        
+        // 检查是否有代理配置
+        string proxyAddress = configService["Storage:TelegramProxyAddress"];
+        string proxyPort = configService["Storage:TelegramProxyPort"];
+        string proxyUsername = configService["Storage:TelegramProxyUsername"];
+        string proxyPassword = configService["Storage:TelegramProxyPassword"];
+        
+        if (!string.IsNullOrEmpty(proxyAddress) && !string.IsNullOrEmpty(proxyPort) && int.TryParse(proxyPort, out int port))
+        {
+            var proxy = new WebProxy
+            {
+                Address = new Uri($"http://{proxyAddress}:{port}"),
+                BypassProxyOnLocal = false,
+                UseDefaultCredentials = false
+            };
+            
+            // 如果提供了代理认证信息
+            if (!string.IsNullOrEmpty(proxyUsername))
+            {
+                proxy.Credentials = new NetworkCredential(proxyUsername, proxyPassword);
+            }
+            
+            var handler = new HttpClientHandler
+            {
+                Proxy = proxy,
+                UseProxy = true
+            };
+            
+            client = new HttpClient(handler);
+        }
+        else
+        {
+            client = new HttpClient();
+        }
+        
+        // 设置超时
+        client.Timeout = TimeSpan.FromMinutes(5);
+        
+        return client;
     }
 
     // 用于处理 Telegram API 响应的辅助类
