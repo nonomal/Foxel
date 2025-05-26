@@ -267,40 +267,31 @@ public class PictureController(IPictureService pictureService, IConfigService co
     {
         try
         {
-            var botToken = configService["Storage:TelegramStorageBotToken"];
-            if (string.IsNullOrEmpty(botToken))
-                return BadRequest("Telegram Bot Token 未配置");
-
-            using var httpClient = new HttpClient();
-            var getFileUrl = $"https://api.telegram.org/bot{botToken}/getFile?file_id={fileId}";
-            var getFileResponse = await httpClient.GetAsync(getFileUrl);
-
-            if (!getFileResponse.IsSuccessStatusCode)
+            // 创建一个模拟的存储元数据
+            var metadata = new
             {
-                var errorContent = await getFileResponse.Content.ReadAsStringAsync();
-                return StatusCode((int)getFileResponse.StatusCode, $"获取文件路径失败: {errorContent}");
-            }
-
-            var getFileContent = await getFileResponse.Content.ReadAsStringAsync();
-            var getFileResult = JsonSerializer.Deserialize<TelegramGetFileResponse>(getFileContent);
-            if (getFileResult == null || !getFileResult.Ok || string.IsNullOrEmpty(getFileResult.Result?.FilePath))
+                FileId = fileId,
+                OriginalFileName = "telegram_file"
+            };
+            
+            // 序列化为 JSON 字符串，与 TelegramStorageProvider 中的格式保持一致
+            string storagePath = JsonSerializer.Serialize(metadata);
+            
+            try
             {
-                return BadRequest("无法解析 Telegram 文件路径");
+                // 使用 storageService 下载文件，这样会自动使用配置的代理
+                string tempFilePath = await storageService.DownloadFileAsync(StorageType.Telegram, storagePath);
+                
+                // 获取文件内容类型
+                string contentType = GetContentTypeFromPath(tempFilePath);
+                
+                // 返回文件
+                return PhysicalFile(tempFilePath, contentType, Path.GetFileName(tempFilePath));
             }
-
-            var filePath = getFileResult.Result.FilePath;
-            var fileUrl = $"https://api.telegram.org/file/bot{botToken}/{filePath}";
-
-            var fileResponse = await httpClient.GetAsync(fileUrl);
-            if (!fileResponse.IsSuccessStatusCode)
+            catch (Exception ex)
             {
-                return StatusCode((int)fileResponse.StatusCode, "下载文件失败");
+                return StatusCode(500, $"下载 Telegram 文件失败: {ex.Message}");
             }
-
-            var contentType = fileResponse.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
-            var fileStream = await fileResponse.Content.ReadAsStreamAsync();
-
-            return File(fileStream, contentType);
         }
         catch (Exception ex)
         {
