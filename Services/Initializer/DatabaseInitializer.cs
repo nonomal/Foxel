@@ -21,7 +21,7 @@ public class DatabaseInitializer(
 
         // 检查是否已经完成初始化
         if (await configService.ExistsAsync(InitializationFlag) &&
-             configService[InitializationFlag] == "true")
+            configService[InitializationFlag] == "true")
         {
             logger.LogInformation("数据库已完成初始化，跳过初始化步骤");
             return;
@@ -34,27 +34,43 @@ public class DatabaseInitializer(
         // 确保数据库已创建
         await context.Database.EnsureCreatedAsync();
 
-        // 初始化JWT配置
-        await EnsureConfigExistsAsync("Jwt:SecretKey", "ChAtPiCdEfAuLtSeCrEtKeY2023_Extended_Secure_Key");
-        await EnsureConfigExistsAsync("Jwt:Issuer", "Foxel");
-        await EnsureConfigExistsAsync("Jwt:Audience", "FoxelUsers");
+        // 初始化默认配置
+        var defaultConfigs = new Dictionary<string, string>
+        {
+            // JWT配置
+            ["Jwt:SecretKey"] = "ChAtPiCdEfAuLtSeCrEtKeY2023_Extended_Secure_Key",
+            ["Jwt:Issuer"] = "Foxel",
+            ["Jwt:Audience"] = "FoxelUsers",
 
-        // 初始化GitHub认证配置
-        await EnsureConfigExistsAsync("Authentication:GitHubClientId", "placeholder_replace_with_actual_github_client_id");
-        await EnsureConfigExistsAsync("Authentication:GitHubClientSecret", "placeholder_replace_with_actual_github_client_secret");
-        await EnsureConfigExistsAsync("Authentication:GitHubCallbackUrl", "");
-        
-        // 初始化AI相关配置
-        await EnsureConfigExistsAsync("AI:ApiEndpoint", "");
-        await EnsureConfigExistsAsync("AI:ApiKey", "");
-        await EnsureConfigExistsAsync("AI:Model", "");
-        await EnsureConfigExistsAsync("AI:EmbeddingModel", "");
-        // 初始化存储配置
-        await EnsureConfigExistsAsync("Storage:TelegramStorageBotToken", "");
-        await EnsureConfigExistsAsync("Storage:TelegramStorageChatId", "");
-        await EnsureConfigExistsAsync("Storage:DefaultStorage", "Local");
-        // 初始化其他配置
-        await EnsureConfigExistsAsync("AppSettings:ServerUrl", "");
+            // GitHub认证配置
+            ["Authentication:GitHubClientId"] = "placeholder_replace_with_actual_github_client_id",
+            ["Authentication:GitHubClientSecret"] = "placeholder_replace_with_actual_github_client_secret",
+            ["Authentication:GitHubCallbackUrl"] = "",
+
+            // AI相关配置
+            ["AI:ApiEndpoint"] = "",
+            ["AI:ApiKey"] = "",
+            ["AI:Model"] = "",
+            ["AI:EmbeddingModel"] = "",
+            ["AI:ImageAnalysisPrompt"] =
+                "Please analyze the given image in detail and provide a comprehensive description suitable for **vector embedding** and **text-based image retrieval**. Your description must include the following key elements:\n\n- **Main subject**\n- **Scene environment**\n- **Color characteristics**\n- **Composition layout**\n- **Stylistic features**\n- **Emotional atmosphere**\n- **Fine-grained details**\n\nReturn your response in **valid JSON format** as shown below:\n\n```json\n{\n  \"title\": \"用中文简要概括图像核心内容的标题\",\n  \"description\": \"使用中文全面、详细地描述图像内容，涵盖上述所有要素。使用丰富且精确的词汇，避免模糊或通用的表述。描述不得超过2000个字符。\"\n}\n```\n\n⚠️ Make sure:\n- Both `title` and `description` must be written in **Chinese**.\n- The `description` must be **rich, accurate**, and **strictly under 2000 characters**.\n- The output must be **valid JSON only**, with no code fences or extra formatting.",
+            ["AI:TagGenerationPrompt"] =
+                "Please generate **5 most relevant tags** for the given image. Each tag should be a **short and descriptive** word or phrase that accurately reflects key visual or thematic elements of the image.\n\nReturn your response in **valid JSON format** as shown below:\n\n```json\n{\n  \"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]\n}\n```\n\nMake sure the output is **strictly valid JSON**.",
+            ["AI:TagMatchingPrompt"] =
+                "Given a list of tags: `[{tagsText}]`\n\nPlease strictly select only those tags that are **highly relevant** to the following description (select **up to 5**). Only include tags that **exactly or strongly match** the content. If **none** of the tags are a good match, return an **empty array** instead of including loosely related ones.\n\n**Description:**\n{description}\n\nReturn your response in **valid JSON format** as shown below:\n\n```json\n{\n  \"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]\n}\n```\n\n⚠️ Do **not** include code fences (no triple backticks), and ensure the JSON is **valid** and includes only truly matching tag names.",
+            // 存储配置
+            ["Storage:TelegramStorageBotToken"] = "",
+            ["Storage:TelegramStorageChatId"] = "",
+            ["Storage:DefaultStorage"] = "Local",
+
+            // 其他配置
+            ["AppSettings:ServerUrl"] = ""
+        };
+
+        foreach (var (key, value) in defaultConfigs)
+        {
+            await EnsureConfigExistsAsync(key, value);
+        }
 
         // 初始化管理员角色和用户
         await InitializeAdminRoleAndUserAsync();
@@ -111,6 +127,7 @@ public class DatabaseInitializer(
             await context.Roles.AddAsync(adminRole);
             await context.SaveChangesAsync();
         }
+
         logger.LogInformation("请注意，第一个注册的用户将自动成为管理员");
     }
 }

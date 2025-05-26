@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, Card, message, Spin, Select, Button, Upload, Modal, Space, Tooltip } from 'antd';
+import { Tabs, Card, message, Spin, Select, Button, Upload, Modal, Space, Tooltip, Input } from 'antd';
 import { CloudOutlined, DatabaseOutlined, CloudServerOutlined, GlobalOutlined, DownloadOutlined, UploadOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { getAllConfigs, setConfig, backupConfigs, restoreConfigs } from '../../api';
 import ConfigGroup from './ConfigGroup.tsx';
@@ -243,24 +243,131 @@ const SystemConfig: React.FC = () => {
           }}
         >
           <TabPane tab="AI 设置" key="AI">
-            <ConfigGroup
-              groupName="AI"
-              configs={{
-                ApiEndpoint: configs.AI?.ApiEndpoint || '',
-                ApiKey: configs.AI?.ApiKey || '',
-                Model: configs.AI?.Model || '',
-                EmbeddingModel: configs.AI?.EmbeddingModel || ''
-              }}
-              onSave={handleSaveConfig}
-              descriptions={{
-                ApiEndpoint: 'AI 服务的API端点地址',
-                ApiKey: 'AI 服务的API密钥',
-                Model: 'AI 模型名称',
-                EmbeddingModel: '嵌入向量模型名称'
-              }}
-              secretFields={secretFields.AI || []}
-              isMobile={isMobile}
-            />
+            <Tabs defaultActiveKey="basic" type="card" size={isMobile ? "small" : "middle"}>
+              <TabPane tab="基础配置" key="basic">
+                <ConfigGroup
+                  groupName="AI"
+                  configs={{
+                    ApiEndpoint: configs.AI?.ApiEndpoint || '',
+                    ApiKey: configs.AI?.ApiKey || '',
+                    Model: configs.AI?.Model || '',
+                    EmbeddingModel: configs.AI?.EmbeddingModel || ''
+                  }}
+                  onSave={handleSaveConfig}
+                  descriptions={{
+                    ApiEndpoint: 'AI 服务的API端点地址',
+                    ApiKey: 'AI 服务的API密钥',
+                    Model: 'AI 模型名称',
+                    EmbeddingModel: '嵌入向量模型名称'
+                  }}
+                  secretFields={secretFields.AI || []}
+                  isMobile={isMobile}
+                />
+              </TabPane>
+              <TabPane tab="提示词设置" key="prompts">
+                <Card 
+                  size="small" 
+                  title="图片分析提示词" 
+                  style={{ marginBottom: isMobile ? 16 : 24 }}
+                  bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
+                >
+                  <Input.TextArea
+                    rows={8}
+                    value={configs.AI?.ImageAnalysisPrompt || 
+                      "请详细分析这张图片，并提供全面的描述，以便用于向量嵌入和基于文本的图像搜索。描述需要包含：主体对象、场景环境、色彩特点、构图布局、风格特征、情绪氛围、细节特征等关键元素。请提供一个简短有力的标题，然后提供详细描述。\n\n请以JSON格式返回，格式如下：\n{\"title\": \"简短概括图片的核心内容\", \"description\": \"全面详细的描述，包含上述所有元素，使用丰富精确的词汇，避免笼统表达\"}\n\n请确保返回有效的JSON格式。"}
+                    onChange={(e) => {
+                      const newConfigs = { ...configs };
+                      if (!newConfigs.AI) newConfigs.AI = {};
+                      newConfigs.AI.ImageAnalysisPrompt = e.target.value;
+                      setConfigs(newConfigs);
+                    }}
+                  />
+                  <div style={{ marginTop: 8, textAlign: 'right' }}>
+                    <Button 
+                      type="primary"
+                      onClick={() => handleSaveConfig('AI', 'ImageAnalysisPrompt', configs.AI?.ImageAnalysisPrompt || '')}
+                    >
+                      保存图片分析提示词
+                    </Button>
+                  </div>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 8 
+                  }}>
+                    用于分析图片内容并提取描述的提示词。请确保提示词包含返回JSON格式的指示，并且要求返回标题(title)和描述(description)字段。
+                  </div>
+                </Card>
+
+                <Card 
+                  size="small" 
+                  title="标签生成提示词" 
+                  style={{ marginBottom: isMobile ? 16 : 24 }}
+                  bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
+                >
+                  <Input.TextArea
+                    rows={8}
+                    value={configs.AI?.TagGenerationPrompt || 
+                      "请为图片生成5个最相关的标签，每个标签应该是简短且描述性的词语或短语。\n\n请以JSON格式返回，格式如下：\n{\"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]}\n\n请确保返回有效的JSON格式。"}
+                    onChange={(e) => {
+                      const newConfigs = { ...configs };
+                      if (!newConfigs.AI) newConfigs.AI = {};
+                      newConfigs.AI.TagGenerationPrompt = e.target.value;
+                      setConfigs(newConfigs);
+                    }}
+                  />
+                  <div style={{ marginTop: 8, textAlign: 'right' }}>
+                    <Button 
+                      type="primary"
+                      onClick={() => handleSaveConfig('AI', 'TagGenerationPrompt', configs.AI?.TagGenerationPrompt || '')}
+                    >
+                      保存标签生成提示词
+                    </Button>
+                  </div>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 8 
+                  }}>
+                    用于从图片内容生成标签的提示词。请确保提示词包含返回JSON格式的指示，并且要求返回tags数组字段。
+                  </div>
+                </Card>
+
+                <Card 
+                  size="small" 
+                  title="标签匹配提示词" 
+                  style={{ marginBottom: isMobile ? 16 : 24 }}
+                  bodyStyle={{ padding: isMobile ? '12px' : '16px' }}
+                >
+                  <Input.TextArea
+                    rows={8}
+                    value={configs.AI?.TagMatchingPrompt || 
+                      "以下是一组标签：[{tagsText}]。\n\n请从这些标签中严格选择与下面描述内容高度相关的标签（最多选择5个）。只选择确实匹配的标签，如果找不到完全匹配或高度相关的标签，宁可返回空数组也不要选择不太相关的标签。\n\n描述内容：{description}\n\n请以JSON格式返回，格式如下：\n{\"tags\": [\"标签1\", \"标签2\", \"标签3\"]}\n\n请确保返回有效的JSON格式前面不要加```，并且只包含确实匹配的标签名称。"}
+                    onChange={(e) => {
+                      const newConfigs = { ...configs };
+                      if (!newConfigs.AI) newConfigs.AI = {};
+                      newConfigs.AI.TagMatchingPrompt = e.target.value;
+                      setConfigs(newConfigs);
+                    }}
+                  />
+                  <div style={{ marginTop: 8, textAlign: 'right' }}>
+                    <Button 
+                      type="primary"
+                      onClick={() => handleSaveConfig('AI', 'TagMatchingPrompt', configs.AI?.TagMatchingPrompt || '')}
+                    >
+                      保存标签匹配提示词
+                    </Button>
+                  </div>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#999', 
+                    marginTop: 8 
+                  }}>
+                    用于将描述内容与已有标签进行匹配的提示词。请确保提示词包含{'{'+'tagsText'+'}'}和{'{'+'description'+'}'}占位符，系统将会用实际的标签列表和描述内容替换这些占位符。
+                  </div>
+                </Card>
+              </TabPane>
+            </Tabs>
           </TabPane>
 
           <TabPane tab="授权配置" key="Authorization">

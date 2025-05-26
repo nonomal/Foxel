@@ -9,7 +9,7 @@ public class Config : BaseModel
     public string Key { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(255)]
+    [StringLength(1000)]
     public string Value { get; set; } = string.Empty;
 
     [StringLength(255)]
