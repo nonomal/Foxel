@@ -56,7 +56,7 @@ public class StorageService : IStorageService
     /// <summary>
     /// 获取指定存储类型的提供者实例
     /// </summary>
-    public IStorageProvider GetProvider(StorageType storageType)
+    private IStorageProvider GetProvider(StorageType storageType)
     {
         if (!_storageProviders.TryGetValue(storageType, out var providerType))
         {
@@ -67,38 +67,20 @@ public class StorageService : IStorageService
     }
 
     /// <summary>
-    /// 使用指定存储类型保存文件
+    /// 在指定存储类型上执行操作
     /// </summary>
-    public Task<string> SaveAsync(StorageType storageType, Stream fileStream, string fileName, string contentType)
+    public async Task<TResult> ExecuteAsync<TResult>(StorageType storageType, Func<IStorageProvider, Task<TResult>> operation)
     {
         var provider = GetProvider(storageType);
-        return provider.SaveAsync(fileStream, fileName, contentType);
+        return await operation(provider);
     }
 
     /// <summary>
-    /// 使用指定存储类型删除文件
+    /// 在指定存储类型上执行无返回值的操作
     /// </summary>
-    public Task DeleteAsync(StorageType storageType, string storagePath)
+    public async Task ExecuteAsync(StorageType storageType, Func<IStorageProvider, Task> operation)
     {
         var provider = GetProvider(storageType);
-        return provider.DeleteAsync(storagePath);
-    }
-
-    /// <summary>
-    /// 使用指定存储类型获取文件URL
-    /// </summary>
-    public string GetUrl(StorageType storageType, string storagePath)
-    {
-        var provider = GetProvider(storageType);
-        return provider.GetUrl(storagePath);
-    }
-
-    /// <summary>
-    /// 使用指定存储类型下载文件
-    /// </summary>
-    public Task<string> DownloadFileAsync(StorageType storageType, string storagePath)
-    {
-        var provider = GetProvider(storageType);
-        return provider.DownloadFileAsync(storagePath);
+        await operation(provider);
     }
 }

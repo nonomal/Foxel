@@ -6,7 +6,6 @@ using Foxel.Models.Request.Picture;
 using Foxel.Models.Response.Picture;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Foxel.Services.Configuration;
 using Foxel.Services.Media;
 using Foxel.Services.Storage;
 using System.IO;
@@ -16,7 +15,7 @@ namespace Foxel.Controllers;
 
 [Authorize]
 [Route("api/picture")]
-public class PictureController(IPictureService pictureService, IConfigService configService, IStorageService storageService) : BaseApiController
+public class PictureController(IPictureService pictureService, IStorageService storageService) : BaseApiController
 {
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(
@@ -280,7 +279,8 @@ public class PictureController(IPictureService pictureService, IConfigService co
             try
             {
                 // 使用 storageService 下载文件，这样会自动使用配置的代理
-                string tempFilePath = await storageService.DownloadFileAsync(StorageType.Telegram, storagePath);
+                string tempFilePath = await storageService.ExecuteAsync(StorageType.Telegram, 
+                    provider => provider.DownloadFileAsync(storagePath));
                 
                 // 获取文件内容类型
                 string contentType = GetContentTypeFromPath(tempFilePath);
@@ -327,7 +327,8 @@ public class PictureController(IPictureService pictureService, IConfigService co
             }
 
             // 下载文件到临时位置
-            string filePath = await storageService.DownloadFileAsync(StorageType.WebDAV,path);
+            string filePath = await storageService.ExecuteAsync(StorageType.WebDAV,
+                provider => provider.DownloadFileAsync(path));
             
             // 确定内容类型
             string contentType = GetContentTypeFromPath(path);

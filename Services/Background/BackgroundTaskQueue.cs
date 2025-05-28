@@ -225,7 +225,8 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             {
                 // 非本地存储需要先下载文件
                 await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 15);
-                localFilePath = await storageService.DownloadFileAsync(picture.StorageType, picture.Path);
+                localFilePath = await storageService.ExecuteAsync(picture.StorageType, 
+                    provider => provider.DownloadFileAsync(picture.Path));
                 isTempFile = true;
             }
 
@@ -259,11 +260,9 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 var thumbnailContentType = "image/webp";
 
                 // 上传缩略图并获取存储路径或元数据
-                string thumbnailStoragePath = await storageService.SaveAsync(
+                string thumbnailStoragePath = await storageService.ExecuteAsync(
                     picture.StorageType,
-                    thumbnailFileStream,
-                    thumbnailFileName,
-                    thumbnailContentType);
+                    provider => provider.SaveAsync(thumbnailFileStream, thumbnailFileName, thumbnailContentType));
 
                 // 将路径或元数据存储到ThumbnailPath
                 picture.ThumbnailPath = thumbnailStoragePath;

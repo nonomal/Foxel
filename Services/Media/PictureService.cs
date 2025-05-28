@@ -377,8 +377,10 @@ public class PictureService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageService.GetUrl(picture.StorageType, picture.Path),
-            ThumbnailPath = storageService.GetUrl(picture.StorageType, picture.ThumbnailPath),
+            Path = storageService.ExecuteAsync(picture.StorageType, provider => 
+                Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))).Result,
+            ThumbnailPath = storageService.ExecuteAsync(picture.StorageType, provider => 
+                Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))).Result,
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
@@ -551,7 +553,8 @@ public class PictureService(
         try
         {
             // 使用存储服务保存文件
-            string relativePath = await storageService.SaveAsync(storageType.Value, finalStream, finalFileName, finalContentType);
+            string relativePath = await storageService.ExecuteAsync(storageType.Value, 
+                provider => provider.SaveAsync(finalStream, finalFileName, finalContentType));
 
             // 创建基本的Picture对象，使用文件名作为标题和描述
             string initialTitle = Path.GetFileNameWithoutExtension(originalFileName);
@@ -617,8 +620,10 @@ public class PictureService(
             {
                 Id = picture.Id,
                 Name = picture.Name,
-                Path = storageService.GetUrl(picture.StorageType, relativePath),
-                ThumbnailPath = isAnonymous ? storageService.GetUrl(picture.StorageType, relativePath) : null,
+                Path = await storageService.ExecuteAsync(picture.StorageType, provider => 
+                    Task.FromResult(provider.GetUrl(relativePath))),
+                ThumbnailPath = isAnonymous ? await storageService.ExecuteAsync(picture.StorageType, provider => 
+                    Task.FromResult(provider.GetUrl(relativePath))) : null,
                 Description = picture.Description,
                 CreatedAt = picture.CreatedAt,
                 Tags = new List<string>(),
@@ -695,7 +700,7 @@ public class PictureService(
             new List<(int PictureId, string Path, string ThumbnailPath, int? UserId, StorageType StorageType)>();
         foreach (var picture in picturesToDelete)
         {
-            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath, picture.User?.Id, picture.StorageType));
+            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath ?? string.Empty, picture.User?.Id, picture.StorageType));
         }
 
         if (picturesToDelete.Any())
@@ -713,12 +718,14 @@ public class PictureService(
                 try
                 {
                     // 使用存储服务删除文件
-                    await storageService.DeleteAsync(storageType, path);
+                    await storageService.ExecuteAsync(storageType, 
+                        provider => provider.DeleteAsync(path));
 
                     // 删除缩略图
                     if (!string.IsNullOrEmpty(thumbnailPath))
                     {
-                        await storageService.DeleteAsync(storageType, thumbnailPath);
+                        await storageService.ExecuteAsync(storageType, 
+                            provider => provider.DeleteAsync(thumbnailPath));
                     }
                 }
                 catch (Exception ex)
@@ -819,8 +826,10 @@ public class PictureService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageService.GetUrl(picture.StorageType, picture.Path),
-            ThumbnailPath = storageService.GetUrl(picture.StorageType, picture.ThumbnailPath),
+            Path = await storageService.ExecuteAsync(picture.StorageType, provider => 
+                Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))),
+            ThumbnailPath = await storageService.ExecuteAsync(picture.StorageType, provider => 
+                Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))),
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = picture.Tags?.Select(t => t.Name).ToList() ?? new List<string>(),
