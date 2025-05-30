@@ -16,10 +16,9 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.InMemory" Version="1.54.0-preview" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-        <PackageReference Include="Pgvector" Version="0.3.1" />
-        <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.2.2" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.3.1" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.4.6" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.8" />
         <PackageReference Include="Tencent.QCloud.Cos.Sdk" Version="5.4.46" />
     </ItemGroup>

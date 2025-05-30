@@ -8,10 +8,9 @@ using Foxel.Services.Attributes;
 using Foxel.Services.Background;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
+using Foxel.Services.VectorDB;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
-using Pgvector;
-using Pgvector.EntityFrameworkCore;
 
 namespace Foxel.Services.Media;
 
@@ -20,6 +19,7 @@ public class PictureService(
     IAiService embeddingService,
     IConfigService configuration,
     IBackgroundTaskQueue backgroundTaskQueue,
+    VectorDbService vectorDbService,
     IStorageService storageService)
     : IPictureService
 {
@@ -61,7 +61,7 @@ public class PictureService(
             {
                 // 如果向量搜索失败，记录错误并回退到标准搜索
                 Console.WriteLine($"向量搜索失败，回退到标准搜索: {ex.Message}");
-                
+
                 // 如果是明确的配置错误，则向上抛出异常
                 if (ex.Message.Contains("请检查嵌入模型配置"))
                 {
@@ -69,7 +69,7 @@ public class PictureService(
                 }
             }
         }
-        
+
         // 执行标准搜索（作为默认方法或向量搜索的回退选项）
         return await PerformStandardSearchAsync(
             dbContext, page, pageSize, searchQuery, tags,
@@ -95,78 +95,41 @@ public class PictureService(
         int? ownerId,
         bool includeAllPublic)
     {
-        try
+        var queryEmbedding = await embeddingService.GetEmbeddingAsync(searchQuery);
+        var res = await vectorDbService.SearchAsync(queryEmbedding, userId);
+
+        var ids = res.Select(r => r.Id).ToList();
+        var picturesData = await dbContext.Pictures
+            .Include(p => p.Tags)
+            .Include(p => p.User)
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync();
+        var picturesOrdered = ids
+            .Select(id => picturesData.FirstOrDefault(p => p.Id == id))
+            .Where(p => p != null)
+            .ToList();
+        var paginatedResults = picturesOrdered
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => MapPictureToResponse(p!))
+            .ToList();
+
+        var totalCount = picturesOrdered.Count;
+
+        await PopulateFavoriteInfo(dbContext, paginatedResults, userId);
+
+        if (userId.HasValue)
         {
-            float[]? queryEmbedding = null;
-            try
-            {
-                queryEmbedding = await embeddingService.GetEmbeddingAsync(searchQuery);
-                
-                // 检查嵌入向量是否有效
-                if (queryEmbedding == null || queryEmbedding.Length == 0)
-                {
-                    throw new InvalidOperationException("嵌入模型返回了空向量");
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"向量搜索失败，请检查嵌入模型配置: {ex.Message}", ex);
-            }
-            
-            var queryVector = new Vector(queryEmbedding);
-
-            // 构建基础查询
-            var query = dbContext.Pictures
-                .Include(p => p.Tags)
-                .Include(p => p.User)
-                .Where(p => p.Embedding != null);
-
-            // 应用共通的查询条件
-            query = ApplyCommonFilters(query, tags, startDate, endDate, userId, onlyWithGps,
-                excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
-
-            // 执行向量搜索
-            var allResults = await query
-                .Select(p => new
-                {
-                    Picture = p,
-                    Similarity = 1.0 - p.Embedding!.CosineDistance(queryVector)
-                })
-                .Where(p => p.Similarity >= similarityThreshold)
-                .OrderByDescending(p => p.Similarity)
-                .ToListAsync();
-
-            // 计算总数并分页
-            var totalCount = allResults.Count;
-
-            var paginatedResults = allResults
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(r => MapPictureToResponse(r.Picture))
-                .ToList();
-
-            // 处理收藏信息
-            await PopulateFavoriteInfo(dbContext, paginatedResults, userId);
-
-            // 为当前用户的图片添加相册信息
-            if (userId.HasValue)
-            {
-                await PopulateAlbumInfo(dbContext, paginatedResults, userId.Value);
-            }
-
-            return new PaginatedResult<PictureResponse>
-            {
-                Data = paginatedResults,
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
+            await PopulateAlbumInfo(dbContext, paginatedResults, userId.Value);
         }
-        catch (Exception ex)
+
+        return new PaginatedResult<PictureResponse>
         {
-            Console.WriteLine($"向量搜索失败: {ex.Message}");
-            throw new InvalidOperationException($"向量搜索失败: {ex.Message}", ex);
-        }
+            Data = paginatedResults,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
     }
 
     // 执行标准搜索
@@ -377,9 +340,9 @@ public class PictureService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageService.ExecuteAsync(picture.StorageType, provider => 
+            Path = storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))).Result,
-            ThumbnailPath = storageService.ExecuteAsync(picture.StorageType, provider => 
+            ThumbnailPath = storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))).Result,
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
@@ -482,8 +445,8 @@ public class PictureService(
             string? configValue = configuration[configKey];
             return !string.IsNullOrEmpty(configValue) &&
                    Enum.TryParse<StorageType>(configValue, out var configStorageType)
-                   ? configStorageType
-                   : StorageType.Local;
+                ? configStorageType
+                : StorageType.Local;
         }
 
         if (userId == null)
@@ -494,6 +457,7 @@ public class PictureService(
         {
             storageType = GetConfigStorageType("Storage:DefaultStorage");
         }
+
         ImageFormat convertToFormat = ImageFormat.Original;
         string defaultFormatConfig = configuration["Upload:DefaultImageFormat"];
         if (!string.IsNullOrEmpty(defaultFormatConfig))
@@ -503,12 +467,14 @@ public class PictureService(
                 convertToFormat = parsedFormat;
             }
         }
+
         int quality = 100;
         string defaultQualityConfig = configuration["Upload:DefaultImageQuality"];
         if (!string.IsNullOrEmpty(defaultQualityConfig))
         {
             quality = int.Parse(defaultQualityConfig);
         }
+
         string originalFileName = fileName;
         string finalFileName = fileName;
         string finalContentType = contentType;
@@ -553,7 +519,7 @@ public class PictureService(
         try
         {
             // 使用存储服务保存文件
-            string relativePath = await storageService.ExecuteAsync(storageType.Value, 
+            string relativePath = await storageService.ExecuteAsync(storageType.Value,
                 provider => provider.SaveAsync(finalStream, finalFileName, finalContentType));
 
             // 创建基本的Picture对象，使用文件名作为标题和描述
@@ -620,10 +586,12 @@ public class PictureService(
             {
                 Id = picture.Id,
                 Name = picture.Name,
-                Path = await storageService.ExecuteAsync(picture.StorageType, provider => 
+                Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
                     Task.FromResult(provider.GetUrl(relativePath))),
-                ThumbnailPath = isAnonymous ? await storageService.ExecuteAsync(picture.StorageType, provider => 
-                    Task.FromResult(provider.GetUrl(relativePath))) : null,
+                ThumbnailPath = isAnonymous
+                    ? await storageService.ExecuteAsync(picture.StorageType, provider =>
+                        Task.FromResult(provider.GetUrl(relativePath)))
+                    : null,
                 Description = picture.Description,
                 CreatedAt = picture.CreatedAt,
                 Tags = new List<string>(),
@@ -700,7 +668,8 @@ public class PictureService(
             new List<(int PictureId, string Path, string ThumbnailPath, int? UserId, StorageType StorageType)>();
         foreach (var picture in picturesToDelete)
         {
-            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath ?? string.Empty, picture.User?.Id, picture.StorageType));
+            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath ?? string.Empty, picture.User?.Id,
+                picture.StorageType));
         }
 
         if (picturesToDelete.Any())
@@ -718,13 +687,13 @@ public class PictureService(
                 try
                 {
                     // 使用存储服务删除文件
-                    await storageService.ExecuteAsync(storageType, 
+                    await storageService.ExecuteAsync(storageType,
                         provider => provider.DeleteAsync(path));
 
                     // 删除缩略图
                     if (!string.IsNullOrEmpty(thumbnailPath))
                     {
-                        await storageService.ExecuteAsync(storageType, 
+                        await storageService.ExecuteAsync(storageType,
                             provider => provider.DeleteAsync(thumbnailPath));
                     }
                 }
@@ -780,11 +749,11 @@ public class PictureService(
             {
                 var combinedText = $"{picture.Name}. {picture.Description}";
                 var embedding = await embeddingService.GetEmbeddingAsync(combinedText);
-                
+
                 // 只有在成功获取到非空嵌入向量时才更新
                 if (embedding != null && embedding.Length > 0)
                 {
-                    picture.Embedding = new Vector(embedding);
+                    picture.Embedding = embedding;
                 }
                 else
                 {
@@ -826,9 +795,9 @@ public class PictureService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = await storageService.ExecuteAsync(picture.StorageType, provider => 
+            Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))),
-            ThumbnailPath = await storageService.ExecuteAsync(picture.StorageType, provider => 
+            ThumbnailPath = await storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))),
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,

@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 using Foxel.Services.Attributes;
-using Vector = Pgvector.Vector;
 
 namespace Foxel.Models.DataBase;
 
@@ -15,7 +14,7 @@ public class Picture : BaseModel
     [StringLength(1024)] public string? ThumbnailPath { get; set; } = string.Empty;
 
     [StringLength(2000)] public string Description { get; set; } = string.Empty;
-    [Column(TypeName = "vector(1024)")] public Vector? Embedding { get; set; }
+    public float[]? Embedding { get; set; }
 
     public DateTime? TakenAt { get; set; }
 
@@ -57,8 +56,8 @@ public enum PermissionType
 
 public enum ProcessingStatus
 {
-    Pending,      // 等待处理
-    Processing,   // 处理中
-    Completed,    // 处理完成
-    Failed        // 处理失败
+    Pending, // 等待处理
+    Processing, // 处理中
+    Completed, // 处理完成
+    Failed // 处理失败
 }

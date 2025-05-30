@@ -209,7 +209,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             // 1. 获取图片信息
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 10);
-            
+
             if (picture == null)
             {
                 throw new Exception($"找不到ID为{task.PictureId}的图片");
@@ -225,7 +225,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             {
                 // 非本地存储需要先下载文件
                 await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 15);
-                localFilePath = await storageService.ExecuteAsync(picture.StorageType, 
+                localFilePath = await storageService.ExecuteAsync(picture.StorageType,
                     provider => provider.DownloadFileAsync(picture.Path));
                 isTempFile = true;
             }
@@ -245,11 +245,12 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             // 更新缩略图路径到数据库
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 25);
-            
+
             if (picture.StorageType == StorageType.Local)
             {
                 // 本地存储缩略图
-                var relativeThumbnailPath = $"/Uploads/{Path.GetRelativePath("Uploads", Path.GetDirectoryName(thumbnailPath)!)}/{Path.GetFileName(thumbnailPath)}";
+                var relativeThumbnailPath =
+                    $"/Uploads/{Path.GetRelativePath("Uploads", Path.GetDirectoryName(thumbnailPath)!)}/{Path.GetFileName(thumbnailPath)}";
                 picture.ThumbnailPath = relativeThumbnailPath.Replace('\\', '/');
             }
             else
@@ -275,7 +276,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             // 4. 从EXIF中提取拍摄时间并确保是UTC格式
             picture.TakenAt = ImageHelper.ParseExifDateTime(exifInfo.DateTimeOriginal);
-            
+
             // 保存缩略图和EXIF信息的更改，确保这些基本信息即使在后续步骤失败时也能保存
             await dbContext.SaveChangesAsync();
 
@@ -300,7 +301,18 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 60);
             var combinedText = $"{finalTitle}. {finalDescription}";
             var embedding = await aiService.GetEmbeddingAsync(combinedText);
-            picture.Embedding = new Pgvector.Vector(embedding);
+            picture.Embedding = embedding;
+            if (picture.UserId.HasValue && embedding.Length > 0)
+            {
+                var vectorDbService = scope.ServiceProvider.GetRequiredService<VectorDB.VectorDbService>();
+                var pictureVector = new Foxel.Models.Vector.PictureVector
+                {
+                    Id = picture.Id,
+                    Name = picture.Name,
+                    Embedding = embedding
+                };
+                await vectorDbService.AddPictureToUserCollectionAsync(picture.UserId.Value, pictureVector);
+            }
 
             // 8. 获取所有可用标签名称
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 70);
@@ -367,7 +379,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             {
                 picture.ProcessingStatus = ProcessingStatus.Failed;
                 picture.ProcessingError = ex.Message;
-                
+
                 try
                 {
                     await dbContext.SaveChangesAsync();

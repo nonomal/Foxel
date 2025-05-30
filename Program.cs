@@ -1,8 +1,7 @@
-using Foxel;
 using Foxel.Extensions;
 using Foxel.Services.Initializer;
+using Foxel.Services.VectorDB;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var environment = builder.Environment;
@@ -17,6 +16,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddApplicationAuthentication();
 builder.Services.AddApplicationAuthorization();
 builder.Services.AddApplicationCors();
+builder.Services.AddSingleton<VectorDbService>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

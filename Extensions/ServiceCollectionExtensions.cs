@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Foxel.Services.Attributes;
-using System.Reflection;
 using Foxel.Services.AI;
 using Foxel.Services.Auth;
 using Foxel.Services.Background;
@@ -48,7 +46,7 @@ public static class ServiceCollectionExtensions
 
         Console.WriteLine($"数据库连接: {connectionString}");
         services.AddDbContextFactory<MyDbContext>(options =>
-            options.UseNpgsql(connectionString, o => o.UseVector()));
+            options.UseNpgsql(connectionString));
     }
 
     public static void AddApplicationOpenApi(this IServiceCollection services)
