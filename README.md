@@ -62,7 +62,7 @@
 
 **1. 准备数据库**
 
-Foxel 依赖 PostgreSQL 数据库，需要启用 [vector 扩展](https://github.com/pgvector/pgvector)：
+Foxel 依赖 PostgreSQL 数据库
 
 **2. 拉取并运行容器**
 
