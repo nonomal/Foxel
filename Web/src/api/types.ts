@@ -227,3 +227,47 @@ export interface UpdatePictureRequest {
   description?: string;
   tags?: string[];
 }
+
+// 用户管理相关类型
+export interface UserResponse {
+  id: number;
+  userName: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+  lastLoginAt?: Date;
+}
+
+// 管理员创建用户请求
+export interface CreateUserRequest {
+  userName: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+// 管理员更新用户请求
+export interface AdminUpdateUserRequest {
+  id: number;
+  userName?: string;
+  email?: string;
+  role?: string;
+}
+
+// 批量删除结果
+export interface BatchDeleteResult {
+  successCount: number;
+  failedCount: number;
+  failedIds?: number[];
+}
+
+export type VectorDbType = "InMemory" | "Qdrant";
+
+export const VectorDbType = {
+  InMemory: "InMemory" as VectorDbType,
+  Qdrant: "Qdrant" as VectorDbType,
+};
+
+export interface VectorDbInfo {
+  type: string;
+}

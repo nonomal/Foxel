@@ -33,12 +33,14 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
             Email = request.Email,
             PasswordHash = HashPassword(request.Password),
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RoleId = 2,
+            Role = null,
         };
         var userCount = await context.Users.CountAsync();
         if (userCount == 0)
         {
-            var role = await context.Roles.FirstOrDefaultAsync(r => r.Id == 1);
+            var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Administrator");
             user.RoleId = 1;
             user.Role = role;
         }

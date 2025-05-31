@@ -72,6 +72,12 @@ public class DatabaseInitializer(
             await EnsureConfigExistsAsync(key, value);
         }
 
+        // 确保向量数据库配置存在
+        if (!await configService.ExistsAsync("VectorDb:Type"))
+        {
+            await configService.SetConfigAsync("VectorDb:Type", "InMemory", "向量数据库类型");
+        }
+
         // 初始化管理员角色和用户
         await InitializeAdminRoleAndUserAsync();
 
@@ -125,6 +131,22 @@ public class DatabaseInitializer(
                 UpdatedAt = DateTime.UtcNow
             };
             await context.Roles.AddAsync(adminRole);
+            await context.SaveChangesAsync();
+        }
+
+        // 检查并创建用户角色
+        var userRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+        if (userRole == null)
+        {
+            logger.LogInformation("创建用户角色");
+            userRole = new Role
+            {
+                Name = "User",
+                Description = "普通用户角色",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await context.Roles.AddAsync(userRole);
             await context.SaveChangesAsync();
         }
 

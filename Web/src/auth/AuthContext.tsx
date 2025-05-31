@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { getCurrentUser, isAuthenticated, clearAuthData, getStoredUser } from './index';
-import type { UserProfile } from './types';
-import { UserRole } from './types';
+import { getCurrentUser, isAuthenticated, clearAuthData, getStoredUser } from '../api/index';
+import type { UserProfile } from '../api/types';
+import { UserRole } from '../api/types';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -27,7 +27,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  
   const refreshUser = useCallback(async () => {
     setLoading(true);
     setAuthError(null);

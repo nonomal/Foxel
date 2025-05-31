@@ -1,192 +1,286 @@
-import { Layout, Button, Dropdown, Breadcrumb, Input } from 'antd';
-import { 
-    MenuFoldOutlined, 
-    MenuUnfoldOutlined, 
-    UserOutlined, 
+import React, { useRef, useState } from 'react';
+import { Layout, Button, Dropdown, Space, theme, Breadcrumb, Input } from 'antd';
+import {
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
+    UserOutlined,
     LogoutOutlined,
-    SettingOutlined
+    DashboardOutlined,
+    HomeOutlined,
+    RightOutlined,
+    SearchOutlined
 } from '@ant-design/icons';
-import { useNavigate, Link } from 'react-router';
-import routes, { type RouteConfig } from '../../config/routeConfig';
+import { Link, useNavigate } from 'react-router';
+import { useAuth } from '../../auth/AuthContext';
+import { type RouteConfig } from '../../routes';
 import UserAvatar from '../../components/UserAvatar';
-import { useAuth } from '../../api/AuthContext';
-import { useState } from 'react';
+import { UserRole } from '../../api/types';
 import SearchDialog from '../../components/search/SearchDialog';
 
 const { Header: AntHeader } = Layout;
-const { Search } = Input;
-
 interface HeaderProps {
     collapsed: boolean;
     toggleCollapsed: () => void;
     onLogout: () => void;
-    currentRouteData?: {
-        routeInfo: RouteConfig | undefined;
-        params: Record<string, string>;
-        title?: string; // 动态标题，用于显示如"相册名称"等动态数据
+    currentRouteData: {
+        routeInfo?: RouteConfig;
+        params?: Record<string, string>;
+        title?: string;
     };
     isMobile?: boolean;
 }
 
-const Header = ({ 
-    collapsed, 
-    toggleCollapsed, 
-    onLogout, 
+// 面包屑项目类型定义
+interface BreadcrumbItem {
+    title: string;
+    href?: string;
+    icon?: React.ReactNode;
+}
+
+const Header: React.FC<HeaderProps> = ({
+    collapsed,
+    toggleCollapsed,
+    onLogout,
     currentRouteData,
-    isMobile = false 
-}: HeaderProps) => {
-    const navigate = useNavigate();
+    isMobile = false
+}) => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const headerRef = useRef<HTMLDivElement>(null);
+    const { hasRole } = useAuth();
+
+    // 添加搜索对话框状态
     const [searchDialogVisible, setSearchDialogVisible] = useState(false);
     const [searchText, setSearchText] = useState('');
 
+    const {
+        token: { colorBgContainer },
+    } = theme.useToken();
+
+    // 用户菜单项
     const userMenuItems = [
         {
             key: 'profile',
-            icon: <UserOutlined/>,
-            label: '个人资料',
+            icon: <UserOutlined />,
+            label: '个人中心',
             onClick: () => navigate('/settings')
         },
-        {
-            key: 'settings',
-            icon: <SettingOutlined/>,
-            label: '设置',
-            onClick: () => navigate('/settings')
-        },
+        ...(hasRole(UserRole.Administrator) ? [
+            {
+                key: 'admin',
+                icon: <DashboardOutlined />,
+                label: '后台管理',
+                onClick: () => navigate('/admin')
+            }
+        ] : []),
         {
             key: 'logout',
-            icon: <LogoutOutlined/>,
+            icon: <LogoutOutlined />,
             label: '退出登录',
             onClick: onLogout
         }
     ];
 
-    // 生成面包屑项
-    const generateBreadcrumbItems = () => {
-        const breadcrumbItems = [];
-        
-        // 添加首页
-        breadcrumbItems.push({
-            key: 'home',
-            title: <Link to="/">首页</Link>,
-        });
+    // 根据路由信息生成面包屑导航
+    const renderBreadcrumb = () => {
+        // 如果有传入的标题，直接使用标题作为面包屑
+        if (currentRouteData.title) {
+            return (
+                <Breadcrumb
+                    separator={<RightOutlined style={{ fontSize: 12 }} />}
+                    style={{ margin: 0 }}
+                    items={[
+                        {
+                            title: '首页',
+                            href: '/',
+                        },
+                        {
+                            title: currentRouteData.title
+                        }
+                    ]}
+                />
+            );
+        }
 
-        // 确保routeInfo和breadcrumb都存在
-        if (currentRouteData?.routeInfo && currentRouteData.routeInfo.breadcrumb) {
-            const { routeInfo, title } = currentRouteData;
-            const breadcrumb = routeInfo.breadcrumb;
-            
-            // 如果有父级路由，先添加父级路由的面包屑
-            if (breadcrumb && breadcrumb.parent) {
-                const parentRoute = routes.find(r => r.key === breadcrumb.parent);
-                if (parentRoute && parentRoute.breadcrumb) {
-                    breadcrumbItems.push({
-                        key: parentRoute.key,
-                        title: <Link to={`/${parentRoute.path}`}>{parentRoute.breadcrumb.title}</Link>,
-                    });
-                }
+        // 如果没有路由信息，返回首页面包屑
+        if (!currentRouteData.routeInfo) {
+            return (
+                <Breadcrumb
+                    separator={<RightOutlined style={{ fontSize: 12 }} />}
+                    style={{ margin: 0 }}
+                    items={[
+                        {
+                            title: '首页',
+                            href: '/',
+                        }
+                    ]}
+                />
+            );
+        }
+
+        // 获取当前路由信息
+        const { routeInfo, params } = currentRouteData;
+        const breadcrumb = routeInfo.breadcrumb;
+
+        if (!breadcrumb) {
+            return (
+                <Breadcrumb
+                    separator={<RightOutlined style={{ fontSize: 12 }} />}
+                    style={{ margin: 0 }}
+                    items={[
+                        {
+                            title: '首页',
+                            href: '/',
+                        },
+                        {
+                            title: routeInfo.label
+                        }
+                    ]}
+                />
+            );
+        }
+
+        // 准备面包屑项目
+        const breadcrumbItems: BreadcrumbItem[] = [
+            {
+                title: routeInfo.area === 'admin' ? '管理后台' : '首页',
+                href: routeInfo.area === 'admin' ? '/admin' : '/',
+                icon: routeInfo.area === 'admin' ? <DashboardOutlined /> : <HomeOutlined />
             }
-            
-            // 添加当前路由的面包屑
+        ];
+
+        // 如果有父级，添加父级面包屑
+        if (breadcrumb.parent) {
+            const parentPath = routeInfo.area === 'admin'
+                ? `/admin/${breadcrumb.parent}`
+                : `/${breadcrumb.parent}`;
+
             breadcrumbItems.push({
-                key: routeInfo.key,
-                title: title || breadcrumb?.title,
+                title: breadcrumb.parent.charAt(0).toUpperCase() + breadcrumb.parent.slice(1),
+                href: parentPath
             });
         }
-        
-        return breadcrumbItems;
-    };
 
-    // 处理搜索框输入
-    const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchText(e.target.value);
-    };
-
-    // 处理搜索操作，仅当点击搜索按钮或按回车时执行
-    const handleSearch = (value: string) => {
-        if (value.trim() || !value) { // 允许空搜索打开高级搜索
-            setSearchDialogVisible(true);
+        // 获取动态标题
+        let title = breadcrumb.title;
+        if (params && Object.keys(params).length > 0) {
+            // 用参数替换标题中的占位符，如 ":id"
+            Object.entries(params).forEach(([key, value]) => {
+                title = title.replace(`:${key}`, value);
+            });
         }
+
+        // 添加当前页面面包屑
+        breadcrumbItems.push({
+            title: title
+        });
+
+        return (
+            <Breadcrumb
+                separator={<RightOutlined style={{ fontSize: 12 }} />}
+                style={{ margin: 0 }}
+                items={breadcrumbItems.map(item => ({
+                    title: item.href ? (
+                        <Link to={item.href} style={{ color: '#666', fontSize: isMobile ? 13 : 14 }}>
+                            {item.icon && <span style={{ marginRight: 4 }}>{item.icon}</span>}
+                            {isMobile && !item.icon ? '' : item.title}
+                        </Link>
+                    ) : (
+                        <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>
+                            {item.icon && <span style={{ marginRight: 4 }}>{item.icon}</span>}
+                            {item.title}
+                        </span>
+                    ),
+                }))}
+            />
+        );
+    };
+
+    // 处理搜索
+    const handleSearch = (value: string) => {
+        setSearchText(value);
+        setSearchDialogVisible(true);
+    };
+
+    // 关闭搜索对话框
+    const handleSearchDialogClose = () => {
+        setSearchDialogVisible(false);
     };
 
     return (
-        <>
-            <AntHeader style={{
-                padding: isMobile ? '0 10px' : '0 40px',
-                background: '#ffffff',
-                borderBottom: '1px solid #f0f0f0',
+        <AntHeader
+            ref={headerRef}
+            style={{
+                padding: isMobile ? '0 12px' : '0 24px',
+                background: colorBgContainer,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 height: isMobile ? 56 : 64,
+                borderBottom: '1px solid #f0f0f0',
+                zIndex: 100,
                 position: 'sticky',
-                top: 0,
-                zIndex: 10,
-                width: '100%',
-                backdropFilter: 'blur(10px)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <Button
-                        type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined/> : <MenuFoldOutlined/>}
-                        onClick={toggleCollapsed}
+                top: 0
+            }}
+        >
+            {/* 左侧区域：折叠按钮和面包屑 */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Button
+                    type="text"
+                    icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                    onClick={toggleCollapsed}
+                    style={{
+                        fontSize: '16px',
+                        width: 36,
+                        height: 36,
+                        marginRight: 12
+                    }}
+                />
+                {renderBreadcrumb()}
+            </div>
+
+            {/* 右侧区域：搜索框和用户菜单 */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                {/* 搜索框 */}
+                <div style={{
+                    marginRight: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: '100%'
+                }}>
+                    <Input.Search
+                        placeholder="搜索图片..."
+                        onSearch={handleSearch}
+                        onChange={(e) => setSearchText(e.target.value)}
                         style={{
-                            fontSize: 18,
-                            width: 46,
-                            height: 46,
-                            borderRadius: 12,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
+                            width: isMobile ? 150 : 220,
+                            borderRadius: 4
                         }}
+                        size={isMobile ? "middle" : "large"}
+                        allowClear
+                        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
                     />
-                    
-                    {/* 面包屑导航 */}
-                    {!isMobile && (
-                      <Breadcrumb 
-                          items={generateBreadcrumbItems()} 
-                          style={{ marginLeft: 16 }} 
-                      />
-                    )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 25 }}>
-                    {/* 搜索框 - 修复交互问题 */}
-                    {!isMobile && (
-                      <Search
-                          placeholder="搜索图片..."
-                          allowClear
-                          value={searchText}
-                          onChange={handleSearchInputChange}
-                          onSearch={handleSearch}
-                          style={{
-                              width: 300,
-                              borderRadius: 100
-                          }}
-                          size="middle"
-                      />
-                    )}
-                    
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <UserAvatar 
-                            size={46}
+
+                {/* 用户菜单 */}
+                <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                    <Space style={{ cursor: 'pointer' }}>
+                        <UserAvatar
+                            size={isMobile ? 36 : 46}
                             email={user?.email}
                             text={user?.userName}
                         />
-                    </Dropdown>
-                </div>
-            </AntHeader>
-            
-            {/* 搜索对话框 - 传递搜索文本 */}
-            <SearchDialog 
+                    </Space>
+                </Dropdown>
+            </div>
+
+            {/* 搜索对话框 */}
+            <SearchDialog
                 visible={searchDialogVisible}
+                onClose={handleSearchDialogClose}
                 initialSearchText={searchText}
-                onClose={() => {
-                    setSearchDialogVisible(false);
-                    // 可选：关闭对话框后清空搜索框
-                    // setSearchText('');
-                }}
             />
-        </>
+        </AntHeader>
     );
 };
 

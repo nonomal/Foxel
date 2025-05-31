@@ -57,3 +57,30 @@ export {
     restoreConfigs
 } from './configApi';
 
+// 导出UserManagement API
+export {
+    getUsers,
+    getUserById,
+    createUser,
+    updateUser,
+    deleteUser,
+    batchDeleteUsers
+} from './userManagementApi';
+
+// 导出PictureManagement API
+export {
+    getManagementPictures,
+    getManagementPictureById,
+    deleteManagementPicture,
+    batchDeleteManagementPictures,
+    getManagementPicturesByUserId
+} from './pictureManagementApi';
+
+// 导出向量数据库 API
+export {
+    getCurrentVectorDb,
+    switchVectorDb,
+    clearVectors,
+    rebuildVectors
+} from './vectorDbApi';
+

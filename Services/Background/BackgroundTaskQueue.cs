@@ -5,6 +5,7 @@ using Foxel.Services.AI;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
+using Foxel.Services.VectorDB;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
         _activeTasks = new ConcurrentDictionary<Guid, PictureProcessingTask>();
         _pictureStatus = new ConcurrentDictionary<int, PictureProcessingStatus>();
         _processingTasks = new List<Task>();
-        _maxConcurrentTasks = configuration.GetValueAsync("BackgroundTasks:MaxConcurrentTasks", 4).Result;
+        _maxConcurrentTasks = configuration.GetValueAsync("BackgroundTasks:MaxConcurrentTasks", 10).Result;
         _signal = new SemaphoreSlim(_maxConcurrentTasks);
         var options = new BoundedChannelOptions(10000)
         {
@@ -304,10 +305,10 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             picture.Embedding = embedding;
             if (picture.UserId.HasValue && embedding.Length > 0)
             {
-                var vectorDbService = scope.ServiceProvider.GetRequiredService<VectorDB.VectorDbService>();
-                var pictureVector = new Foxel.Models.Vector.PictureVector
+                var vectorDbService = scope.ServiceProvider.GetRequiredService<IVectorDbService>();
+                var pictureVector = new Models.Vector.PictureVector
                 {
-                    Id = picture.Id,
+                    Id = (ulong)picture.Id,
                     Name = picture.Name,
                     Embedding = embedding
                 };

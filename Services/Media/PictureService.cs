@@ -19,7 +19,7 @@ public class PictureService(
     IAiService embeddingService,
     IConfigService configuration,
     IBackgroundTaskQueue backgroundTaskQueue,
-    VectorDbService vectorDbService,
+    IVectorDbService vectorDbService,
     IStorageService storageService)
     : IPictureService
 {
@@ -102,10 +102,10 @@ public class PictureService(
         var picturesData = await dbContext.Pictures
             .Include(p => p.Tags)
             .Include(p => p.User)
-            .Where(p => ids.Contains(p.Id))
+            .Where(p => ids.Contains((ulong)p.Id))
             .ToListAsync();
         var picturesOrdered = ids
-            .Select(id => picturesData.FirstOrDefault(p => p.Id == id))
+            .Select(id => picturesData.FirstOrDefault(p => p.Id == (int)id))
             .Where(p => p != null)
             .ToList();
         var paginatedResults = picturesOrdered

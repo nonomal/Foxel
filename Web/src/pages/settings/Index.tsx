@@ -1,8 +1,7 @@
 import { Tabs, Layout, Menu, Space } from 'antd';
-import { useAuth } from '../../api/AuthContext';
+import { useAuth } from '../../auth/AuthContext.tsx';
 import { UserRole } from '../../api/types';
 import { useState, type SetStateAction } from 'react';
-import SystemConfig from './SystemConfig.tsx';
 import UserProfile from './UserProfile.tsx';
 import useIsMobile from '../../hooks/useIsMobile';
 import {
@@ -27,13 +26,6 @@ function Settings() {
         return (
           <div className="settings-content">
             <UserProfile />
-          </div>
-        );
-      case 'system':
-        return (
-          <div className="settings-content">
-            <SystemConfig />
-
           </div>
         );
       case 'appearance':
@@ -74,11 +66,6 @@ function Settings() {
       icon: <UserOutlined />,
       label: '个人资料',
     },
-    hasRole(UserRole.Administrator) ? {
-      key: 'system',
-      icon: <SettingOutlined />,
-      label: '系统配置',
-    } : null,
     {
       key: 'appearance',
       icon: <BgColorsOutlined />,
@@ -108,8 +95,7 @@ function Settings() {
         break;
     }
   };
-  
-  // 手机版使用Tabs作为顶部导航
+
   if (isMobile) {
     return (
       <div style={{ padding: 0 }}>
@@ -118,8 +104,8 @@ function Settings() {
           onChange={(key) => handleMenuChange(key)}
           centered
           size="large"
-          tabBarStyle={{ 
-            marginBottom: 16, 
+          tabBarStyle={{
+            marginBottom: 16,
             fontWeight: 500,
             backgroundColor: '#f5f5f5',
             padding: '8px 0',
@@ -127,14 +113,14 @@ function Settings() {
           }}
         >
           {menuItems.map((item) => (
-            <TabPane 
+            <TabPane
               tab={
                 <Space size={4}>
                   {item?.icon}
                   <span>{item?.label}</span>
                 </Space>
-              } 
-              key={item?.key || ''} 
+              }
+              key={item?.key || ''}
             >
               <div style={{ padding: '0 4px' }}>
                 {renderContent()}

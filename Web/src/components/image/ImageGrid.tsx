@@ -10,7 +10,7 @@ import ImageViewer from './ImageViewer';
 import ShareImageDialog from './ShareImageDialog';
 import EditImageDialog from './EditImageDialog';
 import './ImageGrid.css';
-import { useAuth } from '../../api/AuthContext';
+import { useAuth } from '../../auth/AuthContext';
 
 const { Text } = Typography;
 

@@ -9,9 +9,11 @@ using Foxel.Services.Auth;
 using Foxel.Services.Background;
 using Foxel.Services.Configuration;
 using Foxel.Services.Initializer;
+using Foxel.Services.Management;
 using Foxel.Services.Media;
 using Foxel.Services.Storage;
 using Foxel.Services.Storage.Providers;
+using Foxel.Services.VectorDB;
 
 namespace Foxel.Extensions;
 
@@ -25,6 +27,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<ITagService, TagService>();
         services.AddSingleton<IAlbumService, AlbumService>();
+        services.AddSingleton<IUserManagementService, UserManagementService>();
+        services.AddSingleton<IPictureManagementService, PictureManagementService>();
         services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         services.AddHostedService<QueuedHostedService>();
         services.AddSingleton<LocalStorageProvider>();
@@ -96,5 +100,12 @@ public static class ServiceCollectionExtensions
             options.AddPolicy(name: "MyAllowSpecificOrigins",
                 policy => { policy.WithOrigins().AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod(); });
         });
+    }
+
+    public static void AddVectorDbServices(this IServiceCollection services)
+    {
+        services.AddSingleton<VectorDbManager>();
+        services.AddSingleton<IVectorDbService>(provider =>
+            provider.GetRequiredService<VectorDbManager>());
     }
 }

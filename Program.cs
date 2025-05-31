@@ -16,7 +16,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddApplicationAuthentication();
 builder.Services.AddApplicationAuthorization();
 builder.Services.AddApplicationCors();
-builder.Services.AddSingleton<VectorDbService>();
+builder.Services.AddVectorDbServices();
+builder.Services.AddHostedService<VectorDbInitializer>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

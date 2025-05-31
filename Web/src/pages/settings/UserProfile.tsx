@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, message } from 'antd';
-import { useAuth } from '../../api/AuthContext';
+import { useAuth } from '../../auth/AuthContext';
 import UserAvatar from '../../components/UserAvatar';
 import useIsMobile from '../../hooks/useIsMobile';
 import { updateUserInfo } from '../../api';

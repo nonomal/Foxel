@@ -4,7 +4,7 @@ using Microsoft.Extensions.VectorData;
 
 public class PictureVector
 {
-    [VectorStoreKey] public int Id { get; set; }
+    [VectorStoreKey] public ulong Id { get; set; }
     [VectorStoreData] public string? Name { get; set; }
 
     [VectorStoreVector(Dimensions: 1024, DistanceFunction = DistanceFunction.CosineSimilarity)]

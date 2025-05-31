@@ -5,19 +5,18 @@ using Microsoft.SemanticKernel.Connectors.InMemory;
 
 namespace Foxel.Services.VectorDB;
 
-public class VectorDbService
+public class InMemoryVectorDbService : IVectorDbService
 {
     private readonly VectorStore _vectorStore;
     private readonly IDbContextFactory<MyDbContext> _contextFactory;
 
-    public VectorDbService(IDbContextFactory<MyDbContext> contextFactory)
+    public InMemoryVectorDbService(IDbContextFactory<MyDbContext> contextFactory)
     {
         _vectorStore = new InMemoryVectorStore();
         _contextFactory = contextFactory;
-        _ = InitData();
     }
 
-    private async Task InitData()
+    public async Task BuildUserPictureVectorsAsync()
     {
         await using var dbContext = await _contextFactory.CreateDbContextAsync();
         var userPictures = dbContext.Pictures
@@ -30,12 +29,12 @@ public class VectorDbService
         {
             int userId = group.Key;
             var collectionName = $"picture_{userId}";
-            var collection = _vectorStore.GetCollection<int, PictureVector>(collectionName);
+            var collection = _vectorStore.GetCollection<ulong, PictureVector>(collectionName);
             await collection.EnsureCollectionExistsAsync();
 
             var picVectors = group.Select(p => new PictureVector
             {
-                Id = p.Id,
+                Id = (ulong)p.Id,
                 Name = p.Name,
                 Embedding = p.Embedding
             }).ToList();
@@ -50,7 +49,7 @@ public class VectorDbService
     public async Task<List<PictureVector>> SearchAsync(ReadOnlyMemory<float> query, int? userId, int topK = 10)
     {
         var collectionName = $"picture_{userId}";
-        var collection = _vectorStore.GetCollection<int, PictureVector>(collectionName);
+        var collection = _vectorStore.GetCollection<ulong, PictureVector>(collectionName);
         var results = collection.SearchAsync(query, topK);
         var res = new List<PictureVector>();
         await foreach (var record in results)
@@ -64,7 +63,7 @@ public class VectorDbService
     public async Task AddPictureToUserCollectionAsync(int userId, PictureVector pictureVector)
     {
         var collectionName = $"picture_{userId}";
-        var collection = _vectorStore.GetCollection<int, PictureVector>(collectionName);
+        var collection = _vectorStore.GetCollection<ulong, PictureVector>(collectionName);
         await collection.EnsureCollectionExistsAsync();
         await collection.UpsertAsync(pictureVector);
     }
@@ -72,8 +71,18 @@ public class VectorDbService
     public async Task RemovePictureFromUserCollectionAsync(int userId, int pictureId)
     {
         var collectionName = $"picture_{userId}";
-        var collection = _vectorStore.GetCollection<int, PictureVector>(collectionName);
+        var collection = _vectorStore.GetCollection<ulong, PictureVector>(collectionName);
         await collection.EnsureCollectionExistsAsync();
-        await collection.DeleteAsync(pictureId);
+        await collection.DeleteAsync((ulong)pictureId);
+    }
+
+    public async Task ClearVectorsAsync()
+    {
+        var collections = _vectorStore.ListCollectionNamesAsync();
+        await foreach (var name in collections)
+        {
+            var collection = _vectorStore.GetCollection<ulong, PictureVector>(name);
+            await collection.EnsureCollectionDeletedAsync();
+        }
     }
 }

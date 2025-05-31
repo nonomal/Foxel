@@ -6,9 +6,10 @@ import Register from './pages/register/Index';
 import { isAuthenticated } from './api';
 import type { JSX } from 'react';
 import { ConfigProvider } from 'antd';
-import routes from './config/routeConfig';
-import { AuthProvider } from './api/AuthContext'; // 导入 AuthProvider
+import { getMainRoutes, getAdminRoutes } from './routes';
+import { AuthProvider } from './auth/AuthContext';
 import AnonymousPage from './pages/anonymous/Index';
+import AdminLayout from './layouts/AdminLayout';
 
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
   return isAuthenticated() ? children : <Navigate to="/login" />;
@@ -45,9 +46,12 @@ const customTheme = {
 };
 
 function App() {
+  const mainRoutes = getMainRoutes();
+  const adminRoutes = getAdminRoutes();
+
   return (
-    <AuthProvider>
-      <ConfigProvider theme={customTheme}>
+    <ConfigProvider theme={customTheme}>
+      <AuthProvider>
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -59,14 +63,32 @@ function App() {
                 <MainLayout />
               </PrivateRoute>
             }>
-              {routes.map((route) => (
-                <Route key={route.key} path={route.path} element={route.element} />
+              {mainRoutes.map((route) => (
+                <Route
+                  key={route.key}
+                  path={route.path === '/' ? '' : route.path}
+                  element={route.element}
+                />
+              ))}
+            </Route>
+
+            <Route path="/admin" element={
+              <PrivateRoute>
+                <AdminLayout />
+              </PrivateRoute>
+            }>
+              {adminRoutes.map((route) => (
+                <Route
+                  key={route.key}
+                  path={route.path}
+                  element={route.element}
+                />
               ))}
             </Route>
           </Routes>
         </Router>
-      </ConfigProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </ConfigProvider>
   );
 }
 

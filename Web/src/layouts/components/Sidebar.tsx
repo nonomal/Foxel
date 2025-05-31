@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Menu, type MenuProps } from 'antd';
 import { useLocation, useNavigate } from 'react-router';
-import routes from '../../config/routeConfig';
+import { getMainRoutes, getAdminRoutes } from '../../routes';
 import logo from '/logo.png';
 
 const { Sider } = Layout;
@@ -10,20 +10,22 @@ interface SidebarProps {
     collapsed: boolean;
     isMobile?: boolean;
     onClose?: () => void;
+    area: 'main' | 'admin';
 }
 
 // 定义菜单项类型
 type MenuItem = Required<MenuProps>['items'][number];
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose, area }) => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // 菜单项样式
+    // 获取对应区域的路由
+    const routes = area === 'main' ? getMainRoutes() : getAdminRoutes();
+
+    // 样式配置
     const menuItemStyle = { fontSize: 15 };
     const iconStyle = { fontSize: 18 };
-
-    // 分组标题样式
     const groupTitleStyle = {
         fontSize: 12,
         color: '#8c8c8c',
@@ -73,6 +75,30 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose 
     // 获取当前选中的菜单项
     const getSelectedKey = () => {
         const pathname = location.pathname;
+        
+        // 管理后台路径处理
+        if (area === 'admin') {
+            // 提取 /admin/ 后面的部分
+            const adminPath = pathname.replace(/^\/admin\/?/, '');
+            
+            // 如果是管理后台首页
+            if (adminPath === '') {
+                const defaultRoute = routes.find(route => route.path === '');
+                return defaultRoute ? defaultRoute.path : '';
+            }
+            
+            const matchedRoute = routes.find(route => {
+                if (route.path.includes(':')) {
+                    const basePath = route.path.split(':')[0].replace(/\/$/, '');
+                    return adminPath.startsWith(basePath);
+                }
+                return adminPath === route.path;
+            });
+            
+            return matchedRoute ? matchedRoute.path : '';
+        }
+        
+        // 主应用路径处理
         const matchedRoute = routes.find(route => {
             if (route.path.includes(':')) {
                 const basePath = route.path.split(':')[0].replace(/\/$/, '');
@@ -83,91 +109,132 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose 
             }
             return pathname === '/' + route.path;
         });
+        
         return matchedRoute ? (matchedRoute.path === '/' ? '/' : matchedRoute.path) : '/';
     };
 
     const handleMenuClick = ({ key }: { key: string }) => {
-        navigate(key);
+        if (area === 'admin') {
+            // 处理空路径的特殊情况（首页）
+            if (key === '') {
+                navigate('/admin');
+            } else {
+                navigate(`/admin/${key}`);
+            }
+        } else {
+            navigate(key);
+        }
+        
+        // 在移动设备上点击后关闭侧边栏
+        if (isMobile && onClose) {
+            onClose();
+        }
     };
 
-    return (
-        <>
-            {/* 遮罩层 - 仅在手机模式且侧边栏展开时显示 */}
-            {isMobile && !collapsed && (
-                <div
-                    onClick={onClose}
+    // 根据区域获取不同的Logo和标题
+    const getLogoAndTitle = () => {
+        if (area === 'admin') {
+            return {
+                logo: logo,
+                title: 'Foxel 管理后台'
+            };
+        }
+        return {
+            logo: logo,
+            title: 'Foxel'
+        };
+    };
+
+    const { logo: logoSrc, title } = getLogoAndTitle();
+
+    // 侧边栏内容
+    const sidebarContent = (
+        <Sider
+            trigger={null}
+            collapsible
+            collapsed={collapsed}
+            width={isMobile ? 180 : (area === 'admin' ? 220 : 250)}
+            collapsedWidth={isMobile ? 0 : 80}
+            style={{
+                overflow: 'auto',
+                height: '100vh',
+                position: isMobile ? 'absolute' : 'relative',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                zIndex: isMobile ? 1000 : 1,
+                boxShadow: isMobile && !collapsed ? '0 0 10px rgba(0,0,0,0.2)' : 'none',
+                backgroundColor: 'white',
+                display: 'flex',
+                flexDirection: 'column',
+            }}
+        >
+            {/* Logo区域 */}
+            <div style={{
+                height: isMobile ? '56px' : '64px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                padding: collapsed ? '0' : '0 20px',
+                color: '#001529',
+                fontWeight: 'bold',
+                fontSize: '18px',
+                overflow: 'hidden',
+                backgroundColor: 'white',
+                borderBottom: '1px solid #f0f0f0'
+            }}>
+                <img
+                    src={logoSrc}
+                    alt="Foxel Logo"
                     style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.45)',
-                        zIndex: 999, // 确保在Sider(1000)之下
+                        height: collapsed ? '30px' : '32px',
+                        marginRight: collapsed ? '0' : '12px',
+                        transition: 'all 0.2s'
                     }}
                 />
-            )}
-            <Sider
-                trigger={null}
-                collapsible
-                collapsed={collapsed}
-                width={isMobile ? 180 : 250}
-                collapsedWidth={isMobile ? 0 : 80}
+                {!collapsed && <span>{title}</span>}
+            </div>
+
+            {/* 侧边栏菜单 */}
+            <Menu
+                theme="light"
+                mode="inline"
+                selectedKeys={[getSelectedKey()]}
+                items={generateMenuItems()}
+                onClick={handleMenuClick}
                 style={{
-                    overflow: 'auto',
-                    height: '100vh',
-                    position: isMobile ? 'absolute' : 'relative',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    zIndex: isMobile ? 1000 : 1,
-                    boxShadow: isMobile && !collapsed ? '0 0 10px rgba(0,0,0,0.2)' : 'none',
-                    backgroundColor: 'white',
-                    display: 'flex',
-                    flexDirection: 'column',
+                    borderRight: 'none',
+                    flex: 1 
                 }}
-            >
-                {/* Logo区域 */}
-                <div style={{
-                    height: isMobile ? '56px' : '64px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    padding: collapsed ? '0' : '0 20px',
-                    color: '#001529',
-                    fontWeight: 'bold',
-                    fontSize: '18px',
-                    overflow: 'hidden',
-                    backgroundColor: 'white',
-                    borderBottom: '1px solid #f0f0f0'
-                }}>
-                    <img
-                        src={logo}
-                        alt="Foxel Logo"
+            />
+        </Sider>
+    );
+
+    // 移动设备上使用Drawer组件
+    if (isMobile) {
+        return (
+            <>
+                {/* 遮罩层 - 仅在手机模式且侧边栏展开时显示 */}
+                {!collapsed && (
+                    <div
+                        onClick={onClose}
                         style={{
-                            height: collapsed ? '30px' : '32px',
-                            marginRight: collapsed ? '0' : '12px',
-                            transition: 'all 0.2s'
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.45)',
+                            zIndex: 999,
                         }}
                     />
-                    {!collapsed && <span>Foxel</span>}
-                </div>
+                )}
+                {sidebarContent}
+            </>
+        );
+    }
 
-                {/* 侧边栏菜单 */}
-                <Menu
-                    theme="light"
-                    mode="inline"
-                    defaultSelectedKeys={[getSelectedKey()]}
-                    items={generateMenuItems()}
-                    onClick={handleMenuClick}
-                    style={{
-                        borderRight: 'none',
-                        flex: 1 
-                    }}
-                />
-            </Sider>
-        </>
-    );
+    return sidebarContent;
 };
 
 export default Sidebar;

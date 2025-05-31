@@ -23,5 +23,6 @@ public static class ApplicationBuilderExtensions
     public static void UseApplicationOpenApi(this WebApplication app)
     {
         app.MapOpenApi();
+        app.MapScalarApiReference();
     }
 }
