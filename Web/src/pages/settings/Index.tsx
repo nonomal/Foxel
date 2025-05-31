@@ -1,12 +1,10 @@
 import { Tabs, Layout, Menu, Space } from 'antd';
 import { useAuth } from '../../auth/AuthContext.tsx';
-import { UserRole } from '../../api/types';
 import { useState, type SetStateAction } from 'react';
 import UserProfile from './UserProfile.tsx';
 import useIsMobile from '../../hooks/useIsMobile';
 import {
   UserOutlined,
-  SettingOutlined,
   BgColorsOutlined,
   BellOutlined,
 } from '@ant-design/icons';
@@ -15,7 +13,7 @@ const { TabPane } = Tabs;
 const { Sider, Content } = Layout;
 
 function Settings() {
-  const { hasRole } = useAuth();
+  useAuth();
   const isMobile = useIsMobile();
   const [activeMenu, setActiveMenu] = useState('profile');
   const [activeTab, setActiveTab] = useState('basic');

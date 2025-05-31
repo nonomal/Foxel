@@ -41,7 +41,7 @@ const BackgroundTasks: React.FC = () => {
     // 设置轮询
     if (pollingActive) {
       const interval = setInterval(fetchTasks, 3000);
-      setPollingIntervalState(interval);
+      setPollingIntervalState(interval as unknown as number);
     }
 
     return () => {
@@ -66,7 +66,7 @@ const BackgroundTasks: React.FC = () => {
     } else if (hasActiveTasks && !pollingActive) {
       setPollingActive(true);
       const interval = setInterval(fetchTasks, 3000);
-      setPollingIntervalState(interval);
+      setPollingIntervalState(interval as unknown as number);
     }
   }, [tasks, pollingActive, pollingInterval, fetchTasks]);
 
