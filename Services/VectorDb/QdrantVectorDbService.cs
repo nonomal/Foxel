@@ -7,33 +7,24 @@ using Qdrant.Client;
 
 namespace Foxel.Services.VectorDB;
 
-public class QdrantVectorDbService : IVectorDbService
+public class QdrantVectorDbService(IDbContextFactory<MyDbContext> contextFactory, IConfigService configService)
+    : IVectorDbService
 {
-    private readonly IDbContextFactory<MyDbContext> _contextFactory;
-    private readonly IConfigService _configService;
     private VectorStore? _vectorStore;
     private string? _currentHost;
     private string? _currentApiKey;
 
-    public QdrantVectorDbService(IDbContextFactory<MyDbContext> contextFactory, IConfigService configService)
-    {
-        _contextFactory = contextFactory;
-        _configService = configService;
-    }
-
     private VectorStore GetVectorStore()
     {
-        string host = _configService["VectorDb:QdrantHost"] ?? 
-            "b63da3b8-c126-4546-95ab-176f907fb1ef.eu-central-1-0.aws.cloud.qdrant.io";
-        
-        string apiKey = _configService["VectorDb:QdrantApiKey"] ?? 
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.QzQN4cyo5mldCi9ohe0Aqap4fpTMuSEMGkXtkgBTNQI";
+        string host = configService["VectorDb:QdrantHost"];
+
+        string apiKey = configService["VectorDb:QdrantApiKey"];
 
         if (_vectorStore == null || _currentHost != host || _currentApiKey != apiKey)
         {
             var qdrantClient = new QdrantClient(host, https: true, apiKey: apiKey);
             _vectorStore = new QdrantVectorStore(qdrantClient, true);
-            
+
             _currentHost = host;
             _currentApiKey = apiKey;
         }
@@ -43,7 +34,7 @@ public class QdrantVectorDbService : IVectorDbService
 
     public async Task BuildUserPictureVectorsAsync()
     {
-        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
         var userPictures = dbContext.Pictures
             .Where(p => p.UserId != null && p.Embedding != null)
             .Select(p => new { p.Id, p.Name, p.Embedding, p.UserId })
