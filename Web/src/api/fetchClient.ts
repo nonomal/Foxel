@@ -1,4 +1,5 @@
 import type { BaseResult } from './types';
+import { clearAuthData } from './index'; 
 export const BASE_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5153/api';
 
 export async function fetchApi<T = any>(
@@ -18,6 +19,18 @@ export async function fetchApi<T = any>(
             ...options,
             headers,
         });
+
+        if (response.status === 401) {
+            clearAuthData();
+            const message = encodeURIComponent('授权过期重新登录');
+            window.location.href = `/login?message=${message}`;
+            return {
+                success: false,
+                message: '授权过期重新登录',
+                code: 401,
+            } as BaseResult<T>;
+        }
+
         const data = await response.json();
         return data as BaseResult<T>;
     } catch (error) {
