@@ -38,7 +38,7 @@ public class DatabaseInitializer(
         var defaultConfigs = new Dictionary<string, string>
         {
             // JWT配置
-            ["Jwt:SecretKey"] = "ChAtPiCdEfAuLtSeCrEtKeY2023_Extended_Secure_Key",
+            ["Jwt:SecretKey"] = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
             ["Jwt:Issuer"] = "Foxel",
             ["Jwt:Audience"] = "FoxelUsers",
 
@@ -64,7 +64,8 @@ public class DatabaseInitializer(
             ["Storage:DefaultStorage"] = "Local",
 
             // 其他配置
-            ["AppSettings:ServerUrl"] = ""
+            ["AppSettings:ServerUrl"] = "",
+            ["VectorDb:Type"] = "InMemory"
         };
 
         foreach (var (key, value) in defaultConfigs)
