@@ -10,6 +10,7 @@ import { getMainRoutes, getAdminRoutes } from './routes';
 import { AuthProvider } from './auth/AuthContext';
 import AnonymousPage from './pages/anonymous/Index';
 import AdminLayout from './layouts/AdminLayout';
+import Bind from './pages/bind/Index';
 
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
   return isAuthenticated() ? children : <Navigate to="/login" />;
@@ -56,8 +57,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/bind" element={<Bind />} />
             <Route path="/anonymous" element={<AnonymousPage />} />
-
             <Route path="/" element={
               <PrivateRoute>
                 <MainLayout />

@@ -271,3 +271,17 @@ export const VectorDbType = {
 export interface VectorDbInfo {
   type: string;
 }
+
+export type BindType = 0 | 1;
+
+export const BindType = {
+  GitHub: 0 as BindType,
+  LinuxDo: 1 as BindType,
+};
+
+export interface BindAccountRequest {
+  email: string;
+  password: string;
+  bindType: BindType;
+  thirdPartyUserId: string;
+}

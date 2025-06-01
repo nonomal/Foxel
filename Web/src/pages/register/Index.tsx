@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Checkbox, Typography, Row, Col, Divider, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, GithubOutlined, GoogleOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined, GithubOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router';
-import { register, saveAuthData, isAuthenticated, handleOAuthCallback, getGitHubLoginUrl } from '../../api';
+import { register, saveAuthData, isAuthenticated, handleOAuthCallback, getGitHubLoginUrl, getLinuxDoLoginUrl } from '../../api';
 import useIsMobile from '../../hooks/useIsMobile';
 
 const { Title, Text } = Typography;
@@ -66,6 +66,10 @@ const Register: React.FC = () => {
 
   const handleGitHubLogin = () => {
     window.location.href = getGitHubLoginUrl();
+  };
+
+  const handleLinuxDoLogin = () => {
+    window.location.href = getLinuxDoLoginUrl();
   };
 
   return (
@@ -245,9 +249,10 @@ const Register: React.FC = () => {
                 }} 
               />
               <Button 
-                icon={<GoogleOutlined />} 
+                icon={<img src="/images/linuxdo.svg" alt="LinuxDo" style={{width: '20px', height: '20px'}} />}
                 size="large" 
                 shape="circle" 
+                onClick={handleLinuxDoLogin}
                 style={{ 
                   backgroundColor: '#f6f6f6', 
                   border: 'none',

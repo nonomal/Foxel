@@ -9,7 +9,7 @@ using Foxel.Services.Configuration;
 namespace Foxel.Controllers;
 
 [Route("api/auth")]
-public class AuthController(IAuthService authService, IConfigService configService) : BaseApiController
+public class AuthController(IAuthService authService) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult<BaseResult<AuthResponse>>> Register([FromBody] RegisterRequest request)
@@ -108,14 +108,50 @@ public class AuthController(IAuthService authService, IConfigService configServi
     [HttpGet("github/callback")]
     public async Task<ActionResult<BaseResult<string>>> GitHubCallback(string code)
     {
-        var (success, message, token) = await authService.ProcessGitHubCallbackAsync(code);
-        
-        if (!success || token == null)
+        var (result, message, data) = await authService.ProcessGitHubCallbackAsync(code);
+
+        switch (result)
         {
-            return Redirect($"/login?error=github_auth_failed&message={Uri.EscapeDataString(message)}");
+            case GitHubAuthResult.Success:
+                return Redirect($"/login?token={Uri.EscapeDataString(data!)}");
+
+            case GitHubAuthResult.UserNotBound:
+                return Redirect($"/bind?githubId={data}");
+            case GitHubAuthResult.InvalidCode:
+            case GitHubAuthResult.TokenRequestFailed:
+            case GitHubAuthResult.UserInfoFailed:
+            case GitHubAuthResult.InvalidUserId:
+            default:
+                return Redirect($"/login?error=github_auth_failed&message={Uri.EscapeDataString(message)}");
         }
-        
-        return Redirect($"/login?token={Uri.EscapeDataString(token)}");
+    }
+
+    [HttpGet("linuxdo/login")]
+    public IActionResult LinuxDoLogin()
+    {
+        string linuxdoAuthorizeUrl = authService.GetLinuxDoLoginUrl();
+        return Redirect(linuxdoAuthorizeUrl);
+    }
+
+    [HttpGet("linuxdo/callback")]
+    public async Task<ActionResult<BaseResult<string>>> LinuxDoCallback(string code, string state)
+    {
+        var (result, message, data) = await authService.ProcessLinuxDoCallbackAsync(code);
+
+        switch (result)
+        {
+            case LinuxDoAuthResult.Success:
+                return Redirect($"/login?token={Uri.EscapeDataString(data!)}");
+
+            case LinuxDoAuthResult.UserNotBound:
+                return Redirect($"/bind?linuxdoId={data}");
+            case LinuxDoAuthResult.InvalidCode:
+            case LinuxDoAuthResult.TokenRequestFailed:
+            case LinuxDoAuthResult.UserInfoFailed:
+            case LinuxDoAuthResult.InvalidUserId:
+            default:
+                return Redirect($"/login?error=linuxdo_auth_failed&message={Uri.EscapeDataString(message)}");
+        }
     }
 
     [HttpPut("update")]
@@ -126,7 +162,7 @@ public class AuthController(IAuthService authService, IConfigService configServi
         {
             return Error<UserProfile>("请求数据无效");
         }
-        
+
         var userId = GetCurrentUserId();
         if (userId == null)
         {
@@ -148,5 +184,35 @@ public class AuthController(IAuthService authService, IConfigService configServi
         };
 
         return Success(profile, "用户信息更新成功");
+    }
+
+    [HttpPost("bind")]
+    public async Task<ActionResult<BaseResult<AuthResponse>>> BindAccount([FromBody] BindAccountRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return Error<AuthResponse>("请求数据无效");
+        }
+
+        var (success, message, user) = await authService.BindAccountAsync(request);
+        if (!success || user == null)
+        {
+            return Error<AuthResponse>(message);
+        }
+
+        var token = await authService.GenerateJwtTokenAsync(user);
+        var response = new AuthResponse
+        {
+            Token = token,
+            User = new UserProfile
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                RoleName = user.Role?.Name
+            }
+        };
+
+        return Success(response, message);
     }
 }

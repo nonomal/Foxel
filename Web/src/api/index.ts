@@ -14,7 +14,10 @@ export {
     saveAuthData,
     clearAuthData,
     isAuthenticated,
-    getStoredUser
+    getStoredUser,
+    bindAccount,
+    getGitHubLoginUrl,
+    getLinuxDoLoginUrl
 } from './authApi';
 
 // 导出Picture API

@@ -9,9 +9,12 @@ public interface IAuthService
     Task<(bool success, string message, User? user)> AuthenticateUserAsync(LoginRequest request);
     Task<string> GenerateJwtTokenAsync(User user);
     Task<User?> GetUserByIdAsync(int userId);
-    Task<(bool success, string message, User? user)> FindOrCreateGitHubUserAsync(
-        string githubId, string? githubName, string? email);
+    Task<(bool success, string message, User? user)> FindGitHubUserAsync(string githubId);
+    Task<(bool success, string message, User? user)> FindLinuxDoUserAsync(string linuxdoId);
     Task<(bool success, string message, User? user)> UpdateUserInfoAsync(int userId, UpdateUserRequest request);
     string GetGitHubLoginUrl();
-    Task<(bool success, string message, string? token)> ProcessGitHubCallbackAsync(string code);
+    string GetLinuxDoLoginUrl();
+    Task<(GitHubAuthResult result, string message, string? data)> ProcessGitHubCallbackAsync(string code);
+    Task<(LinuxDoAuthResult result, string message, string? data)> ProcessLinuxDoCallbackAsync(string code);
+    Task<(bool success, string message, User? user)> BindAccountAsync(BindAccountRequest request);
 }

@@ -14,6 +14,8 @@ public class User : BaseModel
     [Required] [StringLength(255)] public required string PasswordHash { get; set; }
 
     [StringLength(255)] public string? GithubId { get; set; }
+    [StringLength(255)] public string? LinuxDoId { get; set; }
+
     public int? RoleId { get; set; }
     
     public Role? Role { get; set; }

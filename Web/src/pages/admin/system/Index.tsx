@@ -37,7 +37,10 @@ const allDescriptions: Record<string, Record<string, string>> = {
   Authentication: {
     GitHubClientId: 'GitHub OAuth 应用客户端ID',
     GitHubClientSecret: 'GitHub OAuth 应用客户端密钥',
-    GitHubCallbackUrl: 'GitHub OAuth 认证回调地址'
+    GitHubCallbackUrl: 'GitHub OAuth 认证回调地址',
+    LinuxDoClientId: 'LinuxDo OAuth 应用客户端ID',
+    LinuxDoClientSecret: 'LinuxDo OAuth 应用客户端密钥',
+    LinuxDoCallbackUrl: 'LinuxDo OAuth 认证回调地址'
   },
   AppSettings: {
     ServerUrl: '服务器URL'

@@ -251,6 +251,29 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
               </Form>
             </ConfigSection>
           </TabPane>
+          <TabPane tab="LinuxDo认证" key="linuxdo">
+            <ConfigSection
+              title="LinuxDo OAuth 配置"
+              icon={<GlobalOutlined />}
+              description="LinuxDo OAuth 应用配置，用于实现第三方登录功能"
+              isMobile={isMobile}
+            >
+              <Form form={formsMap.Authentication} layout="vertical" size={isMobile ? "middle" : "large"}>
+                {renderConfigFormItems(formsMap.Authentication, "Authentication", ["LinuxDoClientId", "LinuxDoClientSecret", "LinuxDoCallbackUrl"])}
+                <Divider style={{ margin: '12px 0 20px' }} />
+                <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={() => onSaveAllForGroup(formsMap.Authentication, "Authentication", ["LinuxDoClientId", "LinuxDoClientSecret", "LinuxDoCallbackUrl"])}
+                    style={{ width: isMobile ? '100%' : '240px' }}
+                  >
+                    保存所有 LinuxDo 认证配置
+                  </Button>
+                </Form.Item>
+              </Form>
+            </ConfigSection>
+          </TabPane>
         </Tabs>
       )
     },

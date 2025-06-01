@@ -1,4 +1,4 @@
-import {type BaseResult, type AuthResponse, type LoginRequest, type RegisterRequest, type UserProfile, type UpdateUserRequest} from './types';
+import {type BaseResult, type AuthResponse, type LoginRequest, type RegisterRequest, type UserProfile, type UpdateUserRequest, type BindAccountRequest} from './types';
 import {fetchApi, BASE_URL} from './fetchClient';
 
 // 认证数据本地存储键
@@ -89,6 +89,22 @@ export async function updateUserInfo(data: UpdateUserRequest): Promise<BaseResul
     }
 }
 
+// 绑定账户
+export async function bindAccount(data: BindAccountRequest): Promise<BaseResult<AuthResponse>> {
+    const response = await fetchApi<AuthResponse>('/auth/bind', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+
+    if (response.success && response.data) {
+        clearAuthData(); // 清除旧的认证数据
+        console.log('绑定成功，保存认证数据:', response.data);
+        saveAuthData(response.data); // 保存新的认证数据
+    }
+
+    return response;
+}
+
 // 保存认证数据到本地存储
 export const saveAuthData = (authData: AuthResponse): void => {
     localStorage.setItem(TOKEN_KEY, authData.token);
@@ -150,7 +166,6 @@ export async function handleOAuthCallback(): Promise<boolean> {
                 
                 saveAuthData(authResponse);
                 
-                // 清除URL中的token参数
                 const url = new URL(window.location.href);
                 url.searchParams.delete('token');
                 window.history.replaceState({}, document.title, url.toString());
@@ -160,7 +175,7 @@ export async function handleOAuthCallback(): Promise<boolean> {
             return false;
         } catch (error) {
             console.error('第三方登录处理失败:', error);
-            clearAuthData(); // 清除可能部分保存的数据
+            clearAuthData(); 
             return false;
         }
     }
@@ -170,4 +185,8 @@ export async function handleOAuthCallback(): Promise<boolean> {
 
 export function getGitHubLoginUrl(): string {
     return `${BASE_URL}/auth/github/login`;
+}
+
+export function getLinuxDoLoginUrl(): string {
+    return `${BASE_URL}/auth/linuxdo/login`;
 }
