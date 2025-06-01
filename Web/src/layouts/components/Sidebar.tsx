@@ -75,18 +75,18 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
     // 获取当前选中的菜单项
     const getSelectedKey = () => {
         const pathname = location.pathname;
-        
+
         // 管理后台路径处理
         if (area === 'admin') {
             // 提取 /admin/ 后面的部分
             const adminPath = pathname.replace(/^\/admin\/?/, '');
-            
+
             // 如果是管理后台首页
             if (adminPath === '') {
                 const defaultRoute = routes.find(route => route.path === '');
                 return defaultRoute ? defaultRoute.path : '';
             }
-            
+
             const matchedRoute = routes.find(route => {
                 if (route.path.includes(':')) {
                     const basePath = route.path.split(':')[0].replace(/\/$/, '');
@@ -94,10 +94,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
                 }
                 return adminPath === route.path;
             });
-            
+
             return matchedRoute ? matchedRoute.path : '';
         }
-        
+
         // 主应用路径处理
         const matchedRoute = routes.find(route => {
             if (route.path.includes(':')) {
@@ -109,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
             }
             return pathname === '/' + route.path;
         });
-        
+
         return matchedRoute ? (matchedRoute.path === '/' ? '/' : matchedRoute.path) : '/';
     };
 
@@ -124,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
         } else {
             navigate(key);
         }
-        
+
         // 在移动设备上点击后关闭侧边栏
         if (isMobile && onClose) {
             onClose();
@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
         if (area === 'admin') {
             return {
                 logo: logo,
-                title: 'Foxel 管理后台'
+                title: 'Foxel 面板'
             };
         }
         return {
@@ -204,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
                 onClick={handleMenuClick}
                 style={{
                     borderRight: 'none',
-                    flex: 1 
+                    flex: 1
                 }}
             />
         </Sider>

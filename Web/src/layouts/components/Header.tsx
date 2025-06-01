@@ -16,6 +16,7 @@ import { type RouteConfig } from '../../routes';
 import UserAvatar from '../../components/UserAvatar';
 import { UserRole } from '../../api/types';
 import SearchDialog from '../../components/search/SearchDialog';
+import useIsMobile from '../../hooks/useIsMobile';
 
 const { Header: AntHeader } = Layout;
 interface HeaderProps {
@@ -48,6 +49,7 @@ const Header: React.FC<HeaderProps> = ({
     const navigate = useNavigate();
     const headerRef = useRef<HTMLDivElement>(null);
     const { hasRole } = useAuth();
+    const isMobileDevice = useIsMobile();
 
     // 添加搜索对话框状态
     const [searchDialogVisible, setSearchDialogVisible] = useState(false);
@@ -236,7 +238,7 @@ const Header: React.FC<HeaderProps> = ({
                         marginRight: 12
                     }}
                 />
-                {renderBreadcrumb()}
+                {!isMobileDevice && renderBreadcrumb()}
             </div>
 
             {/* 右侧区域：搜索框和用户菜单 */}
