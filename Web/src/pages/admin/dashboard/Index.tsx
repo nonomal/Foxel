@@ -49,7 +49,10 @@ const AdminDashboard: React.FC = () => {
   // 获取最近用户数据
   const fetchRecentUsers = async () => {
     try {
-      const response = await getUsers(1, 5); // 获取最近5个用户
+      const response = await getUsers({
+        page: 1,
+        pageSize: 5
+      });
       if (response.success && response.data) {
         setRecentUsers(response.data);
         // 更新用户总数统计
