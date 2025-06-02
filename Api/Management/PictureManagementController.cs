@@ -13,11 +13,14 @@ public class PictureManagementController(IPictureManagementService pictureManage
 {
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchQuery = null,
+        [FromQuery] int? userId = null)
     {
         try
         {
-            var pictures = await pictureManagementService.GetPicturesAsync(page, pageSize);
+            var pictures = await pictureManagementService.GetPicturesAsync(page, pageSize, searchQuery, userId);
             return PaginatedSuccess(pictures.Data, pictures.TotalCount, pictures.Page, pictures.PageSize);
         }
         catch (Exception ex)

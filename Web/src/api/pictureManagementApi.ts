@@ -9,9 +9,19 @@ import {
 // 获取图片列表
 export const getManagementPictures = async (
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  searchQuery?: string,
+  userId?: number
 ): Promise<PaginatedResult<PictureResponse>> => {
-  const response = await fetchApi(`/management/picture/get_pictures?page=${page}&pageSize=${pageSize}`);
+  const params = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString()
+  });
+  
+  if (searchQuery) params.append('searchQuery', searchQuery);
+  if (userId) params.append('userId', userId.toString());
+  
+  const response = await fetchApi(`/management/picture/get_pictures?${params.toString()}`);
   return response as PaginatedResult<PictureResponse>;
 };
 

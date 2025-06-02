@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Table, Button, Card, Input, Space, Modal, 
-  message, Typography, Popconfirm, Row, Col, Image, Select
+  message, Typography, Popconfirm, Row, Col, Image, 
+  AutoComplete, Form, Divider
 } from 'antd';
 import { 
   PictureOutlined, DeleteOutlined, 
   SearchOutlined, ExclamationCircleOutlined, ReloadOutlined,
-  FileImageOutlined, UserOutlined
+  FileImageOutlined, UserOutlined, FilterOutlined, ClearOutlined
 } from '@ant-design/icons';
 import { 
   getManagementPictures, deleteManagementPicture, batchDeleteManagementPictures,
   getUsers
 } from '../../../api';
-import type { PictureResponse, UserResponse } from '../../../api/types';
+import type { PictureResponse } from '../../../api/types';
 import { useOutletContext } from 'react-router';
 import type { Breakpoint } from 'antd';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 const { confirm } = Modal;
 
 const PictureManagement: React.FC = () => {
@@ -25,32 +25,55 @@ const PictureManagement: React.FC = () => {
   
   // 状态管理
   const [pictures, setPictures] = useState<PictureResponse[]>([]);
-  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [userOptions, setUserOptions] = useState<{ value: number; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  
+  // 筛选状态
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | undefined>();
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterForm] = Form.useForm();
 
-  // 加载用户列表
-  const fetchUsers = useCallback(async () => {
+  // 搜索用户（自动补全）
+  const searchUsers = useCallback(async (searchValue: string) => {
+    if (!searchValue.trim()) {
+      setUserOptions([]);
+      return;
+    }
+    
     try {
-      const response = await getUsers(1, 1000); // 获取所有用户用于筛选
+      const response = await getUsers({
+        page: 1,
+        pageSize: 20,
+        searchQuery: searchValue
+      });
+      
       if (response.success && response.data) {
-        setUsers(response.data || []);
+        const options = response.data.map(user => ({
+          value: user.id,
+          label: `${user.userName} (${user.email})`
+        }));
+        setUserOptions(options);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error searching users:', error);
     }
   }, []);
 
   // 加载图片数据
-  const fetchPictures = useCallback(async (page = currentPage, size = pageSize) => {
+  const fetchPictures = useCallback(async (
+    page = currentPage, 
+    size = pageSize, 
+    query = searchQuery, 
+    userId = selectedUserId
+  ) => {
     setLoading(true);
     try {
-      const response = await getManagementPictures(page, size);
+      const response = await getManagementPictures(page, size, query, userId);
       if (response.success && response.data) {
         setPictures(response.data || []);
         setTotal(response.totalCount || 0);
@@ -63,13 +86,12 @@ const PictureManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, searchQuery, selectedUserId]);
 
   // 初始加载
   useEffect(() => {
-    fetchUsers();
     fetchPictures();
-  }, [fetchUsers, fetchPictures]);
+  }, [fetchPictures]);
 
   // 处理页面变化
   const handlePageChange = (page: number, size?: number) => {
@@ -78,12 +100,35 @@ const PictureManagement: React.FC = () => {
     fetchPictures(page, size || pageSize);
   };
 
-  // 处理搜索
-  const handleSearch = () => {
+  // 处理快速搜索
+  const handleQuickSearch = (value: string) => {
+    setSearchQuery(value);
     setCurrentPage(1);
-    fetchPictures(1, pageSize);
+    fetchPictures(1, pageSize, value, selectedUserId);
   };
 
+  // 处理筛选
+  const handleFilter = async () => {
+    try {
+      const values = await filterForm.validateFields();
+      setSearchQuery(values.searchQuery || '');
+      setSelectedUserId(values.userId);
+      setCurrentPage(1);
+      fetchPictures(1, pageSize, values.searchQuery, values.userId);
+    } catch (error) {
+      console.error('Filter validation failed:', error);
+    }
+  };
+
+  // 清除筛选
+  const handleClearFilters = () => {
+    filterForm.resetFields();
+    setSearchQuery('');
+    setSelectedUserId(undefined);
+    setUserOptions([]);
+    setCurrentPage(1);
+    fetchPictures(1, pageSize, '', undefined);
+  };
 
   // 处理删除图片
   const handleDelete = async (id: number) => {
@@ -137,12 +182,6 @@ const PictureManagement: React.FC = () => {
   };
 
   // 处理用户筛选
-  const handleUserFilter = (userId: number | undefined) => {
-    setSelectedUserId(userId);
-    // 这里应该根据用户ID筛选图片，但目前先简单刷新
-    setCurrentPage(1);
-    fetchPictures(1, pageSize);
-  };
 
   // 表格列定义
   const columns = [
@@ -251,32 +290,70 @@ const PictureManagement: React.FC = () => {
               >
                 刷新
               </Button>
-              <Select
-                style={{ width: 150 }}
-                placeholder="筛选用户"
-                allowClear
-                value={selectedUserId}
-                onChange={handleUserFilter}
+              <Button 
+                icon={<FilterOutlined />} 
+                onClick={() => setShowFilters(!showFilters)}
+                type={showFilters ? 'primary' : 'default'}
               >
-                {users.map(user => (
-                  <Option key={user.id} value={user.id}>
-                    {user.userName}
-                  </Option>
-                ))}
-              </Select>
+                高级筛选
+              </Button>
             </Space>
           </Col>
           <Col xs={24} sm={10} md={8}>
             <Input.Search
-              placeholder="搜索图片名称"
+              placeholder="搜索图片名称或描述"
               allowClear
               enterButton={<SearchOutlined />}
-              onSearch={handleSearch}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onSearch={handleQuickSearch}
               value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </Col>
         </Row>
+
+        {/* 高级筛选面板 */}
+        {showFilters && (
+          <>
+            <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fafafa' }}>
+              <Form
+                form={filterForm}
+                layout="inline"
+                onFinish={handleFilter}
+                initialValues={{
+                  searchQuery: searchQuery,
+                  userId: selectedUserId
+                }}
+              >
+                <Form.Item name="searchQuery" label="搜索关键词">
+                  <Input placeholder="图片名称或描述" style={{ width: 200 }} />
+                </Form.Item>
+                
+                <Form.Item name="userId" label="上传用户">
+                  <AutoComplete
+                    style={{ width: 250 }}
+                    options={userOptions}
+                    onSearch={searchUsers}
+                    placeholder="输入用户名或邮箱搜索"
+                    allowClear
+                    filterOption={false}
+                  />
+                </Form.Item>
+                
+                <Form.Item>
+                  <Space>
+                    <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                      筛选
+                    </Button>
+                    <Button icon={<ClearOutlined />} onClick={handleClearFilters}>
+                      清除
+                    </Button>
+                  </Space>
+                </Form.Item>
+              </Form>
+            </Card>
+            <Divider style={{ margin: '16px 0' }} />
+          </>
+        )}
 
         <Table
           rowKey="id"

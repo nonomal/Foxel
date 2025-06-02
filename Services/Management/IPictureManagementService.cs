@@ -5,7 +5,7 @@ namespace Foxel.Services.Management;
 
 public interface IPictureManagementService
 {
-    Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10);
+    Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10, string? searchQuery = null, int? userId = null);
     Task<PictureResponse> GetPictureByIdAsync(int id);
     Task<bool> DeletePictureAsync(int id);
     Task<BatchDeleteResult> BatchDeletePicturesAsync(List<int> ids);

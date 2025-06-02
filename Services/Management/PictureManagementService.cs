@@ -10,7 +10,7 @@ public class PictureManagementService(
     IDbContextFactory<MyDbContext> contextFactory,
     IStorageService storageService) : IPictureManagementService
 {
-    public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10)
+    public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10, string? searchQuery = null, int? userId = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
@@ -20,7 +20,21 @@ public class PictureManagementService(
         // 构建查询
         var query = dbContext.Pictures
             .Include(p => p.User)
-            .OrderByDescending(p => p.CreatedAt);
+            .AsQueryable();
+
+        // 应用筛选条件
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            query = query.Where(p => p.Name.Contains(searchQuery) || 
+                                    (p.Description != null && p.Description.Contains(searchQuery)));
+        }
+
+        if (userId.HasValue)
+        {
+            query = query.Where(p => p.UserId == userId.Value);
+        }
+
+        query = query.OrderByDescending(p => p.CreatedAt);
 
         // 获取总数和分页数据
         var totalCount = await query.CountAsync();
