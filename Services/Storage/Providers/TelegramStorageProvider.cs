@@ -46,17 +46,40 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
 
             var responseContent = await response.Content.ReadAsStringAsync();
             var responseObj = JsonSerializer.Deserialize<TelegramResponse>(responseContent);
-            if (responseObj == null || !responseObj.Ok || responseObj.Result?.Document == null)
+            if (responseObj == null || !responseObj.Ok)
             {
                 throw new ApplicationException($"上传文件到 Telegram 失败: {responseContent}");
             }
 
-            var fileId = responseObj.Result.Document.FileId;
+            string fileId;
+            string fileUniqueId;
+
+            if (responseObj.Result?.Document != null)
+            {
+                fileId = responseObj.Result.Document.FileId;
+                fileUniqueId = responseObj.Result.Document.FileUniqueId;
+            }
+            else if (responseObj.Result?.Sticker != null)
+            {
+                fileId = responseObj.Result.Sticker.FileId;
+                fileUniqueId = responseObj.Result.Sticker.FileUniqueId;
+            }
+            else if (responseObj.Result?.Photo != null && responseObj.Result.Photo.Length > 0)
+            {
+                // 取最大尺寸的照片
+                var largestPhoto = responseObj.Result.Photo.OrderByDescending(p => p.FileSize).First();
+                fileId = largestPhoto.FileId;
+                fileUniqueId = largestPhoto.FileUniqueId;
+            }
+            else
+            {
+                throw new ApplicationException($"无法从 Telegram 响应中提取文件信息: {responseContent}");
+            }
 
             var metadata = new TelegramFileMetadata
             {
                 FileId = fileId,
-                FileUniqueId = responseObj.Result.Document.FileUniqueId,
+                FileUniqueId = fileUniqueId,
                 MessageId = responseObj.Result.MessageId,
                 ChatId = chatId,
                 OriginalFileName = fileName,
@@ -184,7 +207,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
             throw;
         }
     }
-    
+
     /// <summary>
     /// 创建配置了代理的HttpClient
     /// </summary>
@@ -192,13 +215,13 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
     private HttpClient CreateHttpClient()
     {
         HttpClient client;
-        
+
         // 检查是否有代理配置
         string proxyAddress = configService["Storage:TelegramProxyAddress"];
         string proxyPort = configService["Storage:TelegramProxyPort"];
         string proxyUsername = configService["Storage:TelegramProxyUsername"];
         string proxyPassword = configService["Storage:TelegramProxyPassword"];
-        
+
         if (!string.IsNullOrEmpty(proxyAddress) && !string.IsNullOrEmpty(proxyPort) && int.TryParse(proxyPort, out int port))
         {
             var proxy = new WebProxy
@@ -207,29 +230,29 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
                 BypassProxyOnLocal = false,
                 UseDefaultCredentials = false
             };
-            
+
             // 如果提供了代理认证信息
             if (!string.IsNullOrEmpty(proxyUsername))
             {
                 proxy.Credentials = new NetworkCredential(proxyUsername, proxyPassword);
             }
-            
+
             var handler = new HttpClientHandler
             {
                 Proxy = proxy,
                 UseProxy = true
             };
-            
+
             client = new HttpClient(handler);
         }
         else
         {
             client = new HttpClient();
         }
-        
+
         // 设置超时
         client.Timeout = TimeSpan.FromMinutes(5);
-        
+
         return client;
     }
 
@@ -246,6 +269,10 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         [JsonPropertyName("message_id")] public int MessageId { get; set; }
 
         [JsonPropertyName("document")] public TelegramDocument? Document { get; set; }
+
+        [JsonPropertyName("sticker")] public TelegramSticker? Sticker { get; set; }
+
+        [JsonPropertyName("photo")] public TelegramPhoto[]? Photo { get; set; }
     }
 
     private class TelegramDocument
@@ -261,6 +288,31 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         [JsonPropertyName("file_size")] public int FileSize { get; set; }
     }
 
+    private class TelegramSticker
+    {
+        [JsonPropertyName("file_id")] public string FileId { get; set; } = string.Empty;
+
+        [JsonPropertyName("file_unique_id")] public string FileUniqueId { get; set; } = string.Empty;
+
+        [JsonPropertyName("width")] public int Width { get; set; }
+
+        [JsonPropertyName("height")] public int Height { get; set; }
+
+        [JsonPropertyName("file_size")] public int FileSize { get; set; }
+    }
+
+    private class TelegramPhoto
+    {
+        [JsonPropertyName("file_id")] public string FileId { get; set; } = string.Empty;
+
+        [JsonPropertyName("file_unique_id")] public string FileUniqueId { get; set; } = string.Empty;
+
+        [JsonPropertyName("width")] public int Width { get; set; }
+
+        [JsonPropertyName("height")] public int Height { get; set; }
+
+        [JsonPropertyName("file_size")] public int FileSize { get; set; }
+    }
     // 存储关于上传文件的元数据
     private class TelegramFileMetadata
     {
