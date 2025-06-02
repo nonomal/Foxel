@@ -236,38 +236,58 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 throw new Exception($"找不到图片文件: {localFilePath}");
             }
 
-            // 创建缩略图
+            // 检查并生成缩略图（如果不存在）
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 20);
-            var thumbnailPath = Path.Combine(
-                Path.GetDirectoryName(localFilePath)!,
-                Path.GetFileNameWithoutExtension(Path.GetFileName(localFilePath)) + "_thumb.webp");
-
-            await ImageHelper.CreateThumbnailAsync(localFilePath, thumbnailPath, 500);
-
-            // 更新缩略图路径到数据库
-            await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 25);
-
-            if (picture.StorageType == StorageType.Local)
+            
+            string thumbnailForAI = localFilePath; // 用于AI分析的缩略图路径
+            
+            if (string.IsNullOrEmpty(picture.ThumbnailPath))
             {
-                // 本地存储缩略图
-                var relativeThumbnailPath =
-                    $"/Uploads/{Path.GetRelativePath("Uploads", Path.GetDirectoryName(thumbnailPath)!)}/{Path.GetFileName(thumbnailPath)}";
-                picture.ThumbnailPath = relativeThumbnailPath.Replace('\\', '/');
+                // 如果缩略图不存在，生成缩略图
+                var thumbnailPath = Path.Combine(
+                    Path.GetDirectoryName(localFilePath)!,
+                    Path.GetFileNameWithoutExtension(Path.GetFileName(localFilePath)) + "_thumb.webp");
+
+                await ImageHelper.CreateThumbnailAsync(localFilePath, thumbnailPath, 500);
+                thumbnailForAI = thumbnailPath;
+
+                // 更新缩略图路径到数据库
+                await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 25);
+
+                if (picture.StorageType == StorageType.Local)
+                {
+                    // 本地存储缩略图
+                    var relativeThumbnailPath =
+                        $"/Uploads/{Path.GetRelativePath("Uploads", Path.GetDirectoryName(thumbnailPath)!)}/{Path.GetFileName(thumbnailPath)}";
+                    picture.ThumbnailPath = relativeThumbnailPath.Replace('\\', '/');
+                }
+                else
+                {
+                    // 上传缩略图并获取存储路径或元数据
+                    await using var thumbnailFileStream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read);
+                    var thumbnailFileName = Path.GetFileName(thumbnailPath);
+                    var thumbnailContentType = "image/webp";
+
+                    string thumbnailStoragePath = await storageService.ExecuteAsync(
+                        picture.StorageType,
+                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailFileName, thumbnailContentType));
+
+                    // 将路径或元数据存储到ThumbnailPath
+                    picture.ThumbnailPath = thumbnailStoragePath;
+                }
             }
             else
             {
-                // 非本地存储，上传缩略图到对应的存储服务
-                await using var thumbnailFileStream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read);
-                var thumbnailFileName = Path.GetFileName(thumbnailPath);
-                var thumbnailContentType = "image/webp";
-
-                // 上传缩略图并获取存储路径或元数据
-                string thumbnailStoragePath = await storageService.ExecuteAsync(
-                    picture.StorageType,
-                    provider => provider.SaveAsync(thumbnailFileStream, thumbnailFileName, thumbnailContentType));
-
-                // 将路径或元数据存储到ThumbnailPath
-                picture.ThumbnailPath = thumbnailStoragePath;
+                // 如果缩略图已存在，下载用于AI分析
+                if (picture.StorageType != StorageType.Local)
+                {
+                    thumbnailForAI = await storageService.ExecuteAsync(picture.StorageType,
+                        provider => provider.DownloadFileAsync(picture.ThumbnailPath));
+                }
+                else
+                {
+                    thumbnailForAI = Path.Combine(Directory.GetCurrentDirectory(), picture.ThumbnailPath.TrimStart('/'));
+                }
             }
 
             // 3. 提取EXIF信息
@@ -283,7 +303,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             // 5. 将缩略图转换为Base64并调用AI分析
             await UpdatePictureStatus(task.PictureId, ProcessingStatus.Processing, 50);
-            string base64Image = await ImageHelper.ConvertImageToBase64(thumbnailPath);
+            string base64Image = await ImageHelper.ConvertImageToBase64(thumbnailForAI);
             var (title, description) = await aiService.AnalyzeImageAsync(base64Image);
 
             // 6. 确定最终标题和描述
