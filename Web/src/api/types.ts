@@ -285,3 +285,33 @@ export interface BindAccountRequest {
   bindType: BindType;
   thirdPartyUserId: string;
 }
+
+// 用户筛选请求参数
+export interface UserFilterRequest {
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+// 用户统计信息
+export interface UserStatistics {
+  totalPictures: number;
+  totalAlbums: number;
+  totalFavorites: number;
+  favoriteReceivedCount: number;
+  diskUsageMB: number;
+  accountAgeDays: number;
+}
+
+// 用户详情响应
+export interface UserDetailResponse {
+  id: number;
+  userName: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+  statistics: UserStatistics;
+}

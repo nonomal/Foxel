@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Card, Row, Col, Typography, Button, Space, Descriptions, 
-  Avatar, Spin, Tabs, Statistic, message, Tag, Divider,
+  Spin, Tabs, Statistic, message, Tag, Divider,
   Result
 } from 'antd';
 import { 
-  UserOutlined, ArrowLeftOutlined, EditOutlined, 
-  PictureOutlined, FileImageOutlined, HeartOutlined
+  ArrowLeftOutlined, 
+  PictureOutlined, FileImageOutlined, HeartOutlined,
+  FolderOutlined, HddOutlined, CalendarOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
-import { getUserById } from '../../../api';
-import type { UserResponse } from '../../../api/types';
+import { getUserDetail } from '../../../api';
+import type { UserDetailResponse } from '../../../api/types';
+import UserAvatar from '../../../components/UserAvatar';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -19,7 +21,7 @@ const UserDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [user, setUser] = useState<UserResponse | null>(null);
+  const [user, setUser] = useState<UserDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   // 加载用户数据
@@ -29,7 +31,7 @@ const UserDetail: React.FC = () => {
       
       try {
         setLoading(true);
-        const response = await getUserById(parseInt(id));
+        const response = await getUserDetail(parseInt(id));
         if (response.success && response.data) {
           setUser(response.data);
         } else {
@@ -51,19 +53,23 @@ const UserDetail: React.FC = () => {
     navigate('/admin/users');
   };
 
-  // 跳转到编辑页面
-  const handleEdit = () => {
-    navigate(`/admin/users/edit/${id}`);
+  // 格式化存储大小
+  const formatDiskUsage = (mb: number): string => {
+    if (mb < 1024) {
+      return `${mb.toFixed(1)} MB`;
+    }
+    return `${(mb / 1024).toFixed(2)} GB`;
   };
 
-  // 模拟数据 - 实际项目中应该从API获取
-  const userStats = {
-    totalPhotos: 125,
-    totalAlbums: 14,
-    totalFavorites: 48,
-    diskUsage: '1.2 GB',
-    lastLogin: '2023-10-25 14:32',
-    accountAge: '268 天',
+  // 格式化账户年龄
+  const formatAccountAge = (days: number): string => {
+    if (days < 30) {
+      return `${days} 天`;
+    } else if (days < 365) {
+      return `${Math.floor(days / 30)} 个月`;
+    } else {
+      return `${Math.floor(days / 365)} 年 ${Math.floor((days % 365) / 30)} 个月`;
+    }
   };
 
   if (loading) {
@@ -108,7 +114,7 @@ const UserDetail: React.FC = () => {
         <Col xs={24} lg={8}>
           <Card>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <Avatar size={100} icon={<UserOutlined />} />
+              <UserAvatar size={100} email={user.email} />
               <Title level={3} style={{ marginTop: 16, marginBottom: 0 }}>
                 {user.userName}
               </Title>
@@ -118,9 +124,6 @@ const UserDetail: React.FC = () => {
                   {user.role || '访客'}
                 </Tag>
               </div>
-              <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
-                编辑用户
-              </Button>
             </div>
             
             <Divider />
@@ -130,8 +133,11 @@ const UserDetail: React.FC = () => {
               <Descriptions.Item label="注册时间">
                 {new Date(user.createdAt).toLocaleString()}
               </Descriptions.Item>
-              <Descriptions.Item label="最近登录">
-                {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '未登录'}
+              <Descriptions.Item label="账户年龄">
+                {formatAccountAge(user.statistics.accountAgeDays)}
+              </Descriptions.Item>
+              <Descriptions.Item label="存储使用量">
+                {formatDiskUsage(user.statistics.diskUsageMB)}
               </Descriptions.Item>
             </Descriptions>
           </Card>
@@ -148,61 +154,46 @@ const UserDetail: React.FC = () => {
                   <Col xs={12} sm={8}>
                     <Statistic 
                       title="照片数量" 
-                      value={userStats.totalPhotos}
+                      value={user.statistics.totalPictures}
                       prefix={<FileImageOutlined />} 
                     />
                   </Col>
                   <Col xs={12} sm={8}>
                     <Statistic 
                       title="相册数量" 
-                      value={userStats.totalAlbums}
-                      prefix={<PictureOutlined />} 
+                      value={user.statistics.totalAlbums}
+                      prefix={<FolderOutlined />} 
                     />
                   </Col>
                   <Col xs={12} sm={8}>
                     <Statistic 
                       title="收藏数量" 
-                      value={userStats.totalFavorites}
+                      value={user.statistics.totalFavorites}
                       prefix={<HeartOutlined />} 
                     />
                   </Col>
                   <Col xs={12} sm={8}>
                     <Statistic 
-                      title="存储使用" 
-                      value={userStats.diskUsage}
+                      title="被收藏数量" 
+                      value={user.statistics.favoriteReceivedCount}
+                      prefix={<HeartOutlined style={{ color: '#ff4d4f' }} />} 
                     />
                   </Col>
                   <Col xs={12} sm={8}>
                     <Statistic 
-                      title="最近登录" 
-                      value={userStats.lastLogin}
+                      title="存储使用量" 
+                      value={formatDiskUsage(user.statistics.diskUsageMB)}
+                      prefix={<HddOutlined />} 
                     />
                   </Col>
                   <Col xs={12} sm={8}>
                     <Statistic 
                       title="账户年龄" 
-                      value={userStats.accountAge}
+                      value={formatAccountAge(user.statistics.accountAgeDays)}
+                      prefix={<CalendarOutlined />}
                     />
                   </Col>
                 </Row>
-              </TabPane>
-              
-              <TabPane 
-                tab={<span><FileImageOutlined />最近照片</span>} 
-                key="2"
-              >
-                <div style={{ padding: '20px 0', textAlign: 'center' }}>
-                  <Text type="secondary">此功能在开发中</Text>
-                </div>
-              </TabPane>
-              
-              <TabPane 
-                tab={<span><PictureOutlined />最近相册</span>} 
-                key="3"
-              >
-                <div style={{ padding: '20px 0', textAlign: 'center' }}>
-                  <Text type="secondary">此功能在开发中</Text>
-                </div>
               </TabPane>
             </Tabs>
           </Card>

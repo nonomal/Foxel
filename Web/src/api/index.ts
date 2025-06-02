@@ -67,7 +67,8 @@ export {
     createUser,
     updateUser,
     deleteUser,
-    batchDeleteUsers
+    batchDeleteUsers,
+    getUserDetail
 } from './userManagementApi';
 
 // 导出PictureManagement API

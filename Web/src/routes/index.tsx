@@ -21,6 +21,7 @@ import AdminDashboard from '../pages/admin/dashboard/Index';
 import System from '../pages/admin/system/Index';
 import UserManagement from '../pages/admin/users/Index';
 import PictureManagement from '../pages/admin/pictures/Index';
+import UserDetail from '../pages/admin/users/UserDetail';
 
 export interface RouteConfig {
   path: string;
@@ -145,7 +146,19 @@ const routes: RouteConfig[] = [
       title: '用户管理'
     }
   },
-    {
+  {
+    path: 'users/:id',
+    key: 'user-detail',
+    label: '用户详情',
+    element: <UserDetail />,
+    area: 'admin',
+    hideInMenu: true,
+    breadcrumb: {
+      title: '用户详情',
+      parent: 'users'
+    }
+  },
+  {
     path: 'pictures',
     key: 'admin-picture',
     icon: <PictureOutlined />,

@@ -9,7 +9,7 @@ namespace Foxel.Services.Management;
 public class UserManagementService(
     IDbContextFactory<MyDbContext> contextFactory) : IUserManagementService
 {
-    public async Task<PaginatedResult<UserResponse>> GetUsersAsync(int page = 1, int pageSize = 10)
+    public async Task<PaginatedResult<UserResponse>> GetUsersAsync(int page = 1, int pageSize = 10, string? searchQuery = null, string? role = null, DateTime? startDate = null, DateTime? endDate = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
@@ -19,7 +19,39 @@ public class UserManagementService(
         // 构建查询
         var query = dbContext.Users
             .Include(u => u.Role)
-            .OrderByDescending(u => u.CreatedAt);
+            .AsQueryable();
+
+        // 应用筛选条件
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            query = query.Where(u => u.UserName.Contains(searchQuery) || u.Email.Contains(searchQuery));
+        }
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            query = query.Where(u => u.Role != null && u.Role.Name == role);
+        }
+
+        if (startDate.HasValue)
+        {
+            // 确保DateTime是UTC时区
+            var utcStartDate = startDate.Value.Kind == DateTimeKind.Utc 
+                ? startDate.Value 
+                : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+            query = query.Where(u => u.CreatedAt >= utcStartDate);
+        }
+
+        if (endDate.HasValue)
+        {
+            // 确保DateTime是UTC时区，并设置为当天结束时间
+            var utcEndDate = endDate.Value.Kind == DateTimeKind.Utc 
+                ? endDate.Value.Date.AddDays(1).AddTicks(-1)
+                : DateTime.SpecifyKind(endDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+            query = query.Where(u => u.CreatedAt <= utcEndDate);
+        }
+
+        // 排序
+        query = query.OrderByDescending(u => u.CreatedAt);
 
         // 获取总数和分页数据
         var totalCount = await query.CountAsync();
@@ -214,6 +246,60 @@ public class UserManagementService(
         }
 
         return result;
+    }
+
+    public async Task<UserDetailResponse> GetUserDetailAsync(int id)
+    {
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
+
+        var user = await dbContext.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == id);
+
+        if (user == null)
+            throw new KeyNotFoundException($"找不到ID为{id}的用户");
+
+        // 获取用户统计数据
+        var pictureCount = await dbContext.Pictures
+            .Where(p => p.UserId == id)
+            .CountAsync();
+
+        var albumCount = await dbContext.Albums
+            .Where(a => a.UserId == id)
+            .CountAsync();
+
+        var favoriteCount = await dbContext.Favorites
+            .Where(f => f.UserId == id)
+            .CountAsync();
+
+        var favoriteReceivedCount = await dbContext.Favorites
+            .Join(dbContext.Pictures, f => f.PictureId, p => p.Id, (f, p) => new { f, p })
+            .Where(fp => fp.p.UserId == id)
+            .CountAsync();
+
+        // 计算存储使用量
+        var diskUsage = 0; 
+
+        // 计算账户年龄
+        var accountAge = (DateTime.UtcNow - user.CreatedAt).Days;
+
+        return new UserDetailResponse
+        {
+            Id = user.Id,
+            UserName = user.UserName,
+            Email = user.Email,
+            Role = user.Role?.Name ?? "User",
+            CreatedAt = user.CreatedAt,
+            Statistics = new UserStatistics
+            {
+                TotalPictures = pictureCount,
+                TotalAlbums = albumCount,
+                TotalFavorites = favoriteCount,
+                FavoriteReceivedCount = favoriteReceivedCount,
+                DiskUsageMB = diskUsage,
+                AccountAgeDays = accountAge
+            }
+        };
     }
 
     // 辅助方法：生成密码哈希

@@ -14,11 +14,33 @@ public class UserManagementController(IUserManagementService userManagementServi
 {
     [HttpGet("get_users")]
     public async Task<ActionResult<PaginatedResult<UserResponse>>> GetUsers(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchQuery = null,
+        [FromQuery] string? role = null,
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null)
     {
         try
         {
-            var users = await userManagementService.GetUsersAsync(page, pageSize);
+            DateTime? utcStartDate = null;
+            DateTime? utcEndDate = null;
+
+            if (startDate.HasValue)
+            {
+                utcStartDate = startDate.Value.Kind == DateTimeKind.Utc 
+                    ? startDate.Value 
+                    : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+            }
+
+            if (endDate.HasValue)
+            {
+                utcEndDate = endDate.Value.Kind == DateTimeKind.Utc 
+                    ? endDate.Value 
+                    : DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+            }
+
+            var users = await userManagementService.GetUsersAsync(page, pageSize, searchQuery, role, utcStartDate, utcEndDate);
             return PaginatedSuccess(users.Data, users.TotalCount, users.Page, users.PageSize);
         }
         catch (Exception ex)
@@ -119,6 +141,24 @@ public class UserManagementController(IUserManagementService userManagementServi
         catch (Exception ex)
         {
             return Error<BatchDeleteResult>($"批量删除用户失败: {ex.Message}", 500);
+        }
+    }
+
+    [HttpGet("get_user_detail/{id}")]
+    public async Task<ActionResult<BaseResult<UserDetailResponse>>> GetUserDetail(int id)
+    {
+        try
+        {
+            var userDetail = await userManagementService.GetUserDetailAsync(id);
+            return Success(userDetail, "用户详情获取成功");
+        }
+        catch (KeyNotFoundException)
+        {
+            return Error<UserDetailResponse>("找不到指定用户", 404);
+        }
+        catch (Exception ex)
+        {
+            return Error<UserDetailResponse>($"获取用户详情失败: {ex.Message}", 500);
         }
     }
 }

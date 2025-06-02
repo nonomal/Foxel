@@ -5,15 +5,28 @@ import {
   type UserResponse,
   type CreateUserRequest,
   type AdminUpdateUserRequest,
-  type BatchDeleteResult
+  type BatchDeleteResult,
+  type UserFilterRequest,
+  type UserDetailResponse
 } from './types';
 
 // 获取用户列表
 export const getUsers = async (
-  page: number = 1,
-  pageSize: number = 10
+  filters: UserFilterRequest = {}
 ): Promise<PaginatedResult<UserResponse>> => {
-  const response = await fetchApi(`/management/user/get_users?page=${page}&pageSize=${pageSize}`);
+  const { page = 1, pageSize = 10, searchQuery, role, startDate, endDate } = filters;
+  
+  const params = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+  });
+  
+  if (searchQuery) params.append('searchQuery', searchQuery);
+  if (role) params.append('role', role);
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  
+  const response = await fetchApi(`/management/user/get_users?${params.toString()}`);
   return response as PaginatedResult<UserResponse>;
 };
 
@@ -21,6 +34,14 @@ export const getUsers = async (
 export const getUserById = async (id: number): Promise<BaseResult<UserResponse>> => {
   return fetchApi<UserResponse>(
     `/management/user/get_user/${id}`,
+    { method: 'GET' }
+  );
+};
+
+// 根据ID获取用户详情
+export const getUserDetail = async (id: number): Promise<BaseResult<UserDetailResponse>> => {
+  return fetchApi<UserDetailResponse>(
+    `/management/user/get_user_detail/${id}`,
     { method: 'GET' }
   );
 };

@@ -1,26 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Table, Button, Card, Input, Space, Modal, Form, 
-  message, Tag, Typography, Popconfirm, Row, Col, Select
+  message, Tag, Typography, Popconfirm, Row, Col, Select,
+  DatePicker, Divider
 } from 'antd';
 import { 
   UserOutlined, DeleteOutlined, EditOutlined, 
   SearchOutlined, ExclamationCircleOutlined, ReloadOutlined,
-  UserAddOutlined, UserDeleteOutlined, TeamOutlined
+  UserAddOutlined, UserDeleteOutlined, TeamOutlined,
+  EyeOutlined, FilterOutlined, ClearOutlined
 } from '@ant-design/icons';
 import { 
   getUsers, deleteUser, createUser, updateUser, batchDeleteUsers, UserRole
 } from '../../../api';
-import type { UserResponse, CreateUserRequest, AdminUpdateUserRequest } from '../../../api/types';
+import type { UserResponse, CreateUserRequest, AdminUpdateUserRequest, UserFilterRequest } from '../../../api/types';
 import { useOutletContext } from 'react-router';
+import { useNavigate } from 'react-router';
 import type { Breakpoint } from 'antd';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { confirm } = Modal;
+const { RangePicker } = DatePicker;
 
 const UserManagement: React.FC = () => {
   const { isMobile } = useOutletContext<{ isMobile: boolean }>();
+  const navigate = useNavigate();
   
   // 状态管理
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -28,8 +33,12 @@ const UserManagement: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  
+  // 筛选状态
+  const [filters, setFilters] = useState<UserFilterRequest>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterForm] = Form.useForm();
   
   // 模态框状态
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -38,10 +47,14 @@ const UserManagement: React.FC = () => {
   const [form] = Form.useForm();
 
   // 加载用户数据
-  const fetchUsers = useCallback(async (page = currentPage, size = pageSize) => {
+  const fetchUsers = useCallback(async (page = currentPage, size = pageSize, filterParams = filters) => {
     setLoading(true);
     try {
-      const response = await getUsers(page, size);
+      const response = await getUsers({
+        page,
+        pageSize: size,
+        ...filterParams
+      });
       if (response.success && response.data) {
         setUsers(response.data || []);
         setTotal(response.totalCount || 0);
@@ -54,7 +67,7 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, filters]);
 
   // 初始加载
   useEffect(() => {
@@ -68,12 +81,38 @@ const UserManagement: React.FC = () => {
     fetchUsers(page, size || pageSize);
   };
 
-  // 处理搜索
-  const handleSearch = () => {
-    // 这里应该向后端发送搜索请求，但目前API不支持搜索，所以仅前端过滤
-    // 实际项目中应该添加后端搜索支持
+  // 处理筛选
+  const handleFilter = async () => {
+    try {
+      const values = await filterForm.validateFields();
+      const newFilters: UserFilterRequest = {
+        searchQuery: values.searchQuery,
+        role: values.role,
+        startDate: values.dateRange?.[0]?.format('YYYY-MM-DD'),
+        endDate: values.dateRange?.[1]?.format('YYYY-MM-DD'),
+      };
+      setFilters(newFilters);
+      setCurrentPage(1);
+      fetchUsers(1, pageSize, newFilters);
+    } catch (error) {
+      console.error('Filter validation failed:', error);
+    }
+  };
+
+  // 清除筛选
+  const handleClearFilters = () => {
+    filterForm.resetFields();
+    setFilters({});
     setCurrentPage(1);
-    fetchUsers(1, pageSize);
+    fetchUsers(1, pageSize, {});
+  };
+
+  // 处理搜索（快速搜索）
+  const handleQuickSearch = (searchQuery: string) => {
+    const newFilters = { ...filters, searchQuery };
+    setFilters(newFilters);
+    setCurrentPage(1);
+    fetchUsers(1, pageSize, newFilters);
   };
 
   // 打开创建用户模态框
@@ -244,6 +283,13 @@ const UserManagement: React.FC = () => {
       key: 'action',
       render: (_: any, record: UserResponse) => (
         <Space size="small">
+            <Button 
+              type="text" 
+              icon={<EyeOutlined />} 
+              onClick={() => navigate(`/admin/users/${record.id}`)}
+            >
+              {isMobile ? '' : '查看'}
+            </Button>
           <Button 
             type="text" 
             icon={<EditOutlined />} 
@@ -309,6 +355,13 @@ const UserManagement: React.FC = () => {
               >
                 刷新
               </Button>
+              <Button 
+                icon={<FilterOutlined />} 
+                onClick={() => setShowFilters(!showFilters)}
+                type={showFilters ? 'primary' : 'default'}
+              >
+                高级筛选
+              </Button>
             </Space>
           </Col>
           <Col xs={24} sm={10} md={8}>
@@ -316,12 +369,50 @@ const UserManagement: React.FC = () => {
               placeholder="搜索用户名或邮箱"
               allowClear
               enterButton={<SearchOutlined />}
-              onSearch={handleSearch}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              value={searchQuery}
+              onSearch={handleQuickSearch}
             />
           </Col>
         </Row>
+
+        {/* 高级筛选面板 */}
+        {showFilters && (
+          <>
+            <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fafafa' }}>
+              <Form
+                form={filterForm}
+                layout="inline"
+                onFinish={handleFilter}
+              >
+                <Form.Item name="searchQuery" label="搜索关键词">
+                  <Input placeholder="用户名或邮箱" style={{ width: 200 }} />
+                </Form.Item>
+                
+                <Form.Item name="role" label="角色">
+                  <Select placeholder="选择角色" style={{ width: 150 }} allowClear>
+                    <Option value={UserRole.Administrator}>管理员</Option>
+                    <Option value={UserRole.User}>普通用户</Option>
+                  </Select>
+                </Form.Item>
+                
+                <Form.Item name="dateRange" label="注册时间">
+                  <RangePicker style={{ width: 250 }} />
+                </Form.Item>
+                
+                <Form.Item>
+                  <Space>
+                    <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                      筛选
+                    </Button>
+                    <Button icon={<ClearOutlined />} onClick={handleClearFilters}>
+                      清除
+                    </Button>
+                  </Space>
+                </Form.Item>
+              </Form>
+            </Card>
+            <Divider style={{ margin: '16px 0' }} />
+          </>
+        )}
 
         <Table
           rowKey="id"
