@@ -20,14 +20,25 @@ export async function fetchApi<T = any>(
             headers,
         });
 
-        if (response.status === 401) {
+        if (response.status === 401 && !url.includes('/login')) {
             clearAuthData();
-            const message = encodeURIComponent('授权过期重新登录');
-            window.location.href = `/login?message=${message}`;
+            const { message } = await import('antd');
+            message.error('授权过期重新登录');
+            window.location.href = `/login`;
             return {
-                success: false,
-                message: '授权过期重新登录',
-                code: 401,
+            success: false,
+            message: '授权过期重新登录',
+            code: 401,
+            } as BaseResult<T>;
+        }
+
+        if (response.status === 403) {
+            const { message } = await import('antd');
+            message.error('没有权限');
+            return {
+            success: false,
+            message: '没有权限',
+            code: 403,
             } as BaseResult<T>;
         }
 
