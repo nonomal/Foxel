@@ -27,80 +27,63 @@ function AdminLayout() {
 
     const navigate = useNavigate();
     const location = useLocation();
-
     const routes = useMemo(() => getAdminRoutes(), []);
 
     const headerRouteData = useMemo(() => ({
         routeInfo: currentRouteData.routeInfo,
         params: currentRouteData.params,
-        title: (currentRouteData.routeInfo?.label || '')
     }), [currentRouteData]);
 
-    const {
-        token: { colorBgContainer },
-    } = theme.useToken();
+    const { token: { colorBgContainer } } = theme.useToken();
 
     const findCurrentRoute = useCallback(() => {
         const pathname = location.pathname;
-        const adminPath = pathname.replace(/^\/admin\/?/, '');
+        const adminBasePrefix = '/admin';
+
+        if (!pathname.startsWith(adminBasePrefix)) {
+            return { routeInfo: undefined, params: {} };
+        }
+
+        let adminPath = pathname.substring(adminBasePrefix.length);
+        if (adminPath.startsWith('/')) {
+            adminPath = adminPath.substring(1);
+        }
+
+        if (adminPath.length > 0 && adminPath.endsWith('/')) {
+            adminPath = adminPath.slice(0, -1);
+        }
 
         if (adminPath === '') {
             const defaultRoute = routes.find(route => route.path === '');
             if (defaultRoute) {
-                return {
-                    routeInfo: defaultRoute,
-                    params: {}
-                };
+                return { routeInfo: defaultRoute, params: {} };
             }
         }
 
-        // 查找精确匹配的路由
         for (const route of routes) {
-            const match = matchPath(
-                { path: route.path, end: true },
-                adminPath
-            );
+            if (route.path === '' && adminPath !== '') continue;
+            if (route.path !== '' && adminPath === '') continue;
 
-            if (match) {
-                return {
-                    routeInfo: route,
-                    params: Object.fromEntries(
-                        Object.entries(match.params || {}).filter(
-                            ([, value]) => value !== undefined
-                        )
-                    ) as Record<string, string>
-                };
+            if (route.path === adminPath) {
+                return { routeInfo: route, params: {} };
             }
-        }
 
-        // 查找包含参数的路由
-        for (const route of routes) {
             if (route.path.includes(':')) {
-                const basePath = route.path.split('/:')[0];
-                if (adminPath.startsWith(basePath)) {
-                    const match = matchPath(
-                        { path: route.path, end: false },
-                        adminPath
-                    );
-
-                    if (match) {
-                        return {
-                            routeInfo: route,
-                            params: Object.fromEntries(
-                                Object.entries(match.params || {}).filter(
-                                    ([, value]) => value !== undefined
-                                )
-                            ) as Record<string, string>
-                        };
-                    }
+                const match = matchPath({ path: route.path, end: true }, adminPath);
+                if (match) {
+                    return {
+                        routeInfo: route,
+                        params: Object.fromEntries(
+                            Object.entries(match.params || {}).filter(
+                                ([, value]) => value !== undefined && value !== ""
+                            ).map(([key, value]) => [key, String(value)])
+                        ) as Record<string, string>
+                    };
                 }
             }
         }
 
-        return {
-            routeInfo: undefined,
-            params: {}
-        };
+        return { routeInfo: undefined, params: {} };
     }, [location.pathname, routes]);
 
     useEffect(() => {
@@ -108,7 +91,6 @@ function AdminLayout() {
             navigate('/login');
             return;
         }
-
         if (!user) {
             refreshUser();
         }
@@ -120,15 +102,16 @@ function AdminLayout() {
             navigate('/');
         }
     }, [user, hasRole, navigate, loading]);
+
     useEffect(() => {
         const routeData = findCurrentRoute();
         setCurrentRouteData(routeData);
     }, [location.pathname, findCurrentRoute]);
+
     useEffect(() => {
         setCollapsed(isMobile);
     }, [isMobile]);
 
-    // 退出登录处理
     const handleLogout = () => {
         clearAuthData();
         navigate('/login');
@@ -138,34 +121,23 @@ function AdminLayout() {
         setCollapsed(!collapsed);
     };
 
-    // 加载状态
     if (loading) {
-        return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-            加载中...
-        </div>;
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                加载中...
+            </div>
+        );
     }
 
-    // 权限检查
     if (user && !hasRole(UserRole.Administrator)) {
         return <Navigate to="/" replace />;
     }
 
     return (
-        <Layout style={{
-            height: '100vh',
-            background: '#f0f2f5',
-            fontWeight: 400
-        }}>
-            {/* 侧边栏组件 */}
-            <Sidebar
-                collapsed={collapsed}
-                isMobile={isMobile}
-                onClose={toggleCollapsed}
-                area="admin"
-            />
-
+        <Layout style={{ height: '100vh', background: '#f0f2f5', fontWeight: 400 }}>
+            <Sidebar collapsed={collapsed} isMobile={isMobile} onClose={toggleCollapsed} area="admin" />
+            
             <Layout>
-                {/* 顶部导航栏组件 */}
                 <Header
                     collapsed={collapsed}
                     toggleCollapsed={toggleCollapsed}
@@ -174,7 +146,6 @@ function AdminLayout() {
                     isMobile={isMobile}
                 />
 
-                {/* 主要内容区 */}
                 <Content style={{
                     margin: isMobile ? '10px' : '20px',
                     background: '#f0f2f5',
@@ -191,14 +162,10 @@ function AdminLayout() {
                         position: 'relative',
                         overflow: 'hidden'
                     }}>
-                        {/* 渲染子路由组件 */}
-                        <Outlet context={{
-                            isMobile,
-                            isAdminPanel: true
-                        }} />
+                        <Outlet context={{ isMobile, isAdminPanel: true }} />
                     </div>
                 </Content>
-                {/* 页脚组件 */}
+                
                 <Footer isMobile={isMobile} />
             </Layout>
         </Layout>

@@ -157,7 +157,7 @@ const routes: RouteConfig[] = [
     hideInMenu: true,
     breadcrumb: {
       title: '用户详情',
-      parent: 'users'
+      parent: 'admin-user' // 修改: 指向父路由的 key
     }
   },
   {

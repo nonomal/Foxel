@@ -12,7 +12,7 @@ function AllImages() {
   const isMobile = useIsMobile();
   const [, setImages] = useState<PictureResponse[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(50);
   const [sortBy, setSortBy] = useState<string>('uploadDate_desc');
   const [isUploadDialogVisible, setIsUploadDialogVisible] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);

@@ -79,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
         // 管理后台路径处理
         if (area === 'admin') {
             // 提取 /admin/ 后面的部分
-            const adminPath = pathname.replace(/^\/admin\/?/, '');
+            let adminPath = pathname.replace(/^\/admin\/?/, '');
 
             // 如果是管理后台首页
             if (adminPath === '') {
@@ -87,18 +87,25 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, isMobile = false, onClose,
                 return defaultRoute ? defaultRoute.path : '';
             }
 
+            // 先尝试精确匹配
+            const exactMatch = routes.find(route => route.path === adminPath);
+            if (exactMatch) {
+                return exactMatch.path;
+            }
+
+            // 再尝试参数路由匹配
             const matchedRoute = routes.find(route => {
                 if (route.path.includes(':')) {
                     const basePath = route.path.split(':')[0].replace(/\/$/, '');
                     return adminPath.startsWith(basePath);
                 }
-                return adminPath === route.path;
+                return false;
             });
 
             return matchedRoute ? matchedRoute.path : '';
         }
 
-        // 主应用路径处理
+        // 主应用路径处理保持不变
         const matchedRoute = routes.find(route => {
             if (route.path.includes(':')) {
                 const basePath = route.path.split(':')[0].replace(/\/$/, '');

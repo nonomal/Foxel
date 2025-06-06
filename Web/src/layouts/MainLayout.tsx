@@ -1,18 +1,18 @@
-import {useState, useEffect} from 'react';
-import {Outlet, useNavigate, useLocation, matchPath} from 'react-router';
-import {Layout, theme} from 'antd';
-import {clearAuthData, isAuthenticated} from '../api';
+import { useState, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation, matchPath } from 'react-router';
+import { Layout, theme } from 'antd';
+import { clearAuthData, isAuthenticated } from '../api';
 import useIsMobile from '../hooks/useIsMobile';
-import {useAuth} from '../auth/AuthContext';
+import { useAuth } from '../auth/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import {getMainRoutes, type RouteConfig} from '../routes';
+import { getMainRoutes, type RouteConfig } from '../routes';
 
-const {Content} = Layout;
+const { Content } = Layout;
 
 function MainLayout() {
-    const {refreshUser} = useAuth();
+    const { refreshUser } = useAuth();
     const isMobile = useIsMobile();
     const [collapsed, setCollapsed] = useState(isMobile);
     const [currentRouteData, setCurrentRouteData] = useState<{
@@ -29,7 +29,7 @@ function MainLayout() {
     const routes = getMainRoutes();
 
     const {
-        token: {colorBgContainer},
+        token: { colorBgContainer },
     } = theme.useToken();
 
     // 查找当前路由信息
@@ -39,7 +39,7 @@ function MainLayout() {
         // 测试每个路由是否匹配当前路径
         for (const route of routes) {
             const match = matchPath(
-                {path: `/${route.path}`, end: true},
+                { path: `/${route.path}`, end: true },
                 pathname
             );
 
@@ -63,7 +63,7 @@ function MainLayout() {
 
             if (pathname.startsWith(pattern)) {
                 const match = matchPath(
-                    {path: `/${route.path}`, end: false},
+                    { path: `/${route.path}`, end: false },
                     pathname
                 );
 
@@ -141,29 +141,24 @@ function MainLayout() {
 
                 {/* 主要内容区 */}
                 <Content style={{
-                    margin: isMobile ? '10px' : '20px',
-                    background: '#fcfcfc',
+                    padding: isMobile ? '10px' : '20px',
+                    background: colorBgContainer,
                     position: 'relative',
-                    borderRadius: isMobile ? 10 : 20,
                     overflowY: 'auto'
                 }}>
                     <div style={{
-                        padding: isMobile ? '15px' : '25px',
                         minHeight: '100%',
-                        background: colorBgContainer,
-                        boxShadow: '0 6px 30px rgba(0,0,0,0.03)',
-                        border: '1px solid #f0f0f0',
                         position: 'relative',
                         overflow: 'hidden'
                     }}>
                         {/* 渲染子路由组件 */}
                         <Outlet context={{
                             isMobile
-                        }}/>
+                        }} />
                     </div>
                 </Content>
                 {/* 页脚组件 */}
-                <Footer isMobile={isMobile}/>
+                <Footer isMobile={isMobile} />
             </Layout>
         </Layout>
     );

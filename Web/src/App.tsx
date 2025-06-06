@@ -81,7 +81,7 @@ function App() {
               {adminRoutes.map((route) => (
                 <Route
                   key={route.key}
-                  path={route.path}
+                  path={route.path === '' ? 'index' : route.path}
                   element={route.element}
                 />
               ))}

@@ -6,19 +6,19 @@ import {
     UserOutlined,
     LogoutOutlined,
     DashboardOutlined,
-    HomeOutlined,
     RightOutlined,
     SearchOutlined
 } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
-import { type RouteConfig } from '../../routes';
+import { getMainRoutes, getAdminRoutes, type RouteConfig } from '../../routes';
 import UserAvatar from '../../components/UserAvatar';
 import { UserRole } from '../../api/types';
 import SearchDialog from '../../components/search/SearchDialog';
 import useIsMobile from '../../hooks/useIsMobile';
 
 const { Header: AntHeader } = Layout;
+
 interface HeaderProps {
     collapsed: boolean;
     toggleCollapsed: () => void;
@@ -31,13 +31,6 @@ interface HeaderProps {
     isMobile?: boolean;
 }
 
-// 面包屑项目类型定义
-interface BreadcrumbItem {
-    title: string;
-    href?: string;
-    icon?: React.ReactNode;
-}
-
 const Header: React.FC<HeaderProps> = ({
     collapsed,
     toggleCollapsed,
@@ -45,21 +38,16 @@ const Header: React.FC<HeaderProps> = ({
     currentRouteData,
     isMobile = false
 }) => {
-    const { user } = useAuth();
+    const { user, hasRole } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const headerRef = useRef<HTMLDivElement>(null);
-    const { hasRole } = useAuth();
     const isMobileDevice = useIsMobile();
-
-    // 添加搜索对话框状态
     const [searchDialogVisible, setSearchDialogVisible] = useState(false);
     const [searchText, setSearchText] = useState('');
 
-    const {
-        token: { colorBgContainer },
-    } = theme.useToken();
+    const { token: { colorBgContainer } } = theme.useToken();
 
-    // 用户菜单项
     const userMenuItems = [
         {
             key: 'profile',
@@ -72,7 +60,7 @@ const Header: React.FC<HeaderProps> = ({
                 key: 'admin',
                 icon: <DashboardOutlined />,
                 label: '后台管理',
-                onClick: () => navigate('/admin')
+                onClick: () => navigate('/admin/dashboard')
             }
         ] : []),
         {
@@ -83,128 +71,124 @@ const Header: React.FC<HeaderProps> = ({
         }
     ];
 
-    // 根据路由信息生成面包屑导航
     const renderBreadcrumb = () => {
-        // 如果有传入的标题，直接使用标题作为面包屑
-        if (currentRouteData.title) {
-            return (
-                <Breadcrumb
-                    separator={<RightOutlined style={{ fontSize: 12 }} />}
-                    style={{ margin: 0 }}
-                    items={[
-                        {
-                            title: '首页',
-                            href: '/',
-                        },
-                        {
-                            title: currentRouteData.title
-                        }
-                    ]}
-                />
-            );
+        const { routeInfo, params, title: explicitTitle } = currentRouteData;
+        const antdBreadcrumbItems: Array<{ title: React.ReactNode; href?: string }> = [];
+        
+        const currentPath = location.pathname;
+        const isAdminArea = routeInfo?.area === 'admin';
+        const baseHref = isAdminArea ? '/admin' : '/';
+        const baseTitle = isAdminArea ? '管理后台' : '首页';
+
+        if (currentPath === baseHref && !explicitTitle && (!routeInfo || routeInfo.path === '')) {
+            antdBreadcrumbItems.push({ title: baseTitle });
+        } else {
+            antdBreadcrumbItems.push({ title: <Link to={baseHref}>{baseTitle}</Link> });
         }
 
-        // 如果没有路由信息，返回首页面包屑
-        if (!currentRouteData.routeInfo) {
-            return (
-                <Breadcrumb
-                    separator={<RightOutlined style={{ fontSize: 12 }} />}
-                    style={{ margin: 0 }}
-                    items={[
-                        {
-                            title: '首页',
-                            href: '/',
-                        }
-                    ]}
-                />
-            );
-        }
-
-        // 获取当前路由信息
-        const { routeInfo, params } = currentRouteData;
-        const breadcrumb = routeInfo.breadcrumb;
-
-        if (!breadcrumb) {
-            return (
-                <Breadcrumb
-                    separator={<RightOutlined style={{ fontSize: 12 }} />}
-                    style={{ margin: 0 }}
-                    items={[
-                        {
-                            title: '首页',
-                            href: '/',
-                        },
-                        {
-                            title: routeInfo.label
-                        }
-                    ]}
-                />
-            );
-        }
-
-        // 准备面包屑项目
-        const breadcrumbItems: BreadcrumbItem[] = [
-            {
-                title: routeInfo.area === 'admin' ? '管理后台' : '首页',
-                href: routeInfo.area === 'admin' ? '/admin' : '/',
-                icon: routeInfo.area === 'admin' ? <DashboardOutlined /> : <HomeOutlined />
+        if (explicitTitle) {
+            if (!(antdBreadcrumbItems.length === 1 && !antdBreadcrumbItems[0].href && antdBreadcrumbItems[0].title === explicitTitle)) {
+                if (antdBreadcrumbItems.length === 1 && antdBreadcrumbItems[0].href && antdBreadcrumbItems[0].title !== explicitTitle) {
+                    antdBreadcrumbItems.push({ title: explicitTitle });
+                } else if (antdBreadcrumbItems.length === 0 || antdBreadcrumbItems[0].title !== explicitTitle) {
+                    antdBreadcrumbItems.push({ title: explicitTitle });
+                } else if (antdBreadcrumbItems.length === 1 && !antdBreadcrumbItems[0].href && antdBreadcrumbItems[0].title !== explicitTitle) {
+                    antdBreadcrumbItems[0].title = <Link to={baseHref}>{baseTitle}</Link>;
+                    antdBreadcrumbItems.push({ title: explicitTitle });
+                }
             }
-        ];
+        } else if (routeInfo) {
+            const allRoutesForArea = isAdminArea ? getAdminRoutes() : getMainRoutes();
+            const { breadcrumb: breadcrumbConfig, label: routeLabel, path: routeConfigPath } = routeInfo;
 
-        // 如果有父级，添加父级面包屑
-        if (breadcrumb.parent) {
-            const parentPath = routeInfo.area === 'admin'
-                ? `/admin/${breadcrumb.parent}`
-                : `/${breadcrumb.parent}`;
+            if (breadcrumbConfig?.parent) {
+                const parentRoute = allRoutesForArea.find(r => r.key === breadcrumbConfig.parent);
+                if (parentRoute) {
+                    const parentTitle = parentRoute.breadcrumb?.title || parentRoute.label;
+                    let parentHref: string;
+                    
+                    if (isAdminArea) {
+                        parentHref = parentRoute.path ? `/admin/${parentRoute.path}` : '/admin';
+                    } else {
+                        if (parentRoute.path === '') {
+                            parentHref = '/';
+                        } else if (parentRoute.path.startsWith('/')) {
+                            parentHref = parentRoute.path;
+                        } else {
+                            parentHref = `/${parentRoute.path}`;
+                        }
+                    }
 
-            breadcrumbItems.push({
-                title: breadcrumb.parent.charAt(0).toUpperCase() + breadcrumb.parent.slice(1),
-                href: parentPath
-            });
+                    if (parentHref !== baseHref) {
+                        if (currentPath === parentHref) {
+                            antdBreadcrumbItems.push({ title: parentTitle });
+                        } else {
+                            antdBreadcrumbItems.push({ title: <Link to={parentHref}>{parentTitle}</Link> });
+                        }
+                    } else if (antdBreadcrumbItems.length > 0 && antdBreadcrumbItems[0].title !== parentTitle && currentPath !== baseHref) {
+                        antdBreadcrumbItems[0].title = <Link to={baseHref}>{parentTitle}</Link>;
+                    } else if (antdBreadcrumbItems.length > 0 && antdBreadcrumbItems[0].title !== parentTitle && currentPath === baseHref) {
+                        antdBreadcrumbItems[0].title = parentTitle;
+                    }
+                }
+            }
+
+            let currentPageTitle = breadcrumbConfig?.title || routeLabel;
+            
+            if (breadcrumbConfig?.title && params) {
+                Object.entries(params).forEach(([key, value]) => {
+                    currentPageTitle = currentPageTitle.replace(`:${key}`, String(value));
+                });
+            }
+
+            const lastItem = antdBreadcrumbItems.length > 0 ? antdBreadcrumbItems[antdBreadcrumbItems.length - 1] : null;
+            const lastItemTitle = lastItem ? ((lastItem.title as any)?.props?.children || lastItem.title) : null;
+
+            if (lastItemTitle !== currentPageTitle || lastItem?.href) {
+                if (!(routeConfigPath === '' && antdBreadcrumbItems.length === 1 && !antdBreadcrumbItems[0].href && lastItemTitle === currentPageTitle)) {
+                    antdBreadcrumbItems.push({ title: currentPageTitle });
+                } else if (routeConfigPath === '' && antdBreadcrumbItems.length === 1 && !antdBreadcrumbItems[0].href && lastItemTitle !== currentPageTitle) {
+                    antdBreadcrumbItems[0].title = currentPageTitle;
+                }
+            }
         }
+        
+        const uniqueItems = antdBreadcrumbItems.reduce((acc, item) => {
+            if (acc.length === 0) {
+                acc.push(item);
+            } else {
+                const prevItem = acc[acc.length - 1];
+                const prevTitleContent = (prevItem.title as any)?.props?.children ?? prevItem.title;
+                const currentTitleContent = (item.title as any)?.props?.children ?? item.title;
 
-        // 获取动态标题
-        let title = breadcrumb.title;
-        if (params && Object.keys(params).length > 0) {
-            // 用参数替换标题中的占位符，如 ":id"
-            Object.entries(params).forEach(([key, value]) => {
-                title = title.replace(`:${key}`, value);
-            });
-        }
-
-        // 添加当前页面面包屑
-        breadcrumbItems.push({
-            title: title
-        });
+                if (prevTitleContent !== currentTitleContent) {
+                    acc.push(item);
+                } else {
+                    if (!item.href) {
+                        acc[acc.length - 1] = item;
+                    }
+                }
+            }
+            return acc;
+        }, [] as Array<{ title: React.ReactNode; href?: string }>);
 
         return (
             <Breadcrumb
                 separator={<RightOutlined style={{ fontSize: 12 }} />}
                 style={{ margin: 0 }}
-                items={breadcrumbItems.map(item => ({
-                    title: item.href ? (
-                        <Link to={item.href} style={{ color: '#666', fontSize: isMobile ? 13 : 14 }}>
-                            {item.icon && <span style={{ marginRight: 4 }}>{item.icon}</span>}
-                            {isMobile && !item.icon ? '' : item.title}
-                        </Link>
-                    ) : (
-                        <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>
-                            {item.icon && <span style={{ marginRight: 4 }}>{item.icon}</span>}
-                            {item.title}
-                        </span>
-                    ),
+                items={uniqueItems.map(item => ({
+                    title: item.title,
+                    href: item.href,
                 }))}
             />
         );
     };
 
-    // 处理搜索
     const handleSearch = (value: string) => {
         setSearchText(value);
         setSearchDialogVisible(true);
     };
 
-    // 关闭搜索对话框
     const handleSearchDialogClose = () => {
         setSearchDialogVisible(false);
     };
@@ -225,7 +209,6 @@ const Header: React.FC<HeaderProps> = ({
                 top: 0
             }}
         >
-            {/* 左侧区域：折叠按钮和面包屑 */}
             <div style={{ display: 'flex', alignItems: 'center' }}>
                 <Button
                     type="text"
@@ -241,9 +224,7 @@ const Header: React.FC<HeaderProps> = ({
                 {!isMobileDevice && renderBreadcrumb()}
             </div>
 
-            {/* 右侧区域：搜索框和用户菜单 */}
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                {/* 搜索框 */}
                 <div style={{
                     marginRight: 16,
                     display: 'flex',
@@ -264,7 +245,6 @@ const Header: React.FC<HeaderProps> = ({
                     />
                 </div>
 
-                {/* 用户菜单 */}
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                     <Space style={{ cursor: 'pointer' }}>
                         <UserAvatar
@@ -276,7 +256,6 @@ const Header: React.FC<HeaderProps> = ({
                 </Dropdown>
             </div>
 
-            {/* 搜索对话框 */}
             <SearchDialog
                 visible={searchDialogVisible}
                 onClose={handleSearchDialogClose}
