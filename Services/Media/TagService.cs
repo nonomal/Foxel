@@ -3,10 +3,11 @@ using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Response.Tag;
 using Foxel.Services.Media;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services;
 
-public class TagService(IDbContextFactory<MyDbContext> contextFactory) : ITagService
+public class TagService(IDbContextFactory<MyDbContext> contextFactory, ILogger<TagService> logger) : ITagService
 {
     public async Task<PaginatedResult<TagResponse>> GetFilteredTagsAsync(
         int page = 1,
@@ -91,8 +92,7 @@ public class TagService(IDbContextFactory<MyDbContext> contextFactory) : ITagSer
         catch (Exception ex)
         {
             // 记录详细错误信息
-            Console.WriteLine($"GetFilteredTagsAsync error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            logger.LogError(ex, "GetFilteredTagsAsync error");
 
             throw;
         }

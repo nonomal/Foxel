@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace Foxel.Utils;
 
 public static class AiHelper
@@ -6,8 +8,9 @@ public static class AiHelper
     /// 从AI响应中提取标题和描述
     /// </summary>
     /// <param name="aiResponse">AI生成的响应文本</param>
+    /// <param name="logger">日志记录器</param>
     /// <returns>包含标题和描述的元组</returns>
-    public static (string title, string description) ExtractTitleAndDescription(string aiResponse)
+    public static (string title, string description) ExtractTitleAndDescription(string aiResponse, ILogger? logger = null)
     {
         string title = "AI生成的标题";
         string description = "AI生成的描述";
@@ -83,7 +86,7 @@ public static class AiHelper
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"解析AI响应时出错: {ex.Message}");
+            logger?.LogWarning(ex, "解析AI响应时出错");
             description = $"原始AI响应: {aiResponse}";
         }
 

@@ -88,3 +88,13 @@ export {
     rebuildVectors
 } from './vectorDbApi';
 
+// 导出LogManagement API
+export {
+    getLogs,
+    getLogById,
+    deleteLog,
+    batchDeleteLogs,
+    clearLogs,
+    getLogStatistics 
+} from './logManagementApi';
+

@@ -22,14 +22,17 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
     private readonly SemaphoreSlim _signal;
     private readonly int _maxConcurrentTasks;
     private bool _isDisposed;
+    private readonly ILogger<BackgroundTaskQueue> _logger;
 
     public BackgroundTaskQueue(
         IServiceProvider serviceProvider,
         IDbContextFactory<MyDbContext> contextFactory,
-        IConfigService configuration)
+        IConfigService configuration,
+        ILogger<BackgroundTaskQueue> logger)
     {
         _serviceProvider = serviceProvider;
         _contextFactory = contextFactory;
+        _logger = logger;
         _activeTasks = new ConcurrentDictionary<Guid, PictureProcessingTask>();
         _pictureStatus = new ConcurrentDictionary<int, PictureProcessingStatus>();
         _processingTasks = new List<Task>();
@@ -120,7 +123,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
 
             if (unfinishedPictures.Any())
             {
-                Console.WriteLine($"正在恢复 {unfinishedPictures.Count} 个未完成的图片处理任务");
+                _logger.LogInformation("正在恢复 {Count} 个未完成的图片处理任务", unfinishedPictures.Count);
 
                 foreach (var picture in unfinishedPictures)
                 {
@@ -131,14 +134,14 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                     {
                         // 重新加入队列
                         await QueuePictureProcessingTaskAsync(picture.Id, originalFilePath);
-                        Console.WriteLine($"已恢复图片处理任务: ID={picture.Id}, 路径={originalFilePath}");
+                        _logger.LogInformation("已恢复图片处理任务: ID={PictureId}, 路径={FilePath}", picture.Id, originalFilePath);
                     }
                     else
                     {
                         // 如果文件不存在，则标记为失败
                         picture.ProcessingStatus = ProcessingStatus.Failed;
                         picture.ProcessingError = "系统重启后找不到原始图片文件";
-                        Console.WriteLine($"无法恢复图片处理任务: ID={picture.Id}, 找不到文件: {originalFilePath}");
+                        _logger.LogWarning("无法恢复图片处理任务: ID={PictureId}, 找不到文件: {FilePath}", picture.Id, originalFilePath);
                     }
                 }
 
@@ -146,12 +149,12 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
             }
             else
             {
-                Console.WriteLine("没有需要恢复的图片处理任务");
+                _logger.LogInformation("没有需要恢复的图片处理任务");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"恢复未完成的任务时发生错误: {ex.Message}");
+            _logger.LogError(ex, "恢复未完成的任务时发生错误");
         }
     }
 
@@ -407,12 +410,12 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 }
                 catch (Exception saveEx)
                 {
-                    Console.WriteLine($"保存失败状态时出错: {saveEx.Message}");
+                    _logger.LogError(saveEx, "保存失败状态时出错");
                 }
             }
 
             // 记录错误日志
-            Console.WriteLine($"图片处理失败: 图片ID={task.PictureId}, 错误: {ex.Message}");
+            _logger.LogError(ex, "图片处理失败: 图片ID={PictureId}", task.PictureId);
         }
         finally
         {
@@ -425,7 +428,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"删除临时文件失败: {localFilePath}, 错误: {ex.Message}");
+                    _logger.LogWarning(ex, "删除临时文件失败: {FilePath}", localFilePath);
                 }
             }
 
@@ -471,7 +474,14 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
         if (disposing)
         {
             _signal.Dispose();
-            Task.WhenAll(_processingTasks).Wait(5000);
+            try
+            {
+                Task.WhenAll(_processingTasks).Wait(5000);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "等待处理任务完成时超时");
+            }
         }
 
         _isDisposed = true;

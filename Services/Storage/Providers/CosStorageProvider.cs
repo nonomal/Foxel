@@ -6,17 +6,20 @@ using COSXML.Model.Tag;
 using COSXML.Transfer;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
 public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProvider
 {
     private readonly IConfigService _configService;
+    private readonly ILogger<CustomQCloudCredentialProvider> _logger;
 
-    public CustomQCloudCredentialProvider(IConfigService configService) 
+    public CustomQCloudCredentialProvider(IConfigService configService, ILogger<CustomQCloudCredentialProvider> logger) 
         : base(null, null, 0L, null)
     {
         _configService = configService;
+        _logger = logger;
         Refresh();
     }
 
@@ -34,14 +37,14 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"刷新临时密钥时出错: {ex.Message}");
+            _logger.LogError(ex, "刷新临时密钥时出错");
             throw;
         }
     }
 }
 
 [StorageProvider(StorageType.Cos)]
-public class CosStorageProvider(IConfigService configService) : IStorageProvider
+public class CosStorageProvider(IConfigService configService, ILogger<CosStorageProvider> logger) : IStorageProvider
 {
     private CosXml CreateClient()
     {
@@ -51,7 +54,10 @@ public class CosStorageProvider(IConfigService configService) : IStorageProvider
             .SetDebugLog(true) 
             .Build();
             
-        var cosCredentialProvider = new CustomQCloudCredentialProvider(configService);
+        var cosCredentialProvider = new CustomQCloudCredentialProvider(configService, 
+            logger.IsEnabled(LogLevel.Debug) ? 
+                Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<CustomQCloudCredentialProvider>() :
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<CustomQCloudCredentialProvider>.Instance);
         
         return new CosXmlServer(config, cosCredentialProvider);
     }
@@ -93,17 +99,17 @@ public class CosStorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (CosClientException clientEx)
         {
-            Console.WriteLine($"COS客户端异常: {clientEx}");
+            logger.LogError(clientEx, "COS客户端异常");
             throw;
         }
         catch (CosServerException serverEx)
         {
-            Console.WriteLine($"COS服务器异常: {serverEx.GetInfo()}");
+            logger.LogError(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"上传文件到腾讯云COS时出错: {ex.Message}");
+            logger.LogError(ex, "上传文件到腾讯云COS时出错");
             throw;
         }
     }
@@ -121,15 +127,15 @@ public class CosStorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (CosClientException clientEx)
         {
-            Console.WriteLine($"COS客户端异常: {clientEx}");
+            logger.LogWarning(clientEx, "COS客户端异常");
         }
         catch (CosServerException serverEx)
         {
-            Console.WriteLine($"COS服务器异常: {serverEx.GetInfo()}");
+            logger.LogWarning(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"从腾讯云COS删除文件时出错: {ex.Message}");
+            logger.LogWarning(ex, "从腾讯云COS删除文件时出错");
         }
     }
 
@@ -171,7 +177,7 @@ public class CosStorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"生成腾讯云COS文件URL时出错: {ex.Message}");
+            logger.LogError(ex, "生成腾讯云COS文件URL时出错");
             return "/images/unavailable.gif";
         }
     }
@@ -204,17 +210,17 @@ public class CosStorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (CosClientException clientEx)
         {
-            Console.WriteLine($"COS客户端异常: {clientEx}");
+            logger.LogError(clientEx, "COS客户端异常");
             throw;
         }
         catch (CosServerException serverEx)
         {
-            Console.WriteLine($"COS服务器异常: {serverEx.GetInfo()}");
+            logger.LogError(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
             throw;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"从腾讯云COS下载文件时出错: {ex.Message}");
+            logger.LogError(ex, "从腾讯云COS下载文件时出错");
             throw;
         }
     }

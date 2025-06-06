@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.HttpOverrides;
 var builder = WebApplication.CreateBuilder(args);
 var environment = builder.Environment;
 Console.WriteLine($"当前环境: {environment.EnvironmentName}");
+builder.Logging.AddDatabaseLogging(config =>
+{
+    config.MinLevel = LogLevel.Information; 
+    config.Enabled = true;
+});
 builder.Services.AddMemoryCache();
 builder.Services.AddApplicationDbContext(builder.Configuration);
 builder.Services.AddApplicationOpenApi();

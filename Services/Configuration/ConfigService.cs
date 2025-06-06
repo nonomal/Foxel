@@ -37,29 +37,41 @@ public class ConfigService(
             return cachedValue;
         }
 
-        // 如果缓存中没有，从数据库获取
-        await using var context = await contextFactory.CreateDbContextAsync();
-        var config = await context.Configs.FirstOrDefaultAsync(c => c.Key == key);
-
-        if (config == null)
+        try
         {
-            // 尝试从环境变量获取
-            string envVarKey = key.ToUpper().Replace(".", "_").Replace("-", "_");
-            string? envVarValue = Environment.GetEnvironmentVariable(envVarKey);
+            // 如果缓存中没有，从数据库获取
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var config = await context.Configs.FirstOrDefaultAsync(c => c.Key == key);
 
-            if (!string.IsNullOrEmpty(envVarValue))
+            if (config == null)
             {
-                memoryCache.Set($"config:{key}", envVarValue, _cacheExpiration);
-                return envVarValue;
+                // 尝试从环境变量获取
+                string envVarKey = key.ToUpper().Replace(".", "_").Replace("-", "_");
+                string? envVarValue = Environment.GetEnvironmentVariable(envVarKey);
+
+                if (!string.IsNullOrEmpty(envVarValue))
+                {
+                    memoryCache.Set($"config:{key}", envVarValue, _cacheExpiration);
+                    return envVarValue;
+                }
+
+                return null;
             }
 
+            // 将配置值添加到缓存
+            memoryCache.Set($"config:{key}", config.Value, _cacheExpiration);
+
+            return config.Value;
+        }
+        catch (Exception ex)
+        {
+            // 在数据库初始化期间，可能会出现表不存在的情况，这时静默处理
+            if (!ex.Message.Contains("does not exist"))
+            {
+                logger.LogError(ex, "获取配置值时出错: {Key}", key);
+            }
             return null;
         }
-
-        // 将配置值添加到缓存
-        memoryCache.Set($"config:{key}", config.Value, _cacheExpiration);
-
-        return config.Value;
     }
 
     public async Task<T?> GetValueAsync<T>(string key, T? defaultValue = default)

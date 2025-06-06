@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAlbumService, AlbumService>();
         services.AddSingleton<IUserManagementService, UserManagementService>();
         services.AddSingleton<IPictureManagementService, PictureManagementService>();
+        services.AddSingleton<ILogManagementService, LogManagementService>();
         services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         services.AddHostedService<QueuedHostedService>();
         services.AddSingleton<LocalStorageProvider>();

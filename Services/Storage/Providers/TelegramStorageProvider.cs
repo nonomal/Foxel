@@ -4,11 +4,12 @@ using System.Text.Json.Serialization;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.Telegram)]
-public class TelegramStorageProvider(IConfigService configService) : IStorageProvider
+public class TelegramStorageProvider(IConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
 {
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {
@@ -40,7 +41,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Telegram API 请求失败: 状态码: {response.StatusCode}, 响应: {errorContent}");
+                logger.LogError("Telegram API 请求失败: 状态码: {StatusCode}, 响应: {Response}", response.StatusCode, errorContent);
                 throw new ApplicationException($"Telegram API 请求失败: {response.StatusCode}");
             }
 
@@ -90,7 +91,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"发送文件到 Telegram 时出错: {ex.Message}");
+            logger.LogError(ex, "发送文件到 Telegram 时出错");
             throw;
         }
     }
@@ -114,7 +115,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"删除 Telegram 文件时出错: {ex.Message}");
+            logger.LogWarning(ex, "删除 Telegram 文件时出错");
         }
     }
 
@@ -133,7 +134,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"生成 Telegram 文件 URL 时出错: {ex.Message}");
+            logger.LogError(ex, "生成 Telegram 文件 URL 时出错");
             return $"/images/unavailable.gif";
         }
     }
@@ -203,7 +204,7 @@ public class TelegramStorageProvider(IConfigService configService) : IStoragePro
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"下载 Telegram 文件时出错: {ex.Message}");
+            logger.LogError(ex, "下载 Telegram 文件时出错");
             throw;
         }
     }

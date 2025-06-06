@@ -12,4 +12,5 @@ public class MyDbContext(DbContextOptions<MyDbContext> options) : DbContext(opti
     public DbSet<Favorite> Favorites { get; set; } = null!;
     public DbSet<Album> Albums { get; set; } = null!;
     public DbSet<Role> Roles { get; set; } = null!;
+    public DbSet<Log> Logs { get; set; } = null!;
 }

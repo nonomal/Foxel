@@ -1,10 +1,11 @@
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.Local)]
-public class LocalStorageProvider(IConfigService configService) : IStorageProvider
+public class LocalStorageProvider(IConfigService configService, ILogger<LocalStorageProvider> logger) : IStorageProvider
 {
     private readonly string _baseDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
 

@@ -2,11 +2,12 @@ using System.Net.Http.Headers;
 using System.Text;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.WebDAV)]
-public class WebDavStorageProvider(IConfigService configService) : IStorageProvider
+public class WebDavStorageProvider(IConfigService configService, ILogger<WebDavStorageProvider> logger) : IStorageProvider
 {
     private HttpClient CreateClient()
     {
@@ -55,7 +56,7 @@ public class WebDavStorageProvider(IConfigService configService) : IStorageProvi
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"上传文件到WebDAV时出错: {ex.Message}");
+            logger.LogError(ex, "上传文件到WebDAV时出错");
             throw;
         }
     }
@@ -80,7 +81,7 @@ public class WebDavStorageProvider(IConfigService configService) : IStorageProvi
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"从WebDAV删除文件时出错: {ex.Message}");
+            logger.LogWarning(ex, "从WebDAV删除文件时出错");
         }
     }
 
@@ -103,7 +104,7 @@ public class WebDavStorageProvider(IConfigService configService) : IStorageProvi
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"生成WebDAV文件URL时出错: {ex.Message}");
+            logger.LogError(ex, "生成WebDAV文件URL时出错");
             return "/images/unavailable.gif";
         }
     }
@@ -144,7 +145,7 @@ public class WebDavStorageProvider(IConfigService configService) : IStorageProvi
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"从WebDAV下载文件时出错: {ex.Message}");
+            logger.LogError(ex, "从WebDAV下载文件时出错");
             throw;
         }
     }
@@ -210,7 +211,7 @@ public class WebDavStorageProvider(IConfigService configService) : IStorageProvi
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"确保WebDAV目录存在时出错: {ex.Message}");
+            logger.LogError(ex, "确保WebDAV目录存在时出错");
             throw;
         }
     }

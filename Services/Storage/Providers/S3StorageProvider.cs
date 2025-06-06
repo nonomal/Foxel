@@ -3,11 +3,12 @@ using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.S3)]
-public class S3StorageProvider(IConfigService configService) : IStorageProvider
+public class S3StorageProvider(IConfigService configService, ILogger<S3StorageProvider> logger) : IStorageProvider
 {
     private AmazonS3Client CreateClient()
     {
@@ -63,7 +64,7 @@ public class S3StorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"上传文件到S3时出错: {ex.Message}");
+            logger.LogError(ex, "上传文件到S3时出错");
             throw;
         }
     }
@@ -86,7 +87,7 @@ public class S3StorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"从S3删除文件时出错: {ex.Message}");
+            logger.LogWarning(ex, "从S3删除文件时出错");
         }
     }
 
@@ -118,7 +119,7 @@ public class S3StorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"生成S3文件URL时出错: {ex.Message}");
+            logger.LogError(ex, "生成S3文件URL时出错");
             return "/images/unavailable.gif";
         }
     }
@@ -159,7 +160,7 @@ public class S3StorageProvider(IConfigService configService) : IStorageProvider
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"从S3下载文件时出错: {ex.Message}");
+            logger.LogError(ex, "从S3下载文件时出错");
             throw;
         }
     }

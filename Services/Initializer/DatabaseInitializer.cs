@@ -1,5 +1,6 @@
 using Foxel.Models.DataBase;
 using Foxel.Services.Configuration;
+using Foxel.Services.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace Foxel.Services.Initializer;
@@ -14,6 +15,9 @@ public class DatabaseInitializer(
 
     public async Task InitializeAsync()
     {
+        // 在初始化期间禁用数据库日志记录
+        DatabaseLogger.SetDatabaseReady(false);
+        
         logger.LogInformation("开始检查数据库初始化状态...");
 
         // 执行数据库迁移
@@ -24,6 +28,8 @@ public class DatabaseInitializer(
             configService[InitializationFlag] == "true")
         {
             logger.LogInformation("数据库已完成初始化，跳过初始化步骤");
+            // 启用数据库日志记录
+            DatabaseLogger.SetDatabaseReady(true);
             return;
         }
 
@@ -86,6 +92,9 @@ public class DatabaseInitializer(
         await configService.SetConfigAsync(InitializationFlag, "true", "系统初始化完成标志");
 
         logger.LogInformation("数据库配置初始化完成");
+        
+        // 初始化完成后启用数据库日志记录
+        DatabaseLogger.SetDatabaseReady(true);
     }
 
     private async Task MigrateDatabaseAsync()

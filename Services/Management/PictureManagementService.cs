@@ -3,12 +3,14 @@ using Foxel.Models.Response.Picture;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Management;
 
 public class PictureManagementService(
     IDbContextFactory<MyDbContext> contextFactory,
-    IStorageService storageService) : IPictureManagementService
+    IStorageService storageService,
+    ILogger<PictureManagementService> logger) : IPictureManagementService
 {
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10, string? searchQuery = null, int? userId = null)
     {
@@ -143,7 +145,7 @@ public class PictureManagementService(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"删除图片文件时出错：{ex.Message}");
+            logger.LogWarning(ex, "删除图片文件时出错，图片ID: {PictureId}", id);
         }
         return true;
     }

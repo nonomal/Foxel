@@ -5,12 +5,13 @@ using Foxel.Models.DataBase;
 using Foxel.Models.Request.Auth;
 using Foxel.Services.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using static Foxel.Utils.AuthHelper;
 
 namespace Foxel.Services.Auth;
 
-public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfigService configuration)
+public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfigService configuration, ILogger<AuthService> logger)
     : IAuthService
 {
     public async Task<(bool success, string message, User? user)> RegisterUserAsync(RegisterRequest request)
@@ -218,7 +219,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         if (!tokenResponse.IsSuccessStatusCode)
         {
             var errorContent = await tokenResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"获取GitHub访问令牌失败: {tokenResponse.StatusCode}, {errorContent}");
+            logger.LogError("获取GitHub访问令牌失败: {StatusCode}, {ErrorContent}", tokenResponse.StatusCode, errorContent);
             return (GitHubAuthResult.TokenRequestFailed, $"获取GitHub访问令牌失败: {errorContent}", null);
         }
 
@@ -228,7 +229,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         if (!tokenJson.RootElement.TryGetProperty("access_token", out var accessTokenElement) ||
             accessTokenElement.GetString() == null)
         {
-            Console.WriteLine($"GitHub响应中未找到access_token: {tokenResponseContent}");
+            logger.LogError("GitHub响应中未找到access_token: {TokenResponseContent}", tokenResponseContent);
             return (GitHubAuthResult.TokenRequestFailed, "获取GitHub访问令牌失败，响应中未包含令牌。", null);
         }
 
@@ -241,7 +242,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         if (!userResponse.IsSuccessStatusCode)
         {
             var errorContent = await userResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"获取GitHub用户信息失败: {userResponse.StatusCode}, {errorContent}");
+            logger.LogError("获取GitHub用户信息失败: {StatusCode}, {ErrorContent}", userResponse.StatusCode, errorContent);
             return (GitHubAuthResult.UserInfoFailed, $"获取GitHub用户信息失败: {errorContent}", null);
         }
 
@@ -330,7 +331,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         if (!tokenResponse.IsSuccessStatusCode)
         {
             var errorContent = await tokenResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"获取LinuxDo访问令牌失败: {tokenResponse.StatusCode}, {errorContent}");
+            logger.LogError("获取LinuxDo访问令牌失败: {StatusCode}, {ErrorContent}", tokenResponse.StatusCode, errorContent);
             return (LinuxDoAuthResult.TokenRequestFailed, $"获取LinuxDo访问令牌失败: {errorContent}", null);
         }
 
@@ -340,7 +341,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         if (!tokenJson.RootElement.TryGetProperty("access_token", out var accessTokenElement) ||
             accessTokenElement.GetString() == null)
         {
-            Console.WriteLine($"LinuxDo响应中未找到access_token: {tokenResponseContent}");
+            logger.LogError("LinuxDo响应中未找到access_token: {TokenResponseContent}", tokenResponseContent);
             return (LinuxDoAuthResult.TokenRequestFailed, "获取LinuxDo访问令牌失败，响应中未包含令牌。", null);
         }
 
@@ -354,7 +355,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         if (!userResponse.IsSuccessStatusCode)
         {
             var errorContent = await userResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"获取LinuxDo用户信息失败: {userResponse.StatusCode}, {errorContent}");
+            logger.LogError("获取LinuxDo用户信息失败: {StatusCode}, {ErrorContent}", userResponse.StatusCode, errorContent);
             return (LinuxDoAuthResult.UserInfoFailed, $"获取LinuxDo用户信息失败: {errorContent}", null);
         }
 

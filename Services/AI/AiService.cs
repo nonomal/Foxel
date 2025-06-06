@@ -5,29 +5,21 @@ using Foxel.Utils;
 
 namespace Foxel.Services.AI;
 
-public class AiService : IAiService
+public class AiService(IHttpClientFactory httpClientFactory, IConfigService configService, ILogger<AiService> logger)
+    : IAiService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfigService _configService;
     private HttpClient? _httpClient;
     private string? _currentApiKey;
     private string? _currentBaseUrl;
 
-    public AiService(IHttpClientFactory httpClientFactory, IConfigService configService)
-    {
-        _httpClientFactory = httpClientFactory;
-        _configService = configService;
-    }
-
     private HttpClient ConfigureHttpClient()
     {
-        string apiKey = _configService["AI:ApiKey"];
-        string baseUrl = _configService["AI:ApiEndpoint"];
+        string apiKey = configService["AI:ApiKey"];
+        string baseUrl = configService["AI:ApiEndpoint"];
 
-        // 检查是否需要重新创建 HttpClient
         if (_httpClient == null || _currentApiKey != apiKey || _currentBaseUrl != baseUrl)
         {
-            _httpClient = _httpClientFactory.CreateClient();
+            _httpClient = httpClientFactory.CreateClient();
             _httpClient.BaseAddress = new Uri(baseUrl);
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             
@@ -44,7 +36,7 @@ public class AiService : IAiService
         try
         {
             var client = ConfigureHttpClient();
-            string model = _configService["AI:Model"];
+            string model = configService["AI:Model"];
             var imageUrl = new ImageUrl
             {
                 Url = $"data:image/jpeg;base64,{base64Image}"
@@ -59,7 +51,7 @@ public class AiService : IAiService
             var textContent = new TextContent
             {
                 Type = "text",
-                Text = _configService["AI:ImageAnalysisPrompt"] ?? 
+                Text = configService["AI:ImageAnalysisPrompt"] ?? 
                     "请详细分析这张图片，并提供全面的描述，以便用于向量嵌入和基于文本的图像搜索。描述需要包含：主体对象、场景环境、色彩特点、构图布局、风格特征、情绪氛围、细节特征等关键元素。请提供一个简短有力的标题，然后提供详细描述。\n\n请以JSON格式返回，格式如下：\n{\"title\": \"简短概括图片的核心内容\", \"description\": \"全面详细的描述，包含上述所有元素，使用丰富精确的词汇，避免笼统表达\"}\n\n请确保返回有效的JSON格式。"
             };
 
@@ -94,7 +86,7 @@ public class AiService : IAiService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"AI分析图片时出错: {ex.Message}");
+            logger.LogError(ex, "AI分析图片时出错");
             return ("处理失败", $"AI分析过程中发生错误: {ex.Message}");
         }
     }
@@ -108,10 +100,10 @@ public class AiService : IAiService
             if (availableTags.Count == 0)
                 return new List<string>();
 
-            string model = _configService["AI:Model"];
+            string model = configService["AI:Model"];
             var tagsText = string.Join(", ", availableTags);
             
-            string promptTemplate = _configService["AI:TagMatchingPrompt"] ?? 
+            string promptTemplate = configService["AI:TagMatchingPrompt"] ?? 
                 "以下是一组标签：[{tagsText}]。\n\n请从这些标签中严格选择与下面描述内容高度相关的标签（最多选择5个）。只选择确实匹配的标签，如果找不到完全匹配或高度相关的标签，宁可返回空数组也不要选择不太相关的标签。\n\n描述内容：{description}\n\n请以JSON格式返回，格式如下：\n{{\"tags\": [\"标签1\", \"标签2\", \"标签3\"]}}\n\n请确保返回有效的JSON格式前面不要加```，并且只包含确实匹配的标签名称。";
             
             // 替换占位符
@@ -209,7 +201,7 @@ public class AiService : IAiService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"AI匹配标签时出错: {ex.Message}");
+            logger.LogError(ex, "AI匹配标签时出错");
             return new List<string>();
         }
     }
@@ -222,7 +214,7 @@ public class AiService : IAiService
             // 获取配置好的 HttpClient
             var client = ConfigureHttpClient();
 
-            string model = _configService["AI:Model"];
+            string model = configService["AI:Model"];
 
             var imageUrl = new ImageUrl
             {
@@ -240,7 +232,7 @@ public class AiService : IAiService
             if (allowNewTags)
             {
                 // 获取配置的标签生成提示词，如果没有则使用默认提示词
-                string defaultPrompt = _configService["AI:TagGenerationPrompt"] ?? 
+                string defaultPrompt = configService["AI:TagGenerationPrompt"] ?? 
                     "请为图片生成5个最相关的标签，每个标签应该是简短且描述性的词语或短语。\n\n请以JSON格式返回，格式如下：\n{\"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]}\n\n请确保返回有效的JSON格式。";
                 
                 // 如果允许新标签，则提供现有标签作为参考，但允许生成新标签
@@ -255,7 +247,7 @@ public class AiService : IAiService
                     return new List<string>();
 
                 var tagsText = string.Join(", ", availableTags);
-                string templatePrompt = _configService["AI:TagMatchingPrompt"] ?? 
+                string templatePrompt = configService["AI:TagMatchingPrompt"] ?? 
                     "以下是一组标签：[{tagsText}]。\n\n请从这些标签中严格选择与图片内容高度相关的标签（最多选择5个）。只选择确实匹配的标签，如果找不到完全匹配或高度相关的标签，宁可返回空数组也不要选择不太相关的标签。\n\n请以JSON格式返回，格式如下：\n{{\"tags\": [\"标签1\", \"标签2\", \"标签3\"]}}\n\n请确保返回有效的JSON格式，并且只包含上述列表中的标签名称。";
                 
                 promptText = templatePrompt.Replace("{tagsText}", tagsText);
@@ -358,7 +350,7 @@ public class AiService : IAiService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"AI从图片生成标签时出错: {ex.Message}");
+            logger.LogError(ex, "AI从图片生成标签时出错");
             return new List<string>();
         }
     }
@@ -370,7 +362,7 @@ public class AiService : IAiService
             // 获取配置好的 HttpClient
             var client = ConfigureHttpClient();
 
-            string model = _configService["AI:EmbeddingModel"];
+            string model = configService["AI:EmbeddingModel"];
 
             var requestContent = new
             {
@@ -385,7 +377,7 @@ public class AiService : IAiService
             var embedResult = await response.Content.ReadFromJsonAsync<EmbeddingResponse>();
             if (embedResult?.Data == null || embedResult.Data.Length == 0)
             {
-                Console.WriteLine("嵌入向量API返回空结果");
+                logger.LogWarning("嵌入向量API返回空结果");
                 return Array.Empty<float>();
             }
 
@@ -393,7 +385,7 @@ public class AiService : IAiService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"获取嵌入向量时出错: {ex.Message}");
+            logger.LogError(ex, "获取嵌入向量时出错");
             return Array.Empty<float>();
         }
     }

@@ -11,6 +11,7 @@ using Foxel.Services.Storage;
 using Foxel.Services.VectorDB;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Media;
 
@@ -20,7 +21,8 @@ public class PictureService(
     IConfigService configuration,
     IBackgroundTaskQueue backgroundTaskQueue,
     IVectorDbService vectorDbService,
-    IStorageService storageService)
+    IStorageService storageService,
+    ILogger<PictureService> logger)
     : IPictureService
 {
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(
@@ -60,7 +62,7 @@ public class PictureService(
             catch (Exception ex)
             {
                 // 如果向量搜索失败，记录错误并回退到标准搜索
-                Console.WriteLine($"向量搜索失败，回退到标准搜索: {ex.Message}");
+                logger.LogWarning("向量搜索失败，回退到标准搜索: {Message}", ex.Message);
 
                 // 如果是明确的配置错误，则向上抛出异常
                 if (ex.Message.Contains("请检查嵌入模型配置"))
@@ -70,7 +72,6 @@ public class PictureService(
             }
         }
 
-        // 执行标准搜索（作为默认方法或向量搜索的回退选项）
         return await PerformStandardSearchAsync(
             dbContext, page, pageSize, searchQuery, tags,
             startDate, endDate, userId, sortBy, onlyWithGps,
@@ -573,7 +574,7 @@ public class PictureService(
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"生成缩略图失败: {ex.Message}");
+                    logger.LogError(ex, "生成缩略图失败");
                 }
             }
 
@@ -769,7 +770,7 @@ public class PictureService(
                 catch (Exception ex)
                 {
                     errorMsg = $"数据库记录已删除，但删除文件失败: {ex.Message}";
-                    Console.WriteLine($"删除图片文件时出错：{ex.Message}");
+                    logger.LogError(ex, "删除图片文件时出错");
                 }
 
                 results[pictureId] = (true, errorMsg, userId);
@@ -827,13 +828,13 @@ public class PictureService(
                 else
                 {
                     // 记录获取到空向量的警告
-                    Console.WriteLine($"警告: 图片 {pictureId} 的嵌入向量为空，跳过向量更新");
+                    logger.LogWarning("图片 {PictureId} 的嵌入向量为空，跳过向量更新", pictureId);
                 }
             }
             catch (Exception ex)
             {
                 // 记录错误但不抛出异常，允许其他字段的更新继续进行
-                Console.WriteLine($"更新图片 {pictureId} 的嵌入向量时出错: {ex.Message}");
+                logger.LogError(ex, "更新图片 {PictureId} 的嵌入向量时出错", pictureId);
                 // 不设置 picture.Embedding，保持原值不变
             }
         }

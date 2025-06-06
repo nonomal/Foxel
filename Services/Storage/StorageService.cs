@@ -1,5 +1,6 @@
 using System.Reflection;
 using Foxel.Services.Attributes;
+using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage;
 
@@ -9,11 +10,13 @@ namespace Foxel.Services.Storage;
 public class StorageService : IStorageService
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<StorageService> _logger;
     private readonly Dictionary<StorageType, Type> _storageProviders = new();
 
-    public StorageService(IServiceProvider serviceProvider)
+    public StorageService(IServiceProvider serviceProvider, ILogger<StorageService> logger)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
         RegisterStorageProviders();
     }
 
@@ -47,7 +50,7 @@ public class StorageService : IStorageService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"扫描程序集 {assembly.FullName} 出错: {ex.Message}");
+                _logger.LogWarning(ex, "扫描程序集 {AssemblyName} 时发生错误", assembly.FullName);
                 // 继续扫描其他程序集
             }
         }

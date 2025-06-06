@@ -7,7 +7,8 @@ import {
   SettingOutlined,
   CompassOutlined,
   DashboardOutlined,
-  UserOutlined
+  UserOutlined,
+  LogoutOutlined
 } from '@ant-design/icons';
 
 import AllImages from '../pages/allImages/Index';
@@ -22,6 +23,7 @@ import System from '../pages/admin/system/Index';
 import UserManagement from '../pages/admin/users/Index';
 import PictureManagement from '../pages/admin/pictures/Index';
 import UserDetail from '../pages/admin/users/UserDetail';
+import AdminLogManagement from '../pages/admin/log/Index';
 
 export interface RouteConfig {
   path: string;
@@ -167,6 +169,17 @@ const routes: RouteConfig[] = [
     area: 'admin',
     breadcrumb: {
       title: '图片管理'
+    }
+  },
+    {
+    path: 'log',
+    key: 'admin-log',
+    icon: <LogoutOutlined />,
+    label: '日志中心',
+    element: <AdminLogManagement />,
+    area: 'admin',
+    breadcrumb: {
+      title: '日志中心'
     }
   },
   {
