@@ -8,7 +8,7 @@ import {
   CompassOutlined,
   DashboardOutlined,
   UserOutlined,
-  LogoutOutlined
+  FileTextOutlined
 } from '@ant-design/icons';
 
 import AllImages from '../pages/allImages/Index';
@@ -171,10 +171,10 @@ const routes: RouteConfig[] = [
       title: '图片管理'
     }
   },
-    {
+  {
     path: 'log',
     key: 'admin-log',
-    icon: <LogoutOutlined />,
+    icon: <FileTextOutlined />,
     label: '日志中心',
     element: <AdminLogManagement />,
     area: 'admin',

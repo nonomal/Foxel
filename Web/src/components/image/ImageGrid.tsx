@@ -439,6 +439,21 @@ const ImageGrid: React.FC<ImageGridProps> = ({
     return !!user && !!image.userId && user.id === image.userId;
   };
   
+  // 计算图片宽度的函数 - 修改为计算最小宽度
+  const calculateImageMinWidth = (image: PictureResponse): number => {
+    const fixedHeight = 200; // 固定高度
+    const defaultMinWidth = 180; // 默认最小宽度
+    
+    if (image.exifInfo?.width && image.exifInfo?.height) {
+      const aspectRatio = image.exifInfo.width / image.exifInfo.height;
+      const calculatedWidth = Math.round(fixedHeight * aspectRatio);
+      // 确保最小宽度不小于180px，最大不超过400px
+      return Math.max(180, Math.min(400, calculatedWidth));
+    }
+    
+    return defaultMinWidth;
+  };
+
   // 优化渲染内容函数
   const renderContent = () => {
     // 渲染加载状态
@@ -446,7 +461,11 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       return (
         <div className="image-grid">
           {Array.from({ length: pageSize }).map((_, index) => (
-            <div key={`loading-${index}`} className="custom-card image-loading-effect">
+            <div 
+              key={`loading-${index}`} 
+              className="custom-card image-loading-effect"
+              style={{ minWidth: 180 }}
+            >
               <div className="custom-card-cover" style={{ background: '#f5f5f5' }}>
                 {/* 简单的加载状态 */}
               </div>
@@ -472,11 +491,16 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       <div className="image-grid">
         {images.map((image, index) => {
           const isOwner = canEditImage(image);
+          const imageMinWidth = calculateImageMinWidth(image);
 
           return (
             <div
               key={image.id}
               className={`custom-card ${selectedIds.includes(image.id) ? 'custom-card-selected' : ''} ${selectable ? 'custom-card-selectable-mode' : ''}`}
+              style={{ 
+                minWidth: imageMinWidth,
+                flexBasis: imageMinWidth // 设置flex基准值
+              }}
               onClick={() => handleImageClick(image, index)}
               onContextMenu={(e) => handleContextMenu(e, image)}
             >
@@ -519,11 +543,14 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                       <div className="custom-card-info">
                         <div className="custom-card-title">{image.name}</div>
 
-                        {image.tags && (
+                        {image.tags && image.tags.length > 0 && (
                           <div className="custom-card-tags-container">
-                            {image.tags.map(tag => (
-                              <Text key={tag} className="image-tag">#{tag}</Text>
+                            {image.tags.slice(0, 3).map((tag, tagIndex) => (
+                              <Text key={`${image.id}-${tag}-${tagIndex}`} className="image-tag">#{tag}</Text>
                             ))}
+                            {image.tags.length > 3 && (
+                              <Text className="image-tag">+{image.tags.length - 3}</Text>
+                            )}
                           </div>
                         )}
 
@@ -536,9 +563,9 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                             }}
                           >
                             {image.isFavorited ? (
-                              <HeartFilled style={{ fontSize: 16, color: '#ff4d4f' }} />
+                              <HeartFilled style={{ fontSize: 14, color: '#ff4d4f' }} />
                             ) : (
-                              <HeartOutlined style={{ fontSize: 16, color: '#ffffff' }} />
+                              <HeartOutlined style={{ fontSize: 14, color: '#ffffff' }} />
                             )}
                           </div>
 
@@ -554,7 +581,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                                 }
                               }}
                             >
-                              <EditOutlined style={{ fontSize: 16, color: '#ffffff' }} />
+                              <EditOutlined style={{ fontSize: 14, color: '#ffffff' }} />
                             </div>
                           )}
 
@@ -565,7 +592,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                               onShare?.(image);
                             }}
                           >
-                            <ShareAltOutlined style={{ fontSize: 16, color: '#ffffff' }} />
+                            <ShareAltOutlined style={{ fontSize: 14, color: '#ffffff' }} />
                           </div>
 
                           <div
@@ -575,7 +602,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                               onDownload?.(image);
                             }}
                           >
-                            <DownloadOutlined style={{ fontSize: 16, color: '#ffffff' }} />
+                            <DownloadOutlined style={{ fontSize: 14, color: '#ffffff' }} />
                           </div>
                         </div>
                       </div>
