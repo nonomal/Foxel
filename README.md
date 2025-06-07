@@ -66,7 +66,7 @@
 **1. 下载 compose.yaml 文件**
 
 ```bash
-wget https://raw.githubusercontent.com/DrizzleTime/Foxel/main/compose.yaml
+wget https://raw.githubusercontent.com/DrizzleTime/Foxel/master/compose.yaml
 ```
 
 **2. 创建必要目录并启动服务**
