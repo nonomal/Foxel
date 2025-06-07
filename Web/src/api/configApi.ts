@@ -1,5 +1,23 @@
-import { UserRole, type BaseResult, type ConfigResponse, type SetConfigRequest } from './types';
-import { fetchApi } from './fetchClient';
+import { fetchApi, type BaseResult } from './fetchClient';
+import { UserRole } from './userManagementApi';
+
+
+// 配置响应数据
+export interface ConfigResponse {
+  id: number;
+  key: string;
+  value: string;
+  description: string;
+  isSecret: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface SetConfigRequest {
+  key: string;
+  value: string;
+  description?: string;
+}
 
 // 获取所有配置
 export const getAllConfigs = async (): Promise<BaseResult<ConfigResponse[]>> => {

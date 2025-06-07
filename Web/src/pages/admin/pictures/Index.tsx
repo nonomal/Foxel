@@ -13,7 +13,7 @@ import {
   getManagementPictures, deleteManagementPicture, batchDeleteManagementPictures,
   getUsers
 } from '../../../api';
-import type { PictureResponse } from '../../../api/types';
+import type { PictureResponse } from '../../../api';
 import { useOutletContext } from 'react-router';
 import type { Breakpoint } from 'antd';
 

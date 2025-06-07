@@ -6,7 +6,7 @@ import {
   CheckCircleOutlined, 
   CloseCircleOutlined 
 } from '@ant-design/icons';
-import { ProcessingStatus } from '../api/types';
+import { ProcessingStatus } from '../api';
 
 interface TaskProgressBarProps {
   status: ProcessingStatus;

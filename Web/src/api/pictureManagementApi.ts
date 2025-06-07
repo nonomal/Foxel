@@ -1,10 +1,7 @@
-import { fetchApi } from './fetchClient';
-import {
-  type BaseResult,
-  type PaginatedResult,
-  type PictureResponse,
-  type BatchDeleteResult
-} from './types';
+import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
+import { type PictureResponse } from './pictureApi';
+import { type BatchDeleteResult } from './userManagementApi';
+
 
 // 获取图片列表
 export const getManagementPictures = async (

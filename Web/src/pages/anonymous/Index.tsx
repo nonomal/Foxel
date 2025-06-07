@@ -24,7 +24,7 @@ import { Link } from 'react-router';
 
 import ShareImageDialog from '../../components/image/ShareImageDialog';
 import { uploadPicture } from '../../api/pictureApi';
-import type { PictureResponse } from '../../api/types';
+import type { PictureResponse } from '../../api';
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;

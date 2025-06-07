@@ -1,9 +1,57 @@
-import {type BaseResult, type AuthResponse, type LoginRequest, type RegisterRequest, type UserProfile, type UpdateUserRequest, type BindAccountRequest} from './types';
-import {fetchApi, BASE_URL} from './fetchClient';
+import {fetchApi, BASE_URL, type BaseResult} from './fetchClient';
+import { type UserRole } from './userManagementApi';
 
 // 认证数据本地存储键
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
+
+// 登录请求参数
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+// 注册请求参数
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+// 用户信息
+export interface UserProfile {
+  id: number;
+  userName: string;
+  email: string;
+  roleName: UserRole | string; // roleName can be UserRole or a string from server
+}
+
+// 认证响应
+export interface AuthResponse {
+  token: string;
+  user: UserProfile;
+}
+
+export interface UpdateUserRequest {
+  userName?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
+export type BindType = 0 | 1;
+
+export const BindType = {
+  GitHub: 0 as BindType,
+  LinuxDo: 1 as BindType,
+};
+
+export interface BindAccountRequest {
+  email: string;
+  password: string;
+  bindType: BindType;
+  thirdPartyUserId: string;
+}
 
 // 用户注册
 export async function register(data: RegisterRequest): Promise<BaseResult<AuthResponse>> {

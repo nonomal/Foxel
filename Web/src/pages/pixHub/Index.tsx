@@ -17,7 +17,7 @@ import {
 } from '@ant-design/icons';
 
 import ImageGrid from '../../components/image/ImageGrid/ImageGrid';
-import type { PictureResponse } from '../../api/types';
+import type { PictureResponse } from '../../api';
 import { getFilteredTags } from '../../api/tagApi';
 import useIsMobile from '../../hooks/useIsMobile';
 

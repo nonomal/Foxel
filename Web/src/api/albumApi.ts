@@ -1,13 +1,42 @@
-import type { 
-  PaginatedResult, 
-  AlbumResponse, 
-  CreateAlbumRequest, 
-  UpdateAlbumRequest, 
-  AlbumPictureRequest,
-  AlbumPicturesRequest,
-  BaseResult 
-} from './types';
-import { fetchApi, BASE_URL } from './fetchClient';
+import { fetchApi, type PaginatedResult, type BaseResult } from './fetchClient';
+
+// 相册响应数据
+export interface AlbumResponse {
+  id: number;
+  name: string;
+  description: string;
+  coverImageUrl?: string;
+  pictureCount: number;
+  userId: number;
+  username?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 创建相册请求
+export interface CreateAlbumRequest {
+  name: string;
+  description: string;
+}
+
+// 更新相册请求
+export interface UpdateAlbumRequest {
+  id: number;
+  name: string;
+  description: string;
+}
+
+// 相册图片操作请求
+export interface AlbumPictureRequest {
+  albumId: number;
+  pictureId: number;
+}
+
+// 批量添加图片到相册请求
+export interface AlbumPicturesRequest {
+  albumId: number;
+  pictureIds: number[];
+}
 
 // 获取相册列表
 export async function getAlbums(
@@ -16,14 +45,6 @@ export async function getAlbums(
   userId?: number
 ): Promise<PaginatedResult<AlbumResponse>> {
   try {
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('pageSize', pageSize.toString());
@@ -31,19 +52,31 @@ export async function getAlbums(
       queryParams.append('userId', userId.toString());
     }
 
-    const url = `${BASE_URL}/album/get_albums?${queryParams.toString()}`;
-    const response = await fetch(url, { headers });
-    const data = await response.json();
-
-    return data as PaginatedResult<AlbumResponse>;
+    const url = `/album/get_albums?${queryParams.toString()}`;
+    const result = await fetchApi<PaginatedResult<AlbumResponse>>(url);
+    if (result.success) {
+      return result as unknown as PaginatedResult<AlbumResponse>; 
+    } else {
+      console.error('获取相册列表失败:', result.message);
+      return {
+        success: false,
+        message: result.message || '获取相册列表失败',
+        data: [],
+        page: page,
+        pageSize: pageSize,
+        totalCount: 0,
+        totalPages: 0,
+        code: result.code || 500,
+      };
+    }
   } catch (error) {
-    console.error('获取相册列表失败:', error);
+    console.error('获取相册列表时发生意外错误:', error);
     return {
       success: false,
       message: '网络请求失败，请检查您的网络连接',
       data: [],
-      page: 1,
-      pageSize: 10,
+      page: page,
+      pageSize: pageSize,
       totalCount: 0,
       totalPages: 0,
       code: 500,

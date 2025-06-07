@@ -1,5 +1,25 @@
-import type { BaseResult } from './types';
 import { clearAuthData } from './index'; 
+
+// API响应的基础结构
+export interface BaseResult<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  code: number;
+}
+
+// 分页结果通用结构
+export interface PaginatedResult<T> {
+  success: boolean;
+  message: string;
+  data: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  code: number;
+}
+
 export const BASE_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5153/api';
 
 export async function fetchApi<T = any>(

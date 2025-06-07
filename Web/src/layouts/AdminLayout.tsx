@@ -7,7 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import { UserRole } from '../api/types';
+import { UserRole } from '../api';
 import { getAdminRoutes, type RouteConfig } from '../routes';
 
 const { Content } = Layout;

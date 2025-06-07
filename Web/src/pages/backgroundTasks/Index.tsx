@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Typography, Table, Card, Tag, Space, Button, Empty, message, Modal } from 'antd';
 import { SyncOutlined, EyeOutlined } from '@ant-design/icons';
 import { getUserTasks } from '../../api';
-import { type PictureProcessingTask, ProcessingStatus } from '../../api/types';
+import { type PictureProcessingTask, ProcessingStatus } from '../../api';
 import TaskProgressBar from '../../components/TaskProgressBar';
 import dayjs from 'dayjs';
 import { Link } from 'react-router';

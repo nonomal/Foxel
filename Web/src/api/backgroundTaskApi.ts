@@ -1,5 +1,17 @@
-import { fetchApi } from './fetchClient';
-import type { BaseResult, PictureProcessingTask } from './types';
+import { fetchApi, type BaseResult } from './fetchClient';
+import type { ProcessingStatus } from './pictureApi';
+
+// 图片处理任务
+export interface PictureProcessingTask {
+  pictureId: number;
+  taskId: string;
+  pictureName: string;
+  status: ProcessingStatus;
+  progress: number; // 0-100
+  error?: string;
+  createdAt: Date;
+  completedAt?: Date;
+}
 
 /**
  * 获取当前用户的所有处理任务

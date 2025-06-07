@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { getCurrentUser, isAuthenticated, clearAuthData, getStoredUser } from '../api/index';
-import type { UserProfile } from '../api/types';
-import { UserRole } from '../api/types';
+import type { UserProfile } from '../api';
+import { UserRole } from '../api';
 
 interface AuthContextType {
   user: UserProfile | null;

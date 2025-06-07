@@ -12,7 +12,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useOutletContext } from 'react-router';
 import { useNavigate } from 'react-router';
 import { getUsers, getManagementPictures } from '../../../api';
-import type { UserResponse, PictureResponse } from '../../../api/types';
+import type { UserResponse, PictureResponse } from '../../../api';
 
 const { Title, Text } = Typography;
 

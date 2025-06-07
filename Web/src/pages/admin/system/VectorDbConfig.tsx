@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Radio, Button, message, Spin, Space, Typography, notification, Form, Input, Modal } from 'antd';
 import { DatabaseOutlined, SyncOutlined, CheckCircleOutlined, InfoCircleOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getCurrentVectorDb, switchVectorDb, setConfig, clearVectors, rebuildVectors } from '../../../api';
-import { VectorDbType } from '../../../api/types';
+import { VectorDbType } from '../../../api';
 
 const { Title, Paragraph } = Typography;
 

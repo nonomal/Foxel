@@ -6,7 +6,7 @@ import {
   RotateRightOutlined, HeartOutlined, HeartFilled, DownloadOutlined,
   ShareAltOutlined, FolderAddOutlined
 } from '@ant-design/icons';
-import type { PictureResponse, AlbumResponse } from '../../api/types';
+import type { PictureResponse, AlbumResponse } from '../../api';
 import { getAlbums, addPicturesToAlbum, favoritePicture, unfavoritePicture } from '../../api';
 import ImageInfo from './ImageInfo';
 import ShareImageDialog from './ShareImageDialog';

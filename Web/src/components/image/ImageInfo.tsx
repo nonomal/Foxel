@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Divider } from 'antd';
 import { CloseOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
-import type { PictureResponse } from '../../api/types';
+import type { PictureResponse } from '../../api';
 import './ImageViewer.css';
 
 interface ImageInfoProps {

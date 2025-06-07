@@ -38,7 +38,7 @@ import {useOutletContext} from 'react-router';
 import dayjs from 'dayjs';
 import type {Dayjs} from 'dayjs';
 import {getLogs, deleteLog, batchDeleteLogs, clearLogs, getLogById, getLogStatistics} from '../../../api';
-import type {LogResponse, LogLevel, LogFilterRequest, LogStatistics} from '../../../api/types';
+import type {LogResponse, LogLevel, LogFilterRequest, LogStatistics} from '../../../api';
 
 const {Title, Text, Paragraph} = Typography;
 const {RangePicker} = DatePicker;

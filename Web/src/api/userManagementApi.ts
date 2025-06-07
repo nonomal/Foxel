@@ -1,14 +1,75 @@
-import { fetchApi } from './fetchClient';
-import {
-  type BaseResult,
-  type PaginatedResult,
-  type UserResponse,
-  type CreateUserRequest,
-  type AdminUpdateUserRequest,
-  type BatchDeleteResult,
-  type UserFilterRequest,
-  type UserDetailResponse
-} from './types';
+import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
+
+export type UserRole = "Administrator" | "User" | "";
+
+export const UserRole = {
+  Administrator: "Administrator" as UserRole,
+  User: "User" as UserRole,
+  Guest: "" as UserRole
+};
+
+// 用户管理相关类型
+export interface UserResponse {
+  id: number;
+  userName: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+  lastLoginAt?: Date;
+}
+
+// 管理员创建用户请求
+export interface CreateUserRequest {
+  userName: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+// 管理员更新用户请求
+export interface AdminUpdateUserRequest {
+  id: number;
+  userName?: string;
+  email?: string;
+  role?: string;
+}
+
+// 批量删除结果
+export interface BatchDeleteResult {
+  successCount: number;
+  failedCount: number;
+  failedIds?: number[];
+}
+
+// 用户筛选请求参数
+export interface UserFilterRequest {
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+// 用户统计信息
+export interface UserStatistics {
+  totalPictures: number;
+  totalAlbums: number;
+  totalFavorites: number;
+  favoriteReceivedCount: number;
+  diskUsageMB: number;
+  accountAgeDays: number;
+}
+
+// 用户详情响应
+export interface UserDetailResponse {
+  id: number;
+  userName: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+  statistics: UserStatistics;
+}
 
 // 获取用户列表
 export const getUsers = async (

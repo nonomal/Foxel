@@ -1,5 +1,4 @@
-import type { BaseResult, PaginatedResult } from './types';
-import { fetchApi, BASE_URL } from './fetchClient';
+import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
 
 // 标签响应类型
 export interface TagResponse {
@@ -50,28 +49,31 @@ export async function getFilteredTags(params: FilteredTagsRequest = {}): Promise
   if (params.sortDirection) queryParams.append('sortDirection', params.sortDirection);
 
   try {
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    const url = `/tag/get_tags?${queryParams.toString()}`;
+    const result = await fetchApi<PaginatedResult<TagResponse>>(url);
+    if (result.success) {
+      return result as unknown as PaginatedResult<TagResponse>;
+    } else {
+      console.error('获取标签列表失败:', result.message);
+      return {
+        success: false,
+        message: result.message || '获取标签列表失败',
+        data: [],
+        page: params.page || 1,
+        pageSize: params.pageSize || 10,
+        totalCount: 0,
+        totalPages: 0,
+        code: result.code || 500,
+      };
     }
-
-    const url = `${BASE_URL}/tag/get_tags?${queryParams.toString()}`;
-    const response = await fetch(url, { headers });
-    const data = await response.json();
-
-    return data as PaginatedResult<TagResponse>;
   } catch (error) {
-    console.error('获取标签列表失败:', error);
+    console.error('获取标签列表时发生意外错误:', error);
     return {
       success: false,
       message: '网络请求失败，请检查您的网络连接',
       data: [],
-      page: 1,
-      pageSize: 10,
+      page: params.page || 1,
+      pageSize: params.pageSize || 10,
       totalCount: 0,
       totalPages: 0,
       code: 500,

@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
 import { getUserDetail } from '../../../api';
-import type { UserDetailResponse } from '../../../api/types';
+import type { UserDetailResponse } from '../../../api';
 import UserAvatar from '../../../components/UserAvatar';
 
 const { Title, Text } = Typography;

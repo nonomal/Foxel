@@ -1,5 +1,15 @@
-import { type BaseResult, type VectorDbInfo, VectorDbType } from './types';
-import { fetchApi } from './fetchClient';
+import { fetchApi, type BaseResult } from './fetchClient';
+
+export type VectorDbType = "InMemory" | "Qdrant";
+
+export const VectorDbType = {
+  InMemory: "InMemory" as VectorDbType,
+  Qdrant: "Qdrant" as VectorDbType,
+};
+
+export interface VectorDbInfo {
+  type: string;
+}
 
 // 获取当前向量数据库类型
 export const getCurrentVectorDb = async (): Promise<BaseResult<VectorDbInfo>> => {

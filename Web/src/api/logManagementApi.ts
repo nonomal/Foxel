@@ -1,13 +1,60 @@
-import { fetchApi } from './fetchClient';
-import {
-  type BaseResult,
-  type PaginatedResult,
-  type LogResponse,
-  type LogFilterRequest,
-  type ClearLogsRequest,
-  type BatchDeleteResult,
-  type LogStatistics
-} from './types';
+import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
+import { type BatchDeleteResult } from './userManagementApi';
+
+
+// 日志级别枚举
+export type LogLevel = 'Trace' | 'Debug' | 'Information' | 'Warning' | 'Error' | 'Critical';
+
+export const LogLevel = {
+  Trace: 'Trace' as LogLevel,
+  Debug: 'Debug' as LogLevel,
+  Information: 'Information' as LogLevel,
+  Warning: 'Warning' as LogLevel,
+  Error: 'Error' as LogLevel,
+  Critical: 'Critical' as LogLevel
+};
+
+// 日志响应数据
+export interface LogResponse {
+  id: number;
+  level: LogLevel | number; // 支持数字和字符串两种形式
+  message: string;
+  category: string;
+  eventId?: number;
+  timestamp: Date;
+  exception?: string;
+  requestPath?: string;
+  requestMethod?: string;
+  statusCode?: number;
+  ipAddress?: string;
+  userId?: string;
+  properties?: string;
+}
+
+// 日志筛选请求参数
+export interface LogFilterRequest {
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+  level?: LogLevel | number; // 支持数字和字符串两种形式
+  startDate?: string;
+  endDate?: string;
+}
+
+// 清空日志请求
+export interface ClearLogsRequest {
+  clearAll?: boolean;
+  beforeDate?: Date;
+}
+
+// 日志统计信息
+export interface LogStatistics {
+  totalCount: number;
+  todayCount: number;
+  errorCount: number;
+  warningCount: number;
+}
+
 
 // 获取日志列表
 export const getLogs = async (

@@ -1,11 +1,108 @@
-import type { PaginatedResult, PictureResponse, FilteredPicturesRequest, BaseResult, UpdatePictureRequest } from './types';
-import { fetchApi, BASE_URL } from './fetchClient';
+import { fetchApi, BASE_URL, type PaginatedResult, type BaseResult } from './fetchClient';
+
+// 图片请求参数
+export interface FilteredPicturesRequest {
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+  tags?: string;
+  startDate?: string;
+  endDate?: string;
+  userId?: number;
+  sortBy?: string;
+  onlyWithGps?: boolean;
+  useVectorSearch?: boolean;
+  similarityThreshold?: number;
+  excludeAlbumId?: number;
+  albumId?: number;
+  onlyFavorites?: boolean;
+  ownerId?: number;
+  includeAllPublic?: boolean;
+}
+
+// 将类型定义改为枚举，这样既可以作为类型也可以作为值使用
+export type ProcessingStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
+
+// 添加常量对象提供运行时值
+export const ProcessingStatus = {
+  Pending: 'Pending' as ProcessingStatus,
+  Processing: 'Processing' as ProcessingStatus,
+  Completed: 'Completed' as ProcessingStatus,
+  Failed: 'Failed' as ProcessingStatus
+};
+
+// 图片响应数据
+export interface PictureResponse {
+  id: number;
+  name: string;
+  path: string;
+  thumbnailPath: string;
+  description: string;
+  takenAt?: Date;
+  createdAt: Date;
+  exifInfo?: any;
+  tags?: string[];
+  userId: number;
+  username?: string;
+  isFavorited: boolean;
+  favoriteCount: number;
+  permission: number;
+  albumId?: number;
+  albumName?: string;
+  processingStatus: ProcessingStatus;
+  processingError?: string;
+  processingProgress: number;
+}
+
+// 收藏请求
+export interface FavoriteRequest {
+  pictureId: number;
+}
+
+// 上传队列中的文件项
+export interface UploadFile {
+  id: string;  // 本地ID，用于跟踪状态
+  file: File;  // 原始文件
+  status: 'pending' | 'uploading' | 'success' | 'error';  // 上传状态
+  percent: number;  // 上传进度百分比 0-100
+  error?: string;  // 错误信息
+  response?: PictureResponse;  // 上传成功后的响应
+}
+
+// 图片格式类型
+export type ImageFormat = 0 | 1 | 2 | 3;
+
+// 添加常量对象提供运行时值
+export const ImageFormat = {
+  Original: 0 as ImageFormat,
+  Jpeg: 1 as ImageFormat,
+  Png: 2 as ImageFormat,
+  WebP: 3 as ImageFormat
+};
+
+// 上传图片参数
+export interface UploadPictureParams {
+  permission?: number;
+  albumId?: number;
+  convertToFormat?: ImageFormat;
+  quality?: number;
+  onProgress?: (percent: number) => void;
+}
+
+// 删除多张图片请求
+export interface DeleteMultiplePicturesRequest {
+  pictureIds: number[];
+}
+
+export interface UpdatePictureRequest {
+  id: number;
+  name?: string;
+  description?: string;
+  tags?: string[];
+}
 
 // 获取图片列表
 export async function getPictures(params: FilteredPicturesRequest = {}): Promise<PaginatedResult<PictureResponse>> {
-  // 添加调试日志
-  console.log("Search API 请求参数:", params);
-  
   // 构建查询参数
   const queryParams = new URLSearchParams();
 
@@ -27,38 +124,34 @@ export async function getPictures(params: FilteredPicturesRequest = {}): Promise
   if (params.ownerId !== undefined) queryParams.append('ownerId', params.ownerId.toString());
   if (params.includeAllPublic !== undefined) queryParams.append('includeAllPublic', params.includeAllPublic.toString());
 
-  // 最终URL调试日志
-  const url = `${BASE_URL}/picture/get_pictures?${queryParams.toString()}`;
-  console.log("发送API请求:", url);
+  const url = `/picture/get_pictures?${queryParams.toString()}`;
   
   try {
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    const result = await fetchApi<PaginatedResult<PictureResponse>>(url);
+
+    if (result.success) {
+        return result as unknown as PaginatedResult<PictureResponse>;
+    } else {
+        console.error('获取图片列表失败:', result.message);
+        return {
+            success: false,
+            message: result.message || '获取图片列表失败',
+            data: [],
+            page: params.page || 1,
+            pageSize: params.pageSize || 10,
+            totalCount: 0,
+            totalPages: 0,
+            code: result.code || 500,
+        };
     }
-
-    const response = await fetch(url, { headers });
-    const data = await response.json();
-
-    // 添加结果日志
-    console.log("API 响应结果:", {
-      success: data.success,
-      totalCount: data.totalCount,
-      resultsCount: data.data?.length || 0
-    });
-
-    return data as PaginatedResult<PictureResponse>;
   } catch (error) {
-    console.error('获取图片列表失败:', error);
+    console.error('获取图片列表时发生意外错误:', error);
     return {
       success: false,
       message: '网络请求失败，请检查您的网络连接',
       data: [],
-      page: 1,
-      pageSize: 10,
+      page: params.page || 1,
+      pageSize: params.pageSize || 10,
       totalCount: 0,
       totalPages: 0,
       code: 500,
@@ -85,27 +178,33 @@ export async function unfavoritePicture(pictureId: number): Promise<BaseResult<b
 // 获取用户收藏的图片
 export async function getUserFavorites(page: number = 1, pageSize: number = 8): Promise<PaginatedResult<PictureResponse>> {
   try {
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    const url = `/picture/favorites?page=${page}&pageSize=${pageSize}`;
+    // 使用 fetchApi 替换原生 fetch
+    const result = await fetchApi<PaginatedResult<PictureResponse>>(url);
+
+    if (result.success) {
+      return result as unknown as PaginatedResult<PictureResponse>;
+    } else {
+      console.error('获取收藏图片失败:', result.message);
+      return {
+        success: false,
+        message: result.message || '获取收藏图片失败',
+        data: [],
+        page: page,
+        pageSize: pageSize,
+        totalCount: 0,
+        totalPages: 0,
+        code: result.code || 500,
+      };
     }
-
-    const url = `${BASE_URL}/picture/favorites?page=${page}&pageSize=${pageSize}`;
-    const response = await fetch(url, { headers });
-    const data = await response.json();
-
-    return data as PaginatedResult<PictureResponse>;
   } catch (error) {
-    console.error('获取收藏图片失败:', error);
+    console.error('获取收藏图片时发生意外错误:', error);
     return {
       success: false,
       message: '网络请求失败，请检查您的网络连接',
       data: [],
-      page: 1,
-      pageSize: 10,
+      page: page,
+      pageSize: pageSize,
       totalCount: 0,
       totalPages: 0,
       code: 500,

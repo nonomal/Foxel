@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Modal, Tabs, Input, Button, message, Radio, Space, Typography } from 'antd';
 import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
-import type { PictureResponse } from '../../api/types';
+import type { PictureResponse } from '../../api';
 import './ShareImageDialog.css';
 
 const { Text } = Typography;

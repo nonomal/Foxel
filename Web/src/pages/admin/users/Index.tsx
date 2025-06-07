@@ -13,7 +13,7 @@ import {
 import { 
   getUsers, deleteUser, createUser, updateUser, batchDeleteUsers, UserRole
 } from '../../../api';
-import type { UserResponse, CreateUserRequest, AdminUpdateUserRequest, UserFilterRequest } from '../../../api/types';
+import type { UserResponse, CreateUserRequest, AdminUpdateUserRequest, UserFilterRequest } from '../../../api';
 import { useOutletContext } from 'react-router';
 import { useNavigate } from 'react-router';
 import type { Breakpoint } from 'antd';
