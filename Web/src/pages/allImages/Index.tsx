@@ -17,7 +17,6 @@ function AllImages() {
   const [isUploadDialogVisible, setIsUploadDialogVisible] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const sortByRef = useRef(sortBy);
-  // 优化handleSortChange，减少不必要的状态更新
   const handleSortChange = (newSortBy: string) => {
     if (sortBy !== newSortBy) {
       setSortBy(newSortBy);

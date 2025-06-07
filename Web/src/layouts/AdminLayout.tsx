@@ -145,20 +145,14 @@ function AdminLayout() {
                     currentRouteData={headerRouteData}
                     isMobile={isMobile}
                 />
-
                 <Content style={{
-                    margin: isMobile ? '10px' : '20px',
-                    background: '#f0f2f5',
+                    padding: isMobile ? '10px' : '20px',
+                    background: colorBgContainer,
                     position: 'relative',
-                    borderRadius: isMobile ? 10 : 20,
                     overflowY: 'auto'
                 }}>
                     <div style={{
-                        padding: isMobile ? '15px' : '25px',
                         minHeight: '100%',
-                        background: colorBgContainer,
-                        boxShadow: '0 6px 30px rgba(0,0,0,0.03)',
-                        border: '1px solid #f0f0f0',
                         position: 'relative',
                         overflow: 'hidden'
                     }}>

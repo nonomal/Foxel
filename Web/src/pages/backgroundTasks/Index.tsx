@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Table, Card, Tag, Space, Button, Empty, message, Modal } from 'antd';
-import { SyncOutlined, EyeOutlined } from '@ant-design/icons';
+import { Typography, Table, Card, Tag, Button, Empty, message } from 'antd';
+import { SyncOutlined } from '@ant-design/icons';
 import { getUserTasks, TaskExecutionStatus } from '../../api';
 import { type TaskDetailsViewModel } from '../../api';
 import TaskProgressBar from '../../components/TaskProgressBar';
@@ -12,10 +12,7 @@ const { Title, Text } = Typography;
 
 // 定义任务类型映射
 const taskTypeDisplayMapping: { [key: number]: string } = {
-  0: '图片处理', // 对应后端的 PictureProcessing = 0
-  // 如果有其他任务类型，在此处添加
-  // 1: '视频处理',
-  // 2: '数据导出',
+  0: '图片处理',
 };
 
 const BackgroundTasks: React.FC = () => {
@@ -25,9 +22,11 @@ const BackgroundTasks: React.FC = () => {
   const [pollingInterval, setPollingIntervalState] = useState<number | null>(null);
 
   // 加载任务数据
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const result = await getUserTasks();
       if (result.success && result.data) {
         setTasks(result.data);
@@ -38,7 +37,9 @@ const BackgroundTasks: React.FC = () => {
       console.error('获取任务失败:', error);
       message.error('加载任务列表时出错');
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -48,7 +49,7 @@ const BackgroundTasks: React.FC = () => {
 
     // 设置轮询
     if (pollingActive) {
-      const interval = setInterval(fetchTasks, 3000); // 轮询间隔调整为3秒
+      const interval = setInterval(() => fetchTasks(false), 3000); // 轮询时不显示加载动画
       setPollingIntervalState(interval as unknown as number); // 保存 interval ID
     }
 
@@ -117,12 +118,6 @@ const BackgroundTasks: React.FC = () => {
   };
 
   // 渲染错误信息
-  const showErrorMessage = (error: string) => {
-    Modal.error({
-      title: '处理失败',
-      content: error,
-    });
-  };
 
   // 表格列定义
   const columns: ColumnType<TaskDetailsViewModel>[] = [ // Updated type
@@ -186,31 +181,7 @@ const BackgroundTasks: React.FC = () => {
       key: 'completedAt',
       render: (date: Date | undefined) => formatDate(date), // Ensure date can be undefined
     },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: TaskDetailsViewModel) => ( // Updated type
-        <Space size="middle">
-          {record.taskType === 0 && record.relatedEntityId && (
-            <Link to={`/pictures/${record.relatedEntityId}`}>
-              <Button type="link" icon={<EyeOutlined />} size="small">
-                查看关联图片
-              </Button>
-            </Link>
-          )}
-          {record.status === TaskExecutionStatus.Failed && record.error && ( // 使用数字枚举成员
-            <Button
-              type="link"
-              danger
-              size="small"
-              onClick={() => showErrorMessage(record.error!)}
-            >
-              查看错误
-            </Button>
-          )}
-        </Space>
-      ),
-    },
+   
   ];
 
   return (
@@ -231,17 +202,17 @@ const BackgroundTasks: React.FC = () => {
             background: 'linear-gradient(120deg, #000000, #444444)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-          }}>图片处理队列</Title>
+          }}>任务中心</Title>
           <Text type="secondary" style={{
             fontSize: 16,
             color: '#888',
             letterSpacing: '0.3px'
-          }}>查看和管理图片后台处理任务</Text>
+          }}>查看和管理后台处理任务</Text>
         </div>
         <Button
           type="primary"
           icon={<SyncOutlined />}
-          onClick={fetchTasks}
+          onClick={() => fetchTasks()}
           loading={loading}
         >
           刷新
