@@ -127,7 +127,7 @@ const routes: RouteConfig[] = [
 
   // 管理后台路由
   {
-    path: '',
+    path: 'dashboard',
     key: 'admin-dashboard',
     icon: <DashboardOutlined />,
     label: '控制面板',

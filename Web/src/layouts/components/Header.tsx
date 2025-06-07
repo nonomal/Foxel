@@ -77,7 +77,7 @@ const Header: React.FC<HeaderProps> = ({
         
         const currentPath = location.pathname;
         const isAdminArea = routeInfo?.area === 'admin';
-        const baseHref = isAdminArea ? '/admin' : '/';
+        const baseHref = isAdminArea ? '/admin/dashboard' : '/';
         const baseTitle = isAdminArea ? '管理后台' : '首页';
 
         if (currentPath === baseHref && !explicitTitle && (!routeInfo || routeInfo.path === '')) {
