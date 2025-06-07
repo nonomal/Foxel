@@ -3,7 +3,7 @@ import { Typography, Button, Dropdown, message, Row, Col } from 'antd';
 import { SortAscendingOutlined, UploadOutlined } from '@ant-design/icons';
 import type { PictureResponse } from '../../api';
 import ImageUploadDialog from '../../components/upload/ImageUploadDialog';
-import ImageGrid from '../../components/image/ImageGrid';
+import ImageGrid from '../../components/image/ImageGrid/ImageGrid';
 import useIsMobile from '../../hooks/useIsMobile';
 
 const { Title } = Typography;

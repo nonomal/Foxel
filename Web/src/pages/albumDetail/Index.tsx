@@ -7,7 +7,7 @@ import {
   EditOutlined, DeleteOutlined, PlusOutlined} from '@ant-design/icons';
 import { getAlbumById, deleteAlbum, favoritePicture, unfavoritePicture, addPicturesToAlbum, updateAlbum } from '../../api';
 import type { AlbumResponse, PictureResponse } from '../../api';
-import ImageGrid from '../../components/image/ImageGrid';
+import ImageGrid from '../../components/image/ImageGrid/ImageGrid';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;

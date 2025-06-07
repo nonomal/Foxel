@@ -16,7 +16,7 @@ import {
   FilterOutlined,
 } from '@ant-design/icons';
 
-import ImageGrid from '../../components/image/ImageGrid';
+import ImageGrid from '../../components/image/ImageGrid/ImageGrid';
 import type { PictureResponse } from '../../api/types';
 import { getFilteredTags } from '../../api/tagApi';
 import useIsMobile from '../../hooks/useIsMobile';

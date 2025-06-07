@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Tabs, Switch, Select, Slider, Space, Button, Typography, Tooltip, message } from 'antd';
 import { SearchOutlined, FileImageOutlined, ClearOutlined } from '@ant-design/icons';
-import ImageGrid from '../image/ImageGrid';
+import ImageGrid from '../image/ImageGrid/ImageGrid';
 import type { PictureResponse } from '../../api';
 import './SearchDialog.css';
 

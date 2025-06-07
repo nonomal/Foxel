@@ -4,7 +4,6 @@
   flex-wrap: wrap;
   gap: 3px;
   justify-content: space-between;
-  /* 改为space-between让每行铺满 */
   align-items: flex-start;
 }
 
@@ -33,7 +32,6 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* 图片占满卡片 */
 .custom-card-cover {
   position: relative;
   height: 100%;
@@ -53,7 +51,6 @@
   transform: scale(1.05);
 }
 
-/* 信息覆盖层 - 默认隐藏 */
 .custom-card-overlay {
   position: absolute;
   top: 0;
@@ -74,7 +71,6 @@
   opacity: 1;
 }
 
-/* 信息内容样式 */
 .custom-card-info {
   transform: translateY(20px);
   transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
@@ -118,7 +114,6 @@
   white-space: nowrap;
 }
 
-/* 权限和元数据指示器 */
 .custom-card-indicators {
   position: absolute;
   top: 8px;
@@ -161,7 +156,6 @@
   backdrop-filter: blur(4px);
 }
 
-/* 操作按钮容器 */
 .custom-card-actions {
   display: flex;
   justify-content: space-between;
@@ -188,7 +182,6 @@
   transform: scale(1.1);
 }
 
-/* 右键菜单样式 */
 .context-menu {
   background-color: white;
   border-radius: 8px;
@@ -211,7 +204,6 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* 选中状态样式 */
 .custom-card-selected {
   box-shadow: 0 0 0 3px #1890ff, 0 8px 20px rgba(0, 0, 0, 0.15) !important;
 }
@@ -252,7 +244,6 @@
   text-align: center;
 }
 
-/* 移除旧的加载动画，不再需要 */
 .image-loading-effect {
   position: relative;
   overflow: hidden;
@@ -279,12 +270,7 @@
   }
 }
 
-/* 响应式调整 */
 @media (max-width: 768px) {
-  .image-grid {
-    gap: 8px;
-  }
-
   .custom-card {
     height: 150px;
   }
@@ -309,7 +295,8 @@
 
 @media (max-width: 480px) {
   .custom-card {
-    height: 120px;
+    height: auto;
+    aspect-ratio: 1 / 1;
   }
 
   .custom-card-overlay {

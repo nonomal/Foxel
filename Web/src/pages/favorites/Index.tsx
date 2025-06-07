@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useCallback } from 'react';
 import { Typography, Button, Dropdown } from 'antd';
 import { SortAscendingOutlined } from '@ant-design/icons';
 import type { PictureResponse } from '../../api';
-import ImageGrid from '../../components/image/ImageGrid';
+import ImageGrid from '../../components/image/ImageGrid/ImageGrid';
 
 const { Title } = Typography;
 
