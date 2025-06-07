@@ -26,9 +26,9 @@
 
 加入我们的社区，与其他用户交流使用心得，获取技术支持，参与项目讨论：
 
-|     平台     | 群组信息                                                | 联系方式                                                                                                           |
-|:----------:|:----------------------------------------------------|:---------------------------------------------------------------------------------------------------------------|
-| 📱 **微信群** | **群名：** Foxel 小狐狸 <br>*如二维码失效，可添加 `drizzle2001` 拉群* | <img src="https://foxel.cc/images/wechat.png" alt="微信群二维码" width="100">                                        |
+|     平台     | 群组信息                                                | 联系方式                                                                     |
+|:----------:|:----------------------------------------------------|:-------------------------------------------------------------------------|
+| 📱 **微信群** | **群名：** Foxel 小狐狸 <br>*如二维码失效，可添加 `drizzle2001` 拉群* | <img src="https://foxel.cc/Uploads/wechat.png" alt="微信群二维码" width="100"> |
 
 > 💡 **社区规则：**
 > - 保持友善，互相帮助
@@ -55,36 +55,80 @@
 
 - 已安装 [Docker](https://www.docker.com/)。
 
-### ⚙️ 一键部署
+### ⚙️ 部署方案
 
 > ⚠️ **重要提示：**  
-> Foxel 目前处于早期开发阶段，适合**尝鲜体验**和功能测试。当前版本在升级过程中可能包含**破坏性变更**，暂不提供数据迁移流程，升级时需要**重新安装**。如需**长期稳定使用**，建议等待 **Preview 版本** 发布后再部署，届时将提供完善的自动化版本升级流程。
+> Foxel 目前处于早期开发阶段，适合**尝鲜体验**和功能测试。当前版本在升级过程中可能包含**破坏性变更**，暂不提供数据迁移流程，升级时需要
+**重新安装**。如需**长期稳定使用**，建议等待 **Preview 版本** 发布后再部署，届时将提供完善的自动化版本升级流程。
 
-**1. 准备数据库**
+#### 🐳 Docker Compose 一键部署
 
-Foxel 依赖 PostgreSQL 数据库
-
-**2. 拉取并运行容器**
+**1. 下载 compose.yaml 文件**
 
 ```bash
-docker run -d -p 80:80 --name foxel \
+wget https://raw.githubusercontent.com/DrizzleTime/Foxel/main/compose.yaml
+```
+
+**2. 创建必要目录并启动服务**
+
+```bash
+# 创建数据目录
+mkdir -p ./uploads ./db
+
+# 设置目录权限
+chmod 755 ./uploads
+chmod 700 ./db
+
+# 启动服务
+docker compose up -d
+```
+
+**3. 访问服务**
+
+- 打开浏览器访问 `http://你的服务器地址:8088`
+- **第一个注册的用户将自动获得管理员权限**
+
+**4. 常用命令**
+
+```bash
+# 查看服务状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
+
+# 更新服务
+docker compose pull && docker compose up -d
+```
+
+#### 🐋 Docker 单容器部署
+
+**1. 准备 PostgreSQL 数据库**
+
+需要您自己提供 PostgreSQL 数据库服务。
+
+**2. 运行 Foxel 容器**
+
+```bash
+docker run -d -p 8088:80 --name foxel \
+    -v /path/to/data:/app/data \
+    -v /path/to/logs:/app/logs \
     -v /path/to/uploads:/app/Uploads \
     -e DEFAULT_CONNECTION="Host=your_host;Username=your_user;Password=your_password;Database=your_db" \
+    -e TZ=Asia/Shanghai \
     --pull always \
     ghcr.io/drizzletime/foxel:dev
 ```
 
 **参数说明：**
 
-- `-p 80:80`：端口映射（可修改为 `-p 8080:80` 等）
-- `-v /path/to/uploads:/app/Uploads`：数据目录挂载
+- `-p 8088:80`：端口映射（可修改为其他端口）
+- `-v`：数据目录挂载
 - `DEFAULT_CONNECTION`：PostgreSQL 数据库连接字符串
-
-**3. 访问服务**
-
-打开浏览器访问您的域名或者IP，**第一个注册的用户将自动获得管理员权限**。
-
-
+- `TZ`：时区设置
 
 ---
 

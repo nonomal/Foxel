@@ -1,0 +1,34 @@
+﻿services:
+  foxel:
+    image: ghcr.io/drizzletime/foxel:dev
+    container_name: foxel
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    environment:
+      - DEFAULT_CONNECTION=Host=postgres;Username=foxel;Password=foxel123;Database=foxel_db
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./uploads:/app/Uploads
+    pull_policy: always
+    depends_on:
+      - postgres
+    networks:
+      - foxel-network
+  postgres:
+    image: postgres:17.5
+    container_name: foxel-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=foxel
+      - POSTGRES_PASSWORD=foxel123
+      - POSTGRES_DB=foxel_db
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    networks:
+      - foxel-network
+
+networks:
+  foxel-network:
+    driver: bridge
