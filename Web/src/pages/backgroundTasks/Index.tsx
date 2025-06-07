@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Typography, Table, Card, Tag, Space, Button, Empty, message, Modal } from 'antd';
 import { SyncOutlined, EyeOutlined } from '@ant-design/icons';
-import { getUserTasks } from '../../api';
-import { type PictureProcessingTask, ProcessingStatus } from '../../api';
+import { getUserTasks, TaskExecutionStatus } from '../../api';
+import { type TaskDetailsViewModel } from '../../api';
 import TaskProgressBar from '../../components/TaskProgressBar';
 import dayjs from 'dayjs';
 import { Link } from 'react-router';
@@ -10,8 +10,16 @@ import type { ColumnType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
 
+// 定义任务类型映射
+const taskTypeDisplayMapping: { [key: number]: string } = {
+  0: '图片处理', // 对应后端的 PictureProcessing = 0
+  // 如果有其他任务类型，在此处添加
+  // 1: '视频处理',
+  // 2: '数据导出',
+};
+
 const BackgroundTasks: React.FC = () => {
-  const [tasks, setTasks] = useState<PictureProcessingTask[]>([]);
+  const [tasks, setTasks] = useState<TaskDetailsViewModel[]>([]); // Updated type
   const [loading, setLoading] = useState(true);
   const [pollingActive, setPollingActive] = useState(true);
   const [pollingInterval, setPollingIntervalState] = useState<number | null>(null);
@@ -40,60 +48,62 @@ const BackgroundTasks: React.FC = () => {
 
     // 设置轮询
     if (pollingActive) {
-      const interval = setInterval(fetchTasks, 3000);
-      setPollingIntervalState(interval as unknown as number);
+      const interval = setInterval(fetchTasks, 3000); // 轮询间隔调整为3秒
+      setPollingIntervalState(interval as unknown as number); // 保存 interval ID
     }
 
     return () => {
       if (pollingInterval) {
-        clearInterval(pollingInterval);
+        clearInterval(pollingInterval); // 清除 interval
       }
     };
-  }, [fetchTasks, pollingActive]);
+  }, [fetchTasks, pollingActive]); // 依赖项中移除 pollingInterval
 
   // 检查是否有活跃的任务，如果没有则停止轮询
   useEffect(() => {
     const hasActiveTasks = tasks.some(
-      task => task.status === ProcessingStatus.Pending || task.status === ProcessingStatus.Processing
+      task => task.status === TaskExecutionStatus.Pending || task.status === TaskExecutionStatus.Processing // 使用数字枚举成员
     );
-    
+
     if (!hasActiveTasks && pollingActive) {
       setPollingActive(false);
       if (pollingInterval) {
         clearInterval(pollingInterval);
         setPollingIntervalState(null);
       }
-    } else if (hasActiveTasks && !pollingActive) {
+    } else if (hasActiveTasks && !pollingActive && tasks.length > 0) { // 确保有任务才重新激活轮询
       setPollingActive(true);
-      const interval = setInterval(fetchTasks, 3000);
-      setPollingIntervalState(interval as unknown as number);
+      // 不需要在这里重新创建 interval，上面的 useEffect 会处理
     }
-  }, [tasks, pollingActive, pollingInterval, fetchTasks]);
+  }, [tasks, pollingActive, pollingInterval, fetchTasks]); // 保持依赖项
 
   // 渲染状态标签
-  const renderStatus = (status: ProcessingStatus) => {
+  const renderStatus = (status: TaskExecutionStatus) => { // status 现在是数字
     let color = '';
     let text = '';
     let icon = null;
 
     switch (status) {
-      case ProcessingStatus.Pending:
+      case TaskExecutionStatus.Pending: // 使用数字枚举成员
         color = 'orange';
         text = '等待中';
         icon = <SyncOutlined spin />;
         break;
-      case ProcessingStatus.Processing:
+      case TaskExecutionStatus.Processing: // 使用数字枚举成员
         color = 'processing';
         text = '处理中';
         icon = <SyncOutlined spin />;
         break;
-      case ProcessingStatus.Completed:
+      case TaskExecutionStatus.Completed: // 使用数字枚举成员
         color = 'success';
         text = '已完成';
         break;
-      case ProcessingStatus.Failed:
+      case TaskExecutionStatus.Failed: // 使用数字枚举成员
         color = 'error';
         text = '失败';
+        break;
+      default:
+        text = `未知状态 (${status})`;
         break;
     }
 
@@ -115,40 +125,49 @@ const BackgroundTasks: React.FC = () => {
   };
 
   // 表格列定义
-  const columns: ColumnType<PictureProcessingTask>[] = [
+  const columns: ColumnType<TaskDetailsViewModel>[] = [ // Updated type
     {
-      title: '图片名称',
-      dataIndex: 'pictureName',
-      key: 'pictureName',
-      render: (text: string, record: PictureProcessingTask) => (
-        <Link to={`/pictures/${record.pictureId}`}>{text}</Link>
+      title: '任务名称', // Changed title
+      dataIndex: 'taskName', // Changed dataIndex
+      key: 'taskName',
+      render: (text: string, record: TaskDetailsViewModel) => ( // Updated type and logic
+        record.taskType === 0 && record.relatedEntityId // 修正: 使用数字 0 比较
+          ? <Link to={`/pictures/${record.relatedEntityId}`}>{text}</Link>
+          : text
       ),
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: ProcessingStatus) => renderStatus(status),
+      render: (status: TaskExecutionStatus) => renderStatus(status), // status 现在是数字
       filters: [
-        { text: '等待中', value: ProcessingStatus.Pending },
-        { text: '处理中', value: ProcessingStatus.Processing },
-        { text: '已完成', value: ProcessingStatus.Completed },
-        { text: '失败', value: ProcessingStatus.Failed },
+        { text: '等待中', value: TaskExecutionStatus.Pending }, // 使用数字枚举成员
+        { text: '处理中', value: TaskExecutionStatus.Processing }, // 使用数字枚举成员
+        { text: '已完成', value: TaskExecutionStatus.Completed }, // 使用数字枚举成员
+        { text: '失败', value: TaskExecutionStatus.Failed },   // 使用数字枚举成员
       ],
-      onFilter: (value, record: PictureProcessingTask) => 
-        record.status === value.toString(),
+      onFilter: (value, record: TaskDetailsViewModel) =>
+        record.status === (value as TaskExecutionStatus), // value 已经是数字
+    },
+    {
+      title: '任务类型',
+      dataIndex: 'taskType',
+      key: 'taskType',
+      render: (taskType: number | undefined) => // 接收数字类型的 taskType
+        taskType !== undefined ? taskTypeDisplayMapping[taskType] || `未知类型 (${taskType})` : '-',
     },
     {
       title: '进度',
       dataIndex: 'progress',
       key: 'progress',
-      render: (progress: number, record: PictureProcessingTask) => (
-        <TaskProgressBar 
-          status={record.status} 
-          progress={progress} 
-          error={record.error} 
+      render: (progress: number, record: TaskDetailsViewModel) => ( // Updated type
+        <TaskProgressBar
+          status={record.status}
+          progress={progress}
+          error={record.error}
           showLabel={false}
-          size="small" 
+          size="small"
           style={{ width: '150px' }}
         />
       ),
@@ -158,29 +177,31 @@ const BackgroundTasks: React.FC = () => {
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (date: Date) => formatDate(date),
-      sorter: (a: PictureProcessingTask, b: PictureProcessingTask) => 
+      sorter: (a: TaskDetailsViewModel, b: TaskDetailsViewModel) => // Updated type
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     {
       title: '完成时间',
       dataIndex: 'completedAt',
       key: 'completedAt',
-      render: (date: Date) => formatDate(date),
+      render: (date: Date | undefined) => formatDate(date), // Ensure date can be undefined
     },
     {
       title: '操作',
       key: 'action',
-      render: (_: any, record: PictureProcessingTask) => (
+      render: (_: any, record: TaskDetailsViewModel) => ( // Updated type
         <Space size="middle">
-          <Link to={`/pictures/${record.pictureId}`}>
-            <Button type="link" icon={<EyeOutlined />} size="small">
-              查看
-            </Button>
-          </Link>
-          {record.status === ProcessingStatus.Failed && record.error && (
-            <Button 
-              type="link" 
-              danger 
+          {record.taskType === 0 && record.relatedEntityId && (
+            <Link to={`/pictures/${record.relatedEntityId}`}>
+              <Button type="link" icon={<EyeOutlined />} size="small">
+                查看关联图片
+              </Button>
+            </Link>
+          )}
+          {record.status === TaskExecutionStatus.Failed && record.error && ( // 使用数字枚举成员
+            <Button
+              type="link"
+              danger
               size="small"
               onClick={() => showErrorMessage(record.error!)}
             >
@@ -194,50 +215,50 @@ const BackgroundTasks: React.FC = () => {
 
   return (
     <div className="background-tasks-container">
-      <div style={{ 
-        marginBottom: 30, 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div style={{
+        marginBottom: 30,
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
       }}>
         <div>
-          <Title level={2} style={{ 
-            margin: 0, 
-            marginBottom: 10, 
-            fontWeight: 600, 
+          <Title level={2} style={{
+            margin: 0,
+            marginBottom: 10,
+            fontWeight: 600,
             letterSpacing: '0.5px',
             fontSize: 32,
             background: 'linear-gradient(120deg, #000000, #444444)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}>图片处理队列</Title>
-          <Text type="secondary" style={{ 
+          <Text type="secondary" style={{
             fontSize: 16,
             color: '#888',
             letterSpacing: '0.3px'
           }}>查看和管理图片后台处理任务</Text>
         </div>
-        <Button 
-          type="primary" 
-          icon={<SyncOutlined />} 
+        <Button
+          type="primary"
+          icon={<SyncOutlined />}
           onClick={fetchTasks}
           loading={loading}
         >
           刷新
         </Button>
       </div>
-      
+
       <Card>
         {tasks.length > 0 ? (
-          <Table 
-            dataSource={tasks} 
-            columns={columns} 
+          <Table
+            dataSource={tasks}
+            columns={columns}
             rowKey="taskId"
             loading={loading}
             pagination={{ pageSize: 10 }}
           />
         ) : (
-          <Empty 
+          <Empty
             description={
               loading ? "正在加载..." : "暂无处理任务"
             }

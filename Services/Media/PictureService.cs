@@ -343,8 +343,10 @@ public class PictureService(
             Name = picture.Name,
             Path = storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))).Result,
-            ThumbnailPath = storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))).Result,
+            ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath) ?
+                            storageService.ExecuteAsync(picture.StorageType, provider =>
+                                Task.FromResult(provider.GetUrl(picture.ThumbnailPath))).Result
+                            : null, // 如果没有缩略图路径，则为null
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
@@ -354,6 +356,7 @@ public class PictureService(
             Username = picture.User?.UserName,
             AlbumId = picture.AlbumId,
             Permission = picture.Permission
+            // ProcessingStatus 字段已移除，客户端应通过 BackgroundTaskController 获取状态
         };
     }
 
@@ -620,13 +623,13 @@ public class PictureService(
             {
                 Name = initialTitle,
                 Description = initialDescription,
-                Path = relativePath,
+                Path = relativePath, // 这是存储服务返回的路径/键
                 User = user,
                 Permission = permission,
                 AlbumId = albumId,
                 StorageType = storageType.Value,
-                ProcessingStatus = isAnonymous ? ProcessingStatus.Completed : ProcessingStatus.Pending,
-                ThumbnailPath = thumbnailPath ?? (isAnonymous ? relativePath : null) // 匿名用户使用原图作为缩略图
+                // ProcessingStatus 等字段已移除
+                ThumbnailPath = thumbnailPath // 如果生成了缩略图，则保存其存储路径/键
             };
 
             dbContext.Pictures.Add(picture);
@@ -634,7 +637,8 @@ public class PictureService(
 
             if (!isAnonymous)
             {
-                await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, relativePath);
+                // 使用 relativePath (即存储服务中的对象键/路径) 来排队任务
+                await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, picture.Path);
             }
 
             // 返回图片基本信息
@@ -643,21 +647,18 @@ public class PictureService(
                 Id = picture.Id,
                 Name = picture.Name,
                 Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
-                    Task.FromResult(provider.GetUrl(relativePath))),
-                ThumbnailPath = !string.IsNullOrEmpty(thumbnailPath)
+                    Task.FromResult(provider.GetUrl(picture.Path))), // 使用 picture.Path
+                ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath)
                     ? await storageService.ExecuteAsync(picture.StorageType, provider =>
-                        Task.FromResult(provider.GetUrl(thumbnailPath)))
-                    : (isAnonymous 
-                        ? await storageService.ExecuteAsync(picture.StorageType, provider =>
-                            Task.FromResult(provider.GetUrl(relativePath)))
-                        : null),
+                        Task.FromResult(provider.GetUrl(picture.ThumbnailPath)))
+                    : null,
                 Description = picture.Description,
                 CreatedAt = picture.CreatedAt,
                 Tags = new List<string>(),
                 Permission = permission,
                 AlbumId = albumId,
                 AlbumName = album?.Name,
-                ProcessingStatus = picture.ProcessingStatus
+                // ProcessingStatus 字段已移除
             };
 
             return (pictureResponse, picture.Id);

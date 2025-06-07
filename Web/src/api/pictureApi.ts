@@ -20,16 +20,7 @@ export interface FilteredPicturesRequest {
   includeAllPublic?: boolean;
 }
 
-// 将类型定义改为枚举，这样既可以作为类型也可以作为值使用
-export type ProcessingStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
 
-// 添加常量对象提供运行时值
-export const ProcessingStatus = {
-  Pending: 'Pending' as ProcessingStatus,
-  Processing: 'Processing' as ProcessingStatus,
-  Completed: 'Completed' as ProcessingStatus,
-  Failed: 'Failed' as ProcessingStatus
-};
 
 // 图片响应数据
 export interface PictureResponse {
@@ -49,9 +40,6 @@ export interface PictureResponse {
   permission: number;
   albumId?: number;
   albumName?: string;
-  processingStatus: ProcessingStatus;
-  processingError?: string;
-  processingProgress: number;
 }
 
 // 收藏请求

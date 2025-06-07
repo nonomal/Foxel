@@ -14,6 +14,7 @@ using Foxel.Services.Media;
 using Foxel.Services.Storage;
 using Foxel.Services.Storage.Providers;
 using Foxel.Services.VectorDB;
+using Foxel.Services.Background.Processors;
 
 namespace Foxel.Extensions;
 
@@ -38,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CosStorageProvider>();
         services.AddSingleton<WebDavStorageProvider>();
         services.AddSingleton<IStorageService, StorageService>();
+        services.AddSingleton<PictureTaskProcessor>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
     }
 

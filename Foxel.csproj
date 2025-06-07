@@ -26,6 +26,7 @@
 
     <ItemGroup>
       <Folder Include="Uploads\" />
+      <Folder Include="Uploads\2025\" />
     </ItemGroup>
 
     <ItemGroup>

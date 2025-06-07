@@ -6,10 +6,10 @@ import {
   CheckCircleOutlined, 
   CloseCircleOutlined 
 } from '@ant-design/icons';
-import { ProcessingStatus } from '../api';
+import { TaskExecutionStatus } from '../api';
 
 interface TaskProgressBarProps {
-  status: ProcessingStatus;
+  status: TaskExecutionStatus; // status 现在是数字
   progress: number;
   error?: string;
   showLabel?: boolean;
@@ -32,26 +32,26 @@ const TaskProgressBar: React.FC<TaskProgressBarProps> = ({
   let statusText = '';
   let progressStatus: "success" | "exception" | "active" | "normal" | undefined;
   
-  switch (status) {
-    case ProcessingStatus.Pending:
+  switch (status) { // status 现在是数字
+    case TaskExecutionStatus.Pending: // 使用数字枚举成员
       statusColor = 'orange';
       progressStatus = 'normal';
       icon = <ClockCircleOutlined />;
       statusText = '等待中';
       break;
-    case ProcessingStatus.Processing:
+    case TaskExecutionStatus.Processing: // 使用数字枚举成员
       statusColor = 'processing';
       progressStatus = 'active';
       icon = <SyncOutlined spin />;
       statusText = '处理中';
       break;
-    case ProcessingStatus.Completed:
+    case TaskExecutionStatus.Completed: // 使用数字枚举成员
       statusColor = 'success';
       progressStatus = 'success';
       icon = <CheckCircleOutlined />;
       statusText = '已完成';
       break;
-    case ProcessingStatus.Failed:
+    case TaskExecutionStatus.Failed: // 使用数字枚举成员
       statusColor = 'error';
       progressStatus = 'exception';
       icon = <CloseCircleOutlined />;
@@ -66,7 +66,7 @@ const TaskProgressBar: React.FC<TaskProgressBarProps> = ({
           <Tag color={statusColor} icon={icon} style={{ marginRight: 8 }}>
             {statusText}
           </Tag>
-          {status === ProcessingStatus.Failed && error && (
+          {status === TaskExecutionStatus.Failed && error && ( // 使用数字枚举成员
             <Tooltip title={error}>
               <span style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: 13 }}>
                 查看错误
@@ -81,7 +81,7 @@ const TaskProgressBar: React.FC<TaskProgressBarProps> = ({
           size={size} 
           status={progressStatus}
           showInfo={size !== 'small'}
-          strokeColor={status === ProcessingStatus.Failed ? '#ff4d4f' : undefined}
+          strokeColor={status === TaskExecutionStatus.Failed ? '#ff4d4f' : undefined} // 使用数字枚举成员
         />
       </Tooltip>
     </div>

@@ -65,8 +65,7 @@ public class AiService(IHttpClientFactory httpClientFactory, IConfigService conf
             var textContent = new TextContent
             {
                 Type = "text",
-                Text = configService["AI:ImageAnalysisPrompt"] ??
-                    "请详细分析这张图片，并提供全面的描述，以便用于向量嵌入和基于文本的图像搜索。描述需要包含：主体对象、场景环境、色彩特点、构图布局、风格特征、情绪氛围、细节特征等关键元素。请提供一个简短有力的标题，然后提供详细描述。\n\n请以JSON格式返回，格式如下：\n{\"title\": \"简短概括图片的核心内容\", \"description\": \"全面详细的描述，包含上述所有元素，使用丰富精确的词汇，避免笼统表达\"}\n\n请确保返回有效的JSON格式。"
+                Text = configService["AI:ImageAnalysisPrompt"]
             };
 
             var message = new ChatMessage
@@ -117,8 +116,7 @@ public class AiService(IHttpClientFactory httpClientFactory, IConfigService conf
             string model = configService["AI:Model"];
             var tagsText = string.Join(", ", availableTags);
 
-            string promptTemplate = configService["AI:TagMatchingPrompt"] ??
-                "以下是一组标签：[{tagsText}]。\n\n请从这些标签中严格选择与下面描述内容高度相关的标签（最多选择5个）。只选择确实匹配的标签，如果找不到完全匹配或高度相关的标签，宁可返回空数组也不要选择不太相关的标签。\n\n描述内容：{description}\n\n请以JSON格式返回，格式如下：\n{{\"tags\": [\"标签1\", \"标签2\", \"标签3\"]}}\n\n请确保返回有效的JSON格式前面不要加```，并且只包含确实匹配的标签名称。";
+            string promptTemplate = configService["AI:TagMatchingPrompt"];
 
             // 替换占位符
             string promptText = promptTemplate
@@ -246,8 +244,7 @@ public class AiService(IHttpClientFactory httpClientFactory, IConfigService conf
             if (allowNewTags)
             {
                 // 获取配置的标签生成提示词，如果没有则使用默认提示词
-                string defaultPrompt = configService["AI:TagGenerationPrompt"] ??
-                    "请为图片生成5个最相关的标签，每个标签应该是简短且描述性的词语或短语。\n\n请以JSON格式返回，格式如下：\n{\"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]}\n\n请确保返回有效的JSON格式。";
+                string defaultPrompt = configService["AI:TagGenerationPrompt"];
 
                 // 如果允许新标签，则提供现有标签作为参考，但允许生成新标签
                 promptText = availableTags.Count > 0
@@ -261,8 +258,7 @@ public class AiService(IHttpClientFactory httpClientFactory, IConfigService conf
                     return new List<string>();
 
                 var tagsText = string.Join(", ", availableTags);
-                string templatePrompt = configService["AI:TagMatchingPrompt"] ??
-                    "以下是一组标签：[{tagsText}]。\n\n请从这些标签中严格选择与图片内容高度相关的标签（最多选择5个）。只选择确实匹配的标签，如果找不到完全匹配或高度相关的标签，宁可返回空数组也不要选择不太相关的标签。\n\n请以JSON格式返回，格式如下：\n{{\"tags\": [\"标签1\", \"标签2\", \"标签3\"]}}\n\n请确保返回有效的JSON格式，并且只包含上述列表中的标签名称。";
+                string templatePrompt = configService["AI:TagMatchingPrompt"];
 
                 promptText = templatePrompt.Replace("{tagsText}", tagsText);
             }

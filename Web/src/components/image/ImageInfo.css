@@ -1,0 +1,205 @@
+/* 抽屉基础样式 */
+.imageinfo-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100vh;
+  z-index: 1050;
+  background-color: rgba(28, 30, 34, 0.5);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: none;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+  transform: translateX(100%);
+  overflow-y: auto;
+}
+.imageinfo-drawer-visible {
+  transform: translateX(0);
+}
+
+.imageinfo-header {
+  background-color: rgba(28, 30, 34, 0.6);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.imageinfo-header-title {
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+.imageinfo-close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageinfo-body {
+  padding: 24px 20px;
+  height: calc(100% - 57px);
+  scrollbar-width: none;
+  overflow-y: auto;
+  color: white;
+}
+
+/* 标题样式 */
+.imageinfo-title-container {
+  padding: 0 0 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 20px;
+}
+.imageinfo-title {
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.imageinfo-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+/* 描述区域 */
+.imageinfo-desc-section {
+  background-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.imageinfo-desc-text {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: 8;
+}
+.imageinfo-desc-text-expand {
+  -webkit-line-clamp: unset;
+}
+.imageinfo-expand-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 8px 0 0 0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: center;
+}
+
+/* 标签区域 */
+.imageinfo-tags-section {
+  margin-bottom: 20px;
+  padding: 0 4px;
+}
+.imageinfo-tag-title {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.imageinfo-tag-item {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: 4px 12px;
+  margin: 0 8px 8px 0;
+  display: inline-block;
+  font-size: 12px;
+}
+
+/* 规格信息区 */
+.imageinfo-specs-section {
+  background-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.imageinfo-specs-container {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+}
+.imageinfo-spec-item {
+  padding: 0 8px;
+  flex: 1;
+}
+.imageinfo-spec-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.imageinfo-spec-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* EXIF信息区 */
+.imageinfo-exif-container {
+  margin-top: 10px;
+}
+.imageinfo-exif-category {
+  margin-bottom: 20px;
+}
+.imageinfo-exif-divider {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  margin: 10px 0 16px !important;
+  font-size: 14px !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 500 !important;
+}
+.imageinfo-exif-table {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.imageinfo-exif-row {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.imageinfo-exif-label {
+  color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  width: 100px;
+  font-size: 13px;
+}
+.imageinfo-exif-value {
+  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.imageinfo-exif-empty {
+  color: rgba(255, 255, 255, 0.6);
+}

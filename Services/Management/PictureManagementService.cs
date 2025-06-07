@@ -1,9 +1,7 @@
 using Foxel.Models;
 using Foxel.Models.Response.Picture;
-using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Management;
 
@@ -28,7 +26,7 @@ public class PictureManagementService(
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
             query = query.Where(p => p.Name.Contains(searchQuery) || 
-                                    (p.Description != null && p.Description.Contains(searchQuery)));
+                                    (p.Description.Contains(searchQuery)));
         }
 
         if (userId.HasValue)
@@ -51,7 +49,7 @@ public class PictureManagementService(
             Id = picture.Id,
             Name = picture.Name,
             Path = storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))).Result,
+                Task.FromResult(provider.GetUrl(picture.Path))).Result,
             ThumbnailPath = storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))).Result,
             Description = picture.Description,
@@ -81,7 +79,8 @@ public class PictureManagementService(
         await using var dbContext = await contextFactory.CreateDbContextAsync();
 
         var picture = await dbContext.Pictures
-            .Include(p => p.User)
+            .Include(p => p.User).Include(picture => picture.Tags).Include(picture => picture.Album)
+            .Include(picture => picture.Favorites)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (picture == null)
@@ -103,9 +102,6 @@ public class PictureManagementService(
             AlbumId = picture.AlbumId,
             AlbumName = picture.Album?.Name,
             Permission = picture.Permission,
-            ProcessingStatus = picture.ProcessingStatus,
-            ProcessingError = picture.ProcessingError,
-            ProcessingProgress = picture.ProcessingProgress,
             FavoriteCount = picture.Favorites?.Count ?? 0,
             IsFavorited = false 
         };
@@ -216,9 +212,6 @@ public class PictureManagementService(
             AlbumId = picture.AlbumId,
             AlbumName = picture.Album?.Name,
             Permission = picture.Permission,
-            ProcessingStatus = picture.ProcessingStatus,
-            ProcessingError = picture.ProcessingError,
-            ProcessingProgress = picture.ProcessingProgress,
             FavoriteCount = picture.Favorites?.Count ?? 0,
             IsFavorited = false
         }).ToList();

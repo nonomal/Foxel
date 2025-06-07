@@ -20,7 +20,4 @@ public record PictureResponse
     public int? AlbumId { get; set; }
     public string? AlbumName { get; set; }
     public PermissionType Permission { get; set; } = PermissionType.Public;
-    public ProcessingStatus ProcessingStatus { get; set; }
-    public string? ProcessingError { get; set; }
-    public int ProcessingProgress { get; set; }
 }

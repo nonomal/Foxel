@@ -41,10 +41,6 @@ public class Picture : BaseModel
 
     public bool ContentWarning { get; set; } = false;
     public PermissionType Permission { get; set; } = PermissionType.Public;
-
-    public ProcessingStatus ProcessingStatus { get; set; } = ProcessingStatus.Pending;
-    public string? ProcessingError { get; set; }
-    public int ProcessingProgress { get; set; } = 0;
 }
 
 public enum PermissionType
@@ -52,12 +48,4 @@ public enum PermissionType
     Public = 0,
     Friends = 1,
     Private = 2
-}
-
-public enum ProcessingStatus
-{
-    Pending, // 等待处理
-    Processing, // 处理中
-    Completed, // 处理完成
-    Failed // 处理失败
 }
