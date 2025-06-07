@@ -13,7 +13,7 @@ import { Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { getMainRoutes, getAdminRoutes, type RouteConfig } from '../../routes';
 import UserAvatar from '../../components/UserAvatar';
-import { UserRole } from '../../api/types';
+import { UserRole } from '../../api';
 import SearchDialog from '../../components/search/SearchDialog';
 import useIsMobile from '../../hooks/useIsMobile';
 
