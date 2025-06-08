@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Foxel.Services.Storage.Providers;
 
 [StorageProvider(StorageType.Local)]
-public class LocalStorageProvider(IConfigService configService, ILogger<LocalStorageProvider> logger) : IStorageProvider
+public class LocalStorageProvider(IConfigService configService) : IStorageProvider
 {
     private readonly string _baseDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
 
@@ -15,13 +15,12 @@ public class LocalStorageProvider(IConfigService configService, ILogger<LocalSto
         string folder = Path.Combine(_baseDirectory, currentDate);
         Directory.CreateDirectory(folder);
 
-        string ext = Path.GetExtension(fileName);
-        string newFileName = $"{Guid.NewGuid()}{ext}";
+        string newFileName = fileName;
         string filePath = Path.Combine(folder, newFileName);
 
         await using var output = new FileStream(filePath, FileMode.Create);
         await fileStream.CopyToAsync(output);
-        return $"/Uploads/{currentDate}/{newFileName}";
+        return $"/Uploads/{currentDate}/{newFileName}"; 
     }
 
     public Task DeleteAsync(string storagePath)

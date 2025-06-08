@@ -1,4 +1,5 @@
 using Foxel.Models.DataBase;
+using Foxel.Services.Background.Processors; // For VisualRecognitionPayload
 
 namespace Foxel.Services.Background;
 
@@ -8,12 +9,19 @@ namespace Foxel.Services.Background;
 public interface IBackgroundTaskQueue
 {
     /// <summary>
-    /// 将图片处理任务添加到队列
+    /// 将图片处理任务（元数据和缩略图）添加到队列
     /// </summary>
     /// <param name="pictureId">图片ID</param>
     /// <param name="originalFilePath">原始图片路径</param>
     /// <returns>任务ID</returns>
     Task<Guid> QueuePictureProcessingTaskAsync(int pictureId, string originalFilePath);
+
+    /// <summary>
+    /// 将视觉识别任务添加到队列
+    /// </summary>
+    /// <param name="payload">视觉识别任务的Payload</param>
+    /// <returns>任务ID</returns>
+    Task<Guid> QueueVisualRecognitionTaskAsync(VisualRecognitionPayload payload);
 
     /// <summary>
     /// 获取用户的所有任务状态 (目前主要指图片处理任务)

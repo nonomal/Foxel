@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WebDavStorageProvider>();
         services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<PictureTaskProcessor>();
+        services.AddSingleton<VisualRecognitionTaskProcessor>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
     }
 

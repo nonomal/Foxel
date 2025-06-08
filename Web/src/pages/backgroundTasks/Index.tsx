@@ -13,6 +13,7 @@ const { Title, Text } = Typography;
 // 定义任务类型映射
 const taskTypeDisplayMapping: { [key: number]: string } = {
   0: '图片处理',
+  1: '视觉识别', // 新增视觉识别任务类型
 };
 
 const BackgroundTasks: React.FC = () => {
@@ -126,7 +127,7 @@ const BackgroundTasks: React.FC = () => {
       dataIndex: 'taskName', // Changed dataIndex
       key: 'taskName',
       render: (text: string, record: TaskDetailsViewModel) => ( // Updated type and logic
-        record.taskType === 0 && record.relatedEntityId // 修正: 使用数字 0 比较
+        (record.taskType === 0 || record.taskType === 1) && record.relatedEntityId // 检查是否为图片处理或视觉识别任务
           ? <Link to={`/pictures/${record.relatedEntityId}`}>{text}</Link>
           : text
       ),
@@ -151,6 +152,11 @@ const BackgroundTasks: React.FC = () => {
       key: 'taskType',
       render: (taskType: number | undefined) => // 接收数字类型的 taskType
         taskType !== undefined ? taskTypeDisplayMapping[taskType] || `未知类型 (${taskType})` : '-',
+      filters: [ // 可以为任务类型添加筛选器
+        { text: '图片处理', value: 0 },
+        { text: '视觉识别', value: 1 },
+      ],
+      onFilter: (value, record: TaskDetailsViewModel) => record.taskType === (value as number),
     },
     {
       title: '进度',
