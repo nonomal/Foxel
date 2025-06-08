@@ -7,6 +7,7 @@ namespace Foxel.Models.DataBase
     public enum TaskType
     {
         PictureProcessing = 0,
+        VisualRecognition = 1,
     }
 
     public enum TaskExecutionStatus

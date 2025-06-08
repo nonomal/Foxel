@@ -68,8 +68,10 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
         {
             // 创建唯一的文件存储路径
             string currentDate = DateTime.Now.ToString("yyyy/MM");
-            string ext = Path.GetExtension(fileName);
-            string objectKey = $"{currentDate}/{Guid.NewGuid()}{ext}";
+            // fileName 参数现在是期望的最终文件名部分，例如 "guid.ext"
+            // string ext = Path.GetExtension(fileName); // 旧的 fileName 是原始文件名，现在 fileName 是目标文件名
+            // string objectKey = $"{currentDate}/{Guid.NewGuid()}{ext}"; // 旧逻辑
+            string objectKey = $"{currentDate}/{fileName}"; // 新逻辑
 
             // 创建临时文件
             string tempPath = Path.GetTempFileName();

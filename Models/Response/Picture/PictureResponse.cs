@@ -8,6 +8,7 @@ public record PictureResponse
     public string Name { get; set; } = string.Empty;
     public string? Path { get; set; }
     public string? ThumbnailPath { get; set; }
+    public string? OriginalPath { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public List<string>? Tags { get; set; }

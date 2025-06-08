@@ -157,19 +157,20 @@ const routes: RouteConfig[] = [
     hideInMenu: true,
     breadcrumb: {
       title: '用户详情',
-      parent: 'admin-user' // 修改: 指向父路由的 key
+      parent: 'admin-user'
     }
   },
   {
     path: 'pictures',
     key: 'admin-picture',
     icon: <PictureOutlined />,
-    label: '图片管理',
+    label: '图片',
     element: <PictureManagement />,
     area: 'admin',
+    groupLabel: '资源管理',
     breadcrumb: {
-      title: '图片管理'
-    }
+      title: '图片'
+    }    
   },
   {
     path: 'log',

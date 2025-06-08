@@ -9,7 +9,15 @@ public class Picture : BaseModel
 {
     [StringLength(255)] public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Path to the high-definition (possibly format-converted) image.
+    /// </summary>
     [StringLength(1024)] public string Path { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Path to the original, untouched uploaded file.
+    /// </summary>
+    [StringLength(1024)] public string OriginalPath { get; set; } = string.Empty;
 
     [StringLength(1024)] public string? ThumbnailPath { get; set; } = string.Empty;
 

@@ -343,6 +343,8 @@ public class PictureService(
             Name = picture.Name,
             Path = storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))).Result,
+            OriginalPath = storageService.ExecuteAsync(picture.StorageType, provider => // Added OriginalPath
+                Task.FromResult(provider.GetUrl(picture.OriginalPath ?? string.Empty))).Result,
             ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath) ?
                             storageService.ExecuteAsync(picture.StorageType, provider =>
                                 Task.FromResult(provider.GetUrl(picture.ThumbnailPath))).Result
@@ -479,126 +481,95 @@ public class PictureService(
             quality = int.Parse(defaultQualityConfig);
         }
 
-        string originalFileName = fileName;
-        string finalFileName = fileName;
-        string finalContentType = contentType;
-        Stream finalStream = fileStream;
+        string baseName = Guid.NewGuid().ToString();
+        string originalFileExtension = Path.GetExtension(fileName);
+        string originalStorageFileName = $"{baseName}{originalFileExtension}";
 
-        // 如果需要格式转换
-        if (convertToFormat != ImageFormat.Original)
-        {
-            // 创建临时文件保存原始上传内容
-            string tempOriginalFile = Path.GetTempFileName();
-            string tempConvertedFile = Path.GetTempFileName();
-
-            try
-            {
-                // 保存原始文件到临时位置
-                await using (var tempFileStream = new FileStream(tempOriginalFile, FileMode.Create))
-                {
-                    await fileStream.CopyToAsync(tempFileStream);
-                }
-
-                // 转换格式
-                string convertedFilePath = await ImageHelper.ConvertImageFormatAsync(
-                    tempOriginalFile, tempConvertedFile, convertToFormat, quality);
-
-                // 更新文件信息
-                string newExtension = ImageHelper.GetFileExtensionFromFormat(convertToFormat);
-                finalFileName = Path.ChangeExtension(Path.GetFileNameWithoutExtension(originalFileName), newExtension);
-                finalContentType = ImageHelper.GetMimeTypeFromFormat(convertToFormat);
-
-                // 创建新的流用于上传转换后的文件
-                finalStream = new FileStream(convertedFilePath, FileMode.Open, FileAccess.Read);
-            }
-            catch
-            {
-                // 清理临时文件
-                if (File.Exists(tempOriginalFile)) File.Delete(tempOriginalFile);
-                if (File.Exists(tempConvertedFile)) File.Delete(tempConvertedFile);
-                throw;
-            }
-        }
-
-        string? tempOriginalFileForThumbnail = null;
-        string? tempThumbnailFile = null;
+        string? tempOriginalLocalPath = null;
+        string? tempConvertedHdLocalPath = null;
+        string? tempThumbnailLocalPath = null;
+        
+        string storedOriginalPath;
+        string storedHdPath;
+        string? storedThumbnailPath = null;
 
         try
         {
-            // 如果是匿名用户或者需要立即生成缩略图，先保存到临时文件
-            bool shouldGenerateThumbnail = userId.HasValue; // 只为注册用户生成缩略图
-            
-            if (shouldGenerateThumbnail)
+            tempOriginalLocalPath = Path.GetTempFileName() + originalFileExtension;
+            File.Move(Path.GetTempFileName(), tempOriginalLocalPath); 
+            await using (var tempFileStream = new FileStream(tempOriginalLocalPath, FileMode.Create))
             {
-                tempOriginalFileForThumbnail = Path.GetTempFileName();
-                
-                // 保存原始文件到临时位置用于生成缩略图
-                await using (var tempFileStream = new FileStream(tempOriginalFileForThumbnail, FileMode.Create))
-                {
-                    if (finalStream != fileStream) // 已经是转换后的流
-                    {
-                        finalStream.Position = 0;
-                        await finalStream.CopyToAsync(tempFileStream);
-                        finalStream.Position = 0; // 重置位置用于后续上传
-                    }
-                    else
-                    {
-                        await finalStream.CopyToAsync(tempFileStream);
-                        finalStream.Position = 0; // 重置位置用于后续上传
-                    }
-                }
+                await fileStream.CopyToAsync(tempFileStream);
             }
 
-            // 使用存储服务保存文件
-            string relativePath = await storageService.ExecuteAsync(storageType.Value,
-                provider => provider.SaveAsync(finalStream, finalFileName, finalContentType));
+            await using (var originalLocalStream = new FileStream(tempOriginalLocalPath, FileMode.Open, FileAccess.Read))
+            {
+                storedOriginalPath = await storageService.ExecuteAsync(storageType.Value,
+                    provider => provider.SaveAsync(originalLocalStream, originalStorageFileName, contentType));
+            }
 
-            string? thumbnailPath = null;
+            string hdStorageFileName;
+            string hdContentType;
+            string sourceForHdProcessing = tempOriginalLocalPath;
 
-            // 生成缩略图
-            if (shouldGenerateThumbnail && !string.IsNullOrEmpty(tempOriginalFileForThumbnail))
+            if (convertToFormat != ImageFormat.Original)
+            {
+                string convertedExtension = ImageHelper.GetFileExtensionFromFormat(convertToFormat);
+                hdStorageFileName = $"{baseName}-high-definition{convertedExtension}";
+                hdContentType = ImageHelper.GetMimeTypeFromFormat(convertToFormat);
+                
+                tempConvertedHdLocalPath = Path.GetTempFileName() + convertedExtension;
+                File.Move(Path.GetTempFileName(), tempConvertedHdLocalPath);
+
+                await ImageHelper.ConvertImageFormatAsync(sourceForHdProcessing, tempConvertedHdLocalPath, convertToFormat, quality);
+                
+                await using var convertedHdStream = new FileStream(tempConvertedHdLocalPath, FileMode.Open, FileAccess.Read);
+                storedHdPath = await storageService.ExecuteAsync(storageType.Value,
+                    provider => provider.SaveAsync(convertedHdStream, hdStorageFileName, hdContentType));
+            }
+            else
+            {
+                hdStorageFileName = originalStorageFileName; // Same as original
+                hdContentType = contentType;
+                // No separate upload needed if it's the same as original; Path will point to the same stored object as OriginalPath.
+                // However, to ensure distinctness or if storage provider handles it, we can re-upload or copy.
+                // For simplicity, if no conversion, Path = OriginalPath.
+                storedHdPath = storedOriginalPath;
+            }
+
+            // 4. Generate and upload thumbnail (Picture.ThumbnailPath)
+            bool shouldGenerateThumbnailNow = userId.HasValue; 
+            if (shouldGenerateThumbnailNow)
             {
                 try
                 {
-                    tempThumbnailFile = Path.GetTempFileName();
-                    string thumbnailFileName = Path.ChangeExtension(tempThumbnailFile, ".webp");
-                    File.Move(tempThumbnailFile, thumbnailFileName);
-                    tempThumbnailFile = thumbnailFileName;
+                    tempThumbnailLocalPath = Path.GetTempFileName() + ".webp";
+                    File.Move(Path.GetTempFileName(), tempThumbnailLocalPath);
 
-                    // 生成缩略图
-                    await ImageHelper.CreateThumbnailAsync(tempOriginalFileForThumbnail, tempThumbnailFile, 500);
+                    await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, 500);
 
-                    // 上传缩略图
-                    await using var thumbnailFileStream = new FileStream(tempThumbnailFile, FileMode.Open, FileAccess.Read);
-                    var thumbnailStorageFileName = Path.GetFileNameWithoutExtension(finalFileName) + "_thumb.webp";
-                    
-                    thumbnailPath = await storageService.ExecuteAsync(storageType.Value,
-                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailStorageFileName, "image/webp"));
+                    string thumbnailUploadFileName = $"{baseName}-thumbnail.webp";
+                    await using var thumbnailFileStream = new FileStream(tempThumbnailLocalPath, FileMode.Open, FileAccess.Read);
+                    storedThumbnailPath = await storageService.ExecuteAsync(storageType.Value,
+                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName, "image/webp"));
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "生成缩略图失败");
+                    logger.LogError(ex, "生成和上传缩略图失败 during initial upload");
+                    // Continue without thumbnail if it fails here, background task can try later if needed
                 }
             }
-
-            // 创建基本的Picture对象，使用文件名作为标题和描述
-            string initialTitle = Path.GetFileNameWithoutExtension(originalFileName);
+            
+            string initialTitle = Path.GetFileNameWithoutExtension(fileName);
             string initialDescription = $"Uploaded on {DateTime.UtcNow}";
 
             await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-            // 获取用户
             User? user = null;
             if (userId is not null)
             {
                 user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-                if (user == null)
-                {
-                    throw new Exception("找不到指定的用户");
-                }
+                if (user == null) throw new Exception("找不到指定的用户");
             }
-
-            // 检查相册是否存在并且属于当前用户
             Album? album = null;
             if (albumId.HasValue)
             {
@@ -616,38 +587,45 @@ public class PictureService(
                 }
             }
 
-            bool isAnonymous = userId == null;
-
             // 创建图片对象并保存到数据库
             var picture = new Picture
             {
                 Name = initialTitle,
                 Description = initialDescription,
-                Path = relativePath, // 这是存储服务返回的路径/键
+                OriginalPath = storedOriginalPath, // Store path to original uploaded file
+                Path = storedHdPath,             // Store path to HD (possibly converted) file
+                ThumbnailPath = storedThumbnailPath, // Store path to thumbnail
                 User = user,
                 Permission = permission,
                 AlbumId = albumId,
                 StorageType = storageType.Value,
                 // ProcessingStatus 等字段已移除
-                ThumbnailPath = thumbnailPath // 如果生成了缩略图，则保存其存储路径/键
             };
 
             dbContext.Pictures.Add(picture);
             await dbContext.SaveChangesAsync();
 
-            if (!isAnonymous)
+            if (userId != null) // Only queue for registered users
             {
-                // 使用 relativePath (即存储服务中的对象键/路径) 来排队任务
-                await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, picture.Path);
+                // Pass OriginalPath for EXIF extraction and other initial processing
+                await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, picture.OriginalPath);
+                
+                var visualRecognitionPayload = new Background.Processors.VisualRecognitionPayload
+                {
+                    PictureId = picture.Id,
+                    UserIdForPicture = picture.UserId
+                };
+                await backgroundTaskQueue.QueueVisualRecognitionTaskAsync(visualRecognitionPayload);
             }
 
-            // 返回图片基本信息
             var pictureResponse = new PictureResponse
             {
                 Id = picture.Id,
                 Name = picture.Name,
                 Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
-                    Task.FromResult(provider.GetUrl(picture.Path))), // 使用 picture.Path
+                    Task.FromResult(provider.GetUrl(picture.Path))), 
+                OriginalPath = await storageService.ExecuteAsync(picture.StorageType, provider => // Added OriginalPath
+                    Task.FromResult(provider.GetUrl(picture.OriginalPath))),
                 ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath)
                     ? await storageService.ExecuteAsync(picture.StorageType, provider =>
                         Task.FromResult(provider.GetUrl(picture.ThumbnailPath)))
@@ -665,27 +643,18 @@ public class PictureService(
         }
         finally
         {
-            // 清理临时文件
-            if (!string.IsNullOrEmpty(tempOriginalFileForThumbnail) && File.Exists(tempOriginalFileForThumbnail))
+            // Clean up temporary local files
+            if (!string.IsNullOrEmpty(tempOriginalLocalPath) && File.Exists(tempOriginalLocalPath))
             {
-                try { File.Delete(tempOriginalFileForThumbnail); } catch { }
+                try { File.Delete(tempOriginalLocalPath); } catch { /* ignored */ }
             }
-            
-            if (!string.IsNullOrEmpty(tempThumbnailFile) && File.Exists(tempThumbnailFile))
+            if (!string.IsNullOrEmpty(tempConvertedHdLocalPath) && File.Exists(tempConvertedHdLocalPath))
             {
-                try { File.Delete(tempThumbnailFile); } catch { }
+                try { File.Delete(tempConvertedHdLocalPath); } catch { /* ignored */ }
             }
-
-            // 清理转换后的临时流
-            if (finalStream != fileStream && finalStream is FileStream tempFileStream)
+            if (!string.IsNullOrEmpty(tempThumbnailLocalPath) && File.Exists(tempThumbnailLocalPath))
             {
-                string tempFilePath = tempFileStream.Name;
-                finalStream.Dispose();
-                if (File.Exists(tempFilePath)) File.Delete(tempFilePath);
-
-                // 同时清理原始临时文件
-                string tempOriginalFileFromConvert = Path.ChangeExtension(tempFilePath, null);
-                if (File.Exists(tempOriginalFileFromConvert)) File.Delete(tempOriginalFileFromConvert);
+                try { File.Delete(tempThumbnailLocalPath); } catch { /* ignored */ }
             }
         }
     }
@@ -736,10 +705,10 @@ public class PictureService(
         }
 
         var filesToDelete =
-            new List<(int PictureId, string Path, string ThumbnailPath, int? UserId, StorageType StorageType)>();
+            new List<(int PictureId, string Path, string? ThumbnailPath, string OriginalPath, int? UserId, StorageType StorageType)>();
         foreach (var picture in picturesToDelete)
         {
-            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath ?? string.Empty, picture.User?.Id,
+            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath, picture.OriginalPath, picture.User?.Id,
                 picture.StorageType));
         }
 
@@ -749,7 +718,7 @@ public class PictureService(
             await dbContext.SaveChangesAsync();
         }
 
-        foreach (var (pictureId, path, thumbnailPath, userId, storageType) in filesToDelete)
+        foreach (var (pictureId, path, thumbnailPath, originalPath, userId, storageType) in filesToDelete)
         {
             try
             {
@@ -757,11 +726,21 @@ public class PictureService(
 
                 try
                 {
-                    // 使用存储服务删除文件
-                    await storageService.ExecuteAsync(storageType,
-                        provider => provider.DeleteAsync(path));
+                    // Delete original file
+                    if (!string.IsNullOrEmpty(originalPath))
+                    {
+                         await storageService.ExecuteAsync(storageType,
+                            provider => provider.DeleteAsync(originalPath));
+                    }
+                   
+                    // Delete HD/processed file
+                    if (!string.IsNullOrEmpty(path) && path != originalPath) // Avoid double delete if Path is same as OriginalPath
+                    {
+                        await storageService.ExecuteAsync(storageType,
+                            provider => provider.DeleteAsync(path));
+                    }
 
-                    // 删除缩略图
+                    // Delete thumbnail
                     if (!string.IsNullOrEmpty(thumbnailPath))
                     {
                         await storageService.ExecuteAsync(storageType,
@@ -868,8 +847,11 @@ public class PictureService(
             Name = picture.Name,
             Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
                 Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))),
-            ThumbnailPath = await storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))),
+            OriginalPath = await storageService.ExecuteAsync(picture.StorageType, provider => // Added OriginalPath
+                Task.FromResult(provider.GetUrl(picture.OriginalPath ?? string.Empty))),
+            ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath) ? 
+                            await storageService.ExecuteAsync(picture.StorageType, provider => Task.FromResult(provider.GetUrl(picture.ThumbnailPath))) 
+                            : null,
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             Tags = picture.Tags?.Select(t => t.Name).ToList() ?? new List<string>(),
