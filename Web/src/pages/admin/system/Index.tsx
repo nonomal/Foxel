@@ -43,7 +43,8 @@ const allDescriptions: Record<string, Record<string, string>> = {
     LinuxDoCallbackUrl: 'LinuxDo OAuth 认证回调地址'
   },
   AppSettings: {
-    ServerUrl: '服务器URL'
+    ServerUrl: '服务器URL',
+    MaxConcurrentTasks: '后台任务最大并发处理数量 (例如: 图像分析、标签生成等)'
   },
   Storage: {
     DefaultStorage: '已登录用户上传文件时的默认存储位置',

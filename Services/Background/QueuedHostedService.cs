@@ -11,7 +11,6 @@ public class QueuedHostedService(
 
         try
         {
-            // 从数据库恢复未完成的任务
             using var scope = serviceProvider.CreateScope();
             var backgroundTaskQueue = scope.ServiceProvider.GetRequiredService<IBackgroundTaskQueue>();
             await backgroundTaskQueue.RestoreUnfinishedTasksAsync();

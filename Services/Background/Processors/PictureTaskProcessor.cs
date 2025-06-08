@@ -17,11 +17,7 @@ namespace Foxel.Services.Background.Processors
         public int? UserIdForPicture { get; set; }
     }
 
-    public class VisualRecognitionPayload // Define new payload
-    {
-        public int PictureId { get; set; }
-        public int? UserIdForPicture { get; set; }
-    }
+
 
     public class PictureTaskProcessor : ITaskProcessor
     {

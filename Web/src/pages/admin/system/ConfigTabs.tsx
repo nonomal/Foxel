@@ -289,13 +289,13 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
           isMobile={isMobile}
         >
           <Form form={formsMap.AppSettings} layout="vertical" size={isMobile ? "middle" : "large"}>
-            {renderConfigFormItems(formsMap.AppSettings, "AppSettings", ['ServerUrl'])}
+            {renderConfigFormItems(formsMap.AppSettings, "AppSettings", ['ServerUrl', 'MaxConcurrentTasks'])}
             <Divider style={{ margin: '12px 0 20px' }} />
             <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
               <Button
                 type="primary"
                 icon={<SaveOutlined />}
-                onClick={() => onSaveAllForGroup(formsMap.AppSettings, "AppSettings", ['ServerUrl'])}
+                onClick={() => onSaveAllForGroup(formsMap.AppSettings, "AppSettings", ['ServerUrl', 'MaxConcurrentTasks'])}
                 style={{ width: isMobile ? '100%' : '240px' }}
               >
                 保存所有应用设置

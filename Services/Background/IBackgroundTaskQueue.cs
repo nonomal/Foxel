@@ -1,5 +1,5 @@
 using Foxel.Models.DataBase;
-using Foxel.Services.Background.Processors; // For VisualRecognitionPayload
+using Foxel.Services.Background.Processors; 
 
 namespace Foxel.Services.Background;
 

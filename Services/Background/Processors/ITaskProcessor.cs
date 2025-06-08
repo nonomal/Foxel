@@ -1,5 +1,4 @@
 using Foxel.Models.DataBase;
-using System.Threading.Tasks;
 
 namespace Foxel.Services.Background.Processors
 {

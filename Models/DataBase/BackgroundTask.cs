@@ -18,10 +18,10 @@ namespace Foxel.Models.DataBase
         Failed      // 处理失败
     }
 
-    public class BackgroundTask
+    public class BackgroundTask : BaseModel
     {
         [Key]
-        public Guid Id { get; set; } // 任务的唯一标识符
+        public new Guid Id { get; set; } // 任务的唯一标识符
 
         public TaskType Type { get; set; } // 任务类型
 
@@ -34,8 +34,6 @@ namespace Foxel.Models.DataBase
 
         public string? ErrorMessage { get; set; } // 错误信息（如果任务失败）
 
-        public DateTime CreatedAt { get; set; } // 创建时间
-
         public DateTime? StartedAt { get; set; } // 开始处理时间
 
         public DateTime? CompletedAt { get; set; } // 完成时间
@@ -43,7 +41,7 @@ namespace Foxel.Models.DataBase
         public int? UserId { get; set; } // 关联的用户ID
         public User? User { get; set; }
 
-        public int? RelatedEntityId { get; set; } 
+        public int? RelatedEntityId { get; set; }
 
         public BackgroundTask()
         {
