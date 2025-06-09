@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: "Foxel"
-  text: "智能图像检索与管理系统"
+  text: "光影如诗，一眼千寻。"
   tagline: 基于 .NET 9 和 AI 视觉模型构建的现代化图像管理与检索平台，轻松管理您的视觉记忆。
   image:
     src: https://raw.githubusercontent.com/DrizzleTime/Foxel/refs/heads/master/Web/public/logo.png

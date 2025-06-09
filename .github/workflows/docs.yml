@@ -26,7 +26,7 @@ jobs:
 
       - name: Build VitePress site
         working-directory: ./Docs
-        run: bun run docs:build 
+        run: bun run docs:build
 
       - name: Prepare target directory on server
         uses: appleboy/ssh-action@v1.0.3
@@ -35,10 +35,9 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          script_stop: true 
+          script_stop: true
           script: |
             mkdir -p /opt/1panel/www/sites/foxel.cc/index
-            rm -rf /opt/1panel/www/sites/foxel.cc/index/*
 
       - name: Upload documentation to server
         uses: appleboy/scp-action@v1
@@ -47,5 +46,5 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          source: "Docs/.vitepress/dist/*" 
+          source: "Docs/.vitepress/dist/*"
           target: "/opt/1panel/www/sites/foxel.cc/index"
