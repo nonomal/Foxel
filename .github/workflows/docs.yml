@@ -46,5 +46,6 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          source: "Docs/.vitepress/dist/*"
+          source: "Docs/.vitepress/dist/."
           target: "/opt/1panel/www/sites/foxel.cc/index"
+          strip_components: 1
