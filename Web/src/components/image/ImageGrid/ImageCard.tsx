@@ -91,10 +91,17 @@ const ImageCard: React.FC<ImageCardProps> = ({
         {!selectable && (
           <>
             <div className="custom-card-indicators">
-              <div className="custom-card-permission" style={{
-                backgroundColor: permissionTypeMap[image.permission]?.color || 'rgba(0, 0, 0, 0.6)'
-              }}>
-                {permissionTypeMap[image.permission]?.icon} {permissionTypeMap[image.permission]?.label || '公开'}
+              <div className="custom-card-left-indicators"> 
+                <div className="custom-card-permission" style={{
+                  backgroundColor: permissionTypeMap[image.permission]?.color || 'rgba(0, 0, 0, 0.6)'
+                }}>
+                  {permissionTypeMap[image.permission]?.icon} {permissionTypeMap[image.permission]?.label || '公开'}
+                </div>
+                {image.storageModeName && (
+                  <div className="custom-card-storage-mode">
+                    {image.storageModeName}
+                  </div>
+                )}
               </div>
 
               <div className="custom-card-metadata">

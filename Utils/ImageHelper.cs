@@ -33,10 +33,10 @@ public static class ImageHelper
     /// </summary>
     /// <param name="originalPath">原始图片路径</param>
     /// <param name="thumbnailPath">缩略图保存路径</param>
-    /// <param name="width">缩略图宽度</param>
+    /// <param name="maxWidth">缩略图最大宽度</param>
     /// <param name="quality">压缩质量(1-100)</param>
     /// <returns>生成的缩略图的文件大小（字节）</returns>
-    public static async Task<long> CreateThumbnailAsync(string originalPath, string thumbnailPath, int width,
+    public static async Task<long> CreateThumbnailAsync(string originalPath, string thumbnailPath, int maxWidth,
         int quality = 75)
     {
         // 获取原始文件大小
@@ -45,16 +45,14 @@ public static class ImageHelper
 
         using var image = await Image.LoadAsync(originalPath);
 
-        // 去除EXIF元数据以减小文件大小
         image.Metadata.ExifProfile = null;
 
         image.Mutate(x => x.Resize(new ResizeOptions
         {
-            Size = new Size(width, 0),
+            Size = new Size(maxWidth, 0),
             Mode = ResizeMode.Max
         }));
 
-        // 强制使用 WebP 格式，修改缩略图路径扩展名
         string webpThumbnailPath = Path.ChangeExtension(thumbnailPath, ".webp");
 
         int adjustedQuality = AdjustQualityByFileSize(originalSize, ".webp", quality);
@@ -386,28 +384,28 @@ public static class ImageHelper
 
             switch (targetFormat)
             {
-            case ImageFormat.Jpeg:
-                await convertedImage.SaveAsJpegAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
-                {
-                Quality = quality
-                });
-                break;
+                case ImageFormat.Jpeg:
+                    await convertedImage.SaveAsJpegAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
+                    {
+                        Quality = quality
+                    });
+                    break;
 
-            case ImageFormat.Png:
-                await convertedImage.SaveAsPngAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Png.PngEncoder
-                {
-                CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression,
-                ColorType = SixLabors.ImageSharp.Formats.Png.PngColorType.RgbWithAlpha
-                });
-                break;
+                case ImageFormat.Png:
+                    await convertedImage.SaveAsPngAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Png.PngEncoder
+                    {
+                        CompressionLevel = SixLabors.ImageSharp.Formats.Png.PngCompressionLevel.BestCompression,
+                        ColorType = SixLabors.ImageSharp.Formats.Png.PngColorType.RgbWithAlpha
+                    });
+                    break;
 
-            case ImageFormat.WebP:
-                await convertedImage.SaveAsWebpAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder
-                {
-                Quality = quality,
-                Method = SixLabors.ImageSharp.Formats.Webp.WebpEncodingMethod.BestQuality
-                });
-                break;
+                case ImageFormat.WebP:
+                    await convertedImage.SaveAsWebpAsync(finalOutputPath, new SixLabors.ImageSharp.Formats.Webp.WebpEncoder
+                    {
+                        Quality = quality,
+                        Method = SixLabors.ImageSharp.Formats.Webp.WebpEncodingMethod.BestQuality
+                    });
+                    break;
             }
         }
 

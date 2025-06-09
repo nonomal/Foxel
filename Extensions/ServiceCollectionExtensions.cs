@@ -31,13 +31,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IUserManagementService, UserManagementService>();
         services.AddSingleton<IPictureManagementService, PictureManagementService>();
         services.AddSingleton<ILogManagementService, LogManagementService>();
+        services.AddSingleton<IStorageManagementService, StorageManagementService>();
         services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         services.AddHostedService<QueuedHostedService>();
-        services.AddSingleton<LocalStorageProvider>();
-        services.AddSingleton<TelegramStorageProvider>();
-        services.AddSingleton<S3StorageProvider>();
-        services.AddSingleton<CosStorageProvider>();
-        services.AddSingleton<WebDavStorageProvider>();
         services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<PictureTaskProcessor>();
         services.AddSingleton<VisualRecognitionTaskProcessor>();

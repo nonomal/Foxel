@@ -24,6 +24,7 @@ import UserManagement from '../pages/admin/users/Index';
 import PictureManagement from '../pages/admin/pictures/Index';
 import UserDetail from '../pages/admin/users/UserDetail';
 import AdminLogManagement from '../pages/admin/log/Index';
+import StorageManagementPage from '../pages/admin/storage/StorageManagement';
 
 export interface RouteConfig {
   path: string;
@@ -181,6 +182,17 @@ const routes: RouteConfig[] = [
     area: 'admin',
     breadcrumb: {
       title: '日志中心'
+    }
+  },
+    {
+    path: 'storage',
+    key: 'admin-storage',
+    icon: <FileTextOutlined />,
+    label: '存储配置',
+    element: <StorageManagementPage />,
+    area: 'admin',
+    breadcrumb: {
+      title: '存储配置'
     }
   },
   {

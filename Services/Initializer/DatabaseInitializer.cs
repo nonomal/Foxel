@@ -1,4 +1,5 @@
 using Foxel.Models.DataBase;
+using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 using Foxel.Services.Logging;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,7 @@ public class DatabaseInitializer(
     {
         // 在初始化期间禁用数据库日志记录
         DatabaseLogger.SetDatabaseReady(false);
-        
+
         logger.LogInformation("开始检查数据库初始化状态...");
 
         // 执行数据库迁移
@@ -28,7 +29,6 @@ public class DatabaseInitializer(
             configService[InitializationFlag] == "true")
         {
             logger.LogInformation("数据库已完成初始化，跳过初始化步骤");
-            // 启用数据库日志记录
             DatabaseLogger.SetDatabaseReady(true);
             return;
         }
@@ -64,12 +64,14 @@ public class DatabaseInitializer(
                 "Please generate **5 most relevant tags** for the given image. Each tag should be a **short and descriptive** word or phrase that accurately reflects key visual or thematic elements of the image.\n\nReturn your response in **valid JSON format** as shown below:\n\n```json\n{\n  \"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]\n}\n```\n\nMake sure the output is **strictly valid JSON**.",
             ["AI:TagMatchingPrompt"] =
                 "Given a list of tags: `[{tagsText}]`\n\nPlease strictly select only those tags that are **highly relevant** to the following description (select **up to 5**). Only include tags that **exactly or strongly match** the content. If **none** of the tags are a good match, return an **empty array** instead of including loosely related ones.\n\n**Description:**\n{description}\n\nReturn your response in **valid JSON format** as shown below:\n\n```json\n{\n  \"tags\": [\"标签1\", \"标签2\", \"标签3\", \"标签4\", \"标签5\"]\n}\n```\n\n⚠️ Do **not** include code fences (no triple backticks), and ensure the JSON is **valid** and includes only truly matching tag names.",
-            // 存储配置
-            ["Storage:TelegramStorageBotToken"] = "",
-            ["Storage:TelegramStorageChatId"] = "",
-            ["Storage:DefaultStorage"] = "Local",
+
+            // 上传配置
+            ["Upload:HighQualityImageCompressionQuality"] = "85",
+            ["Upload:ThumbnailMaxWidth"] = "500",
+            ["Upload:ThumbnailCompressionQuality"] = "75",
 
             // 其他配置
+            ["Storage:DefaultStorageModeId"] = "1",
             ["AppSettings:ServerUrl"] = "",
             ["VectorDb:Type"] = "InMemory"
         };
@@ -88,11 +90,14 @@ public class DatabaseInitializer(
         // 初始化管理员角色和用户
         await InitializeAdminRoleAndUserAsync();
 
+        // 初始化默认存储模式
+        await InitializeDefaultStorageModeAsync();
+
         // 标记初始化已完成
         await configService.SetConfigAsync(InitializationFlag, "true", "系统初始化完成标志");
 
         logger.LogInformation("数据库配置初始化完成");
-        
+
         // 初始化完成后启用数据库日志记录
         DatabaseLogger.SetDatabaseReady(true);
     }
@@ -161,5 +166,33 @@ public class DatabaseInitializer(
         }
 
         logger.LogInformation("请注意，第一个注册的用户将自动成为管理员");
+    }
+
+    private async Task InitializeDefaultStorageModeAsync()
+    {
+        await using var context = await contextFactory.CreateDbContextAsync();
+
+        const string defaultStorageModeName = "本地数据";
+        if (!await context.StorageModes.AnyAsync(sm => sm.Name == defaultStorageModeName))
+        {
+            logger.LogInformation("创建默认本地存储模式: {StorageModeName}", defaultStorageModeName);
+            var localDefaultStorageMode = new StorageMode
+            {
+                Name = defaultStorageModeName,
+                IsEnabled = true,
+                StorageType = StorageType.Local,
+                ConfigurationJson =
+                    "{\"BasePath\": \"/app/Uploads\", \"ServerUrl\": \"\", \"PublicBasePath\": \"/Uploads\"}",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await context.StorageModes.AddAsync(localDefaultStorageMode);
+            await context.SaveChangesAsync();
+            logger.LogInformation("默认本地存储模式创建成功");
+        }
+        else
+        {
+            logger.LogInformation("默认本地存储模式 '{StorageModeName}' 已存在，跳过创建。", defaultStorageModeName);
+        }
     }
 }

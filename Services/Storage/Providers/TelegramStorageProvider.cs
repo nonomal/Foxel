@@ -4,21 +4,37 @@ using System.Text.Json.Serialization;
 using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 using System.Net;
-using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
+public class TelegramStorageConfig
+{
+    public string BotToken { get; set; } = string.Empty;
+    public string ChatId { get; set; } = string.Empty;
+    public string? ProxyAddress { get; set; }
+    public string? ProxyPort { get; set; }
+    public string? ProxyUsername { get; set; }
+    public string? ProxyPassword { get; set; }
+}
+
 [StorageProvider(StorageType.Telegram)]
-public class TelegramStorageProvider(IConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
+public class TelegramStorageProvider(TelegramStorageConfig _telegramConfig, IConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
 {
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {
-        string botToken = configService["Storage:TelegramStorageBotToken"];
-        string chatId = configService["Storage:TelegramStorageChatId"];
+        string botToken = _telegramConfig.BotToken;
+        string chatId = _telegramConfig.ChatId;
+        if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(chatId))
+        {
+            logger.LogError("Telegram BotToken 或 ChatId 未在配置中提供。");
+            throw new InvalidOperationException("Telegram BotToken 或 ChatId 未配置。");
+        }
 
         using var httpClient = CreateHttpClient();
-        using var formData = new MultipartFormDataContent();
-        formData.Add(new StringContent(chatId), "chat_id");
+        using var formData = new MultipartFormDataContent
+        {
+            { new StringContent(chatId), "chat_id" }
+        };
         var safeFileName = Path.GetFileNameWithoutExtension(fileName);
         if (safeFileName.Length > 100)
             safeFileName = safeFileName.Substring(0, 100);
@@ -103,23 +119,37 @@ public class TelegramStorageProvider(IConfigService configService, ILogger<Teleg
             var metadata = JsonSerializer.Deserialize<TelegramFileMetadata>(storagePath);
             if (metadata == null || string.IsNullOrEmpty(metadata.ChatId) || metadata.MessageId <= 0)
             {
+                logger.LogWarning("无效的 Telegram 元数据，无法删除: {StoragePath}", storagePath);
                 return;
             }
 
-            string botToken = configService["Storage:TelegramStorageBotToken"];
-
+            string botToken = _telegramConfig.BotToken;
+            if (string.IsNullOrEmpty(botToken))
+            {
+                logger.LogError("Telegram BotToken 未在配置中提供，无法删除文件。");
+                return;
+            }
             using var httpClient = CreateHttpClient();
             var url =
                 $"https://api.telegram.org/bot{botToken}/deleteMessage?chat_id={metadata.ChatId}&message_id={metadata.MessageId}";
-            await httpClient.GetAsync(url);
+            var response = await httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                logger.LogWarning("删除 Telegram 消息失败: ChatId={ChatId}, MessageId={MessageId}, Status={StatusCode}, Response={ErrorContent}", metadata.ChatId, metadata.MessageId, response.StatusCode, errorContent);
+            }
+        }
+        catch (JsonException jsonEx)
+        {
+            logger.LogWarning(jsonEx, "解析 Telegram 元数据以进行删除时出错: {StoragePath}", storagePath);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "删除 Telegram 文件时出错");
+            logger.LogWarning(ex, "删除 Telegram 文件时出错: {StoragePath}", storagePath);
         }
     }
 
-    public string GetUrl(string storagePath)
+    public string GetUrl(int pictureId,string storagePath)
     {
         try
         {
@@ -130,12 +160,17 @@ public class TelegramStorageProvider(IConfigService configService, ILogger<Teleg
             }
 
             string serverUrl = configService["AppSettings:ServerUrl"];
-            return $"{serverUrl}/api/picture/get_telegram_file?fileId={metadata.FileId}";
+            return $"{serverUrl}/api/picture/file/{pictureId}";
+        }
+        catch (JsonException jsonEx)
+        {
+            logger.LogError(jsonEx, "解析 Telegram 元数据以生成 URL 时出错: {StoragePath}", storagePath);
+            return "/images/unavailable.gif";
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "生成 Telegram 文件 URL 时出错");
-            return $"/images/unavailable.gif";
+            logger.LogError(ex, "生成 Telegram 文件 URL 时出错: {StoragePath}", storagePath);
+            return "/images/unavailable.gif";
         }
     }
 
@@ -154,7 +189,12 @@ public class TelegramStorageProvider(IConfigService configService, ILogger<Teleg
                 throw new ApplicationException("无效的存储路径或元数据");
             }
 
-            string botToken = configService["Storage:TelegramStorageBotToken"];
+            string botToken = _telegramConfig.BotToken;
+            if (string.IsNullOrEmpty(botToken))
+            {
+                logger.LogError("Telegram BotToken 未在配置中提供，无法下载文件。");
+                throw new InvalidOperationException("Telegram BotToken 未配置。");
+            }
 
             using var httpClient = CreateHttpClient();
             var getFileUrl = $"https://api.telegram.org/bot{botToken}/getFile?file_id={metadata.FileId}";
@@ -218,10 +258,10 @@ public class TelegramStorageProvider(IConfigService configService, ILogger<Teleg
         HttpClient client;
 
         // 检查是否有代理配置
-        string proxyAddress = configService["Storage:TelegramProxyAddress"];
-        string proxyPort = configService["Storage:TelegramProxyPort"];
-        string proxyUsername = configService["Storage:TelegramProxyUsername"];
-        string proxyPassword = configService["Storage:TelegramProxyPassword"];
+        string? proxyAddress = _telegramConfig.ProxyAddress;
+        string? proxyPort = _telegramConfig.ProxyPort;
+        string? proxyUsername = _telegramConfig.ProxyUsername;
+        string? proxyPassword = _telegramConfig.ProxyPassword;
 
         if (!string.IsNullOrEmpty(proxyAddress) && !string.IsNullOrEmpty(proxyPort) && int.TryParse(proxyPort, out int port))
         {

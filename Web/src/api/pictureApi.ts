@@ -40,6 +40,7 @@ export interface PictureResponse {
   permission: number;
   albumId?: number;
   albumName?: string;
+  storageModeName:string;
 }
 
 // 收藏请求

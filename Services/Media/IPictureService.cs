@@ -1,8 +1,6 @@
 using Foxel.Models;
 using Foxel.Models.DataBase;
-using Foxel.Models.Enums;
 using Foxel.Models.Response.Picture;
-using Foxel.Services.Attributes;
 
 namespace Foxel.Services.Media;
 
@@ -34,7 +32,7 @@ public interface IPictureService
         int? userId, 
         PermissionType permission = PermissionType.Public, 
         int? albumId = null,
-        StorageType? storageType = null
+        int? storageModeId = null
         );
     
     Task<ExifInfo> GetPictureExifInfoAsync(int pictureId);
@@ -85,5 +83,10 @@ public interface IPictureService
     /// <returns>是否收藏</returns>
     Task<bool> IsPictureFavoritedByUserAsync(int pictureId, int userId);
     
-
+    /// <summary>
+    /// 根据ID获取图片详情
+    /// </summary>
+    /// <param name="pictureId">图片ID</param>
+    /// <returns>图片响应对象，如果未找到则返回null</returns>
+    Task<Picture?> GetPictureByIdAsync(int pictureId);
 }

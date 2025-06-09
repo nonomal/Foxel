@@ -4,14 +4,12 @@ using Foxel.Models.DataBase;
 using Foxel.Models.Enums;
 using Foxel.Models.Response.Picture;
 using Foxel.Services.AI;
-using Foxel.Services.Attributes;
 using Foxel.Services.Background;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
 using Foxel.Services.VectorDB;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Media;
 
@@ -25,6 +23,48 @@ public class PictureService(
     ILogger<PictureService> logger)
     : IPictureService
 {
+    private async Task<PictureResponse> MapPictureToResponseAsync(Picture picture)
+    {
+        string pathUrl = string.Empty;
+        if (!string.IsNullOrEmpty(picture.Path))
+        {
+            pathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
+                Task.FromResult(provider.GetUrl(picture.Id,picture.Path)));
+        }
+
+        string originalPathUrl = string.Empty;
+        if (!string.IsNullOrEmpty(picture.OriginalPath))
+        {
+            originalPathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
+                Task.FromResult(provider.GetUrl(picture.Id,picture.OriginalPath)));
+        }
+
+        string? thumbnailPathUrl = null;
+        if (!string.IsNullOrEmpty(picture.ThumbnailPath))
+        {
+            thumbnailPathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
+                Task.FromResult(provider.GetUrl(picture.Id,picture.ThumbnailPath)));
+        }
+        return new PictureResponse
+        {
+            Id = picture.Id,
+            Name = picture.Name,
+            Path = pathUrl,
+            OriginalPath = originalPathUrl,
+            ThumbnailPath = thumbnailPathUrl,
+            Description = picture.Description,
+            CreatedAt = picture.CreatedAt,
+            Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
+            TakenAt = picture.TakenAt,
+            ExifInfo = picture.ExifInfo ?? new ExifInfo(),
+            UserId = picture.UserId,
+            Username = picture.User?.UserName,
+            AlbumId = picture.AlbumId,
+            Permission = picture.Permission,
+            StorageModeName = picture.StorageMode?.Name
+        };
+    }
+
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(
         int page = 1,
         int pageSize = 8,
@@ -103,17 +143,20 @@ public class PictureService(
         var picturesData = await dbContext.Pictures
             .Include(p => p.Tags)
             .Include(p => p.User)
+            .Include(p=>p.StorageMode)
             .Where(p => ids.Contains((ulong)p.Id))
             .ToListAsync();
         var picturesOrdered = ids
             .Select(id => picturesData.FirstOrDefault(p => p.Id == (int)id))
             .Where(p => p != null)
             .ToList();
-        var paginatedResults = picturesOrdered
+        var paginatedResultsTasks = picturesOrdered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => MapPictureToResponse(p!))
+            .Select(async p => await MapPictureToResponseAsync(p!))
             .ToList();
+
+        var paginatedResults = (await Task.WhenAll(paginatedResultsTasks)).ToList();
 
         var totalCount = picturesOrdered.Count;
 
@@ -177,14 +220,16 @@ public class PictureService(
 
         // 获取分页数据
         var picturesData = await query
+            .Include(x=>x.StorageMode)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         // 转换为响应格式
-        var pictures = picturesData
-            .Select(p => MapPictureToResponse(p))
+        var picturesTasks = picturesData
+            .Select(async p => await MapPictureToResponseAsync(p))
             .ToList();
+        var pictures = (await Task.WhenAll(picturesTasks)).ToList();
 
         // 处理收藏信息
         await PopulateFavoriteInfo(dbContext, pictures, userId);
@@ -334,34 +379,6 @@ public class PictureService(
         };
     }
 
-    // 将数据库实体映射到响应对象
-    private PictureResponse MapPictureToResponse(Picture picture)
-    {
-        return new PictureResponse
-        {
-            Id = picture.Id,
-            Name = picture.Name,
-            Path = storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))).Result,
-            OriginalPath = storageService.ExecuteAsync(picture.StorageType, provider => // Added OriginalPath
-                Task.FromResult(provider.GetUrl(picture.OriginalPath ?? string.Empty))).Result,
-            ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath) ?
-                            storageService.ExecuteAsync(picture.StorageType, provider =>
-                                Task.FromResult(provider.GetUrl(picture.ThumbnailPath))).Result
-                            : null, // 如果没有缩略图路径，则为null
-            Description = picture.Description,
-            CreatedAt = picture.CreatedAt,
-            Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
-            TakenAt = picture.TakenAt,
-            ExifInfo = picture.ExifInfo ?? new ExifInfo(),
-            UserId = picture.UserId,
-            Username = picture.User?.UserName,
-            AlbumId = picture.AlbumId,
-            Permission = picture.Permission
-            // ProcessingStatus 字段已移除，客户端应通过 BackgroundTaskController 获取状态
-        };
-    }
-
     // 填充收藏信息
     private async Task PopulateFavoriteInfo(MyDbContext dbContext, List<PictureResponse> pictures, int? userId)
     {
@@ -444,41 +461,60 @@ public class PictureService(
         int? userId,
         PermissionType permission = PermissionType.Public,
         int? albumId = null,
-        StorageType? storageType = null)
+        int? storageModeId = null)
     {
-        StorageType GetConfigStorageType(string configKey)
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
+        if (!storageModeId.HasValue)
         {
-            string? configValue = configuration[configKey];
-            return !string.IsNullOrEmpty(configValue) &&
-                   Enum.TryParse<StorageType>(configValue, out var configStorageType)
-                ? configStorageType
-                : StorageType.Local;
-        }
+            string configKey = userId == null
+                ? "Storage:DefaultStorageModeId"
+                : "Storage:DefaultStorageModeId";
+            string? defaultMode = configuration[configKey];
 
-        if (userId == null)
-        {
-            storageType = GetConfigStorageType("Storage:AnonymousDefaultStorage");
-        }
-        else if (storageType == null)
-        {
-            storageType = GetConfigStorageType("Storage:DefaultStorage");
-        }
-
-        ImageFormat convertToFormat = ImageFormat.Original;
-        string defaultFormatConfig = configuration["Upload:DefaultImageFormat"];
-        if (!string.IsNullOrEmpty(defaultFormatConfig))
-        {
-            if (Enum.TryParse<ImageFormat>(defaultFormatConfig, true, out var parsedFormat))
+            if (string.IsNullOrEmpty(defaultMode))
             {
-                convertToFormat = parsedFormat;
+                logger.LogError("未配置默认存储模式ID: {ConfigKey}", configKey);
+                throw new InvalidOperationException($"未配置默认存储模式: {configKey}");
+            }
+
+            var defaultStorageMode = await dbContext.Set<StorageMode>()
+                .FirstOrDefaultAsync(sm => sm.Id == int.Parse(defaultMode) && sm.IsEnabled);
+            if (defaultStorageMode == null)
+            {
+                logger.LogError("根据名称 '{DefaultModeName}' 找不到已启用的默认存储模式。", defaultMode);
+                throw new InvalidOperationException($"找不到默认存储模式 '{defaultMode}'。");
+            }
+
+            storageModeId = defaultStorageMode.Id;
+        }
+        else
+        {
+            var specifiedMode =
+                await dbContext.Set<StorageMode>().FirstOrDefaultAsync(sm => sm.Id == storageModeId.Value);
+            if (specifiedMode == null)
+            {
+                throw new ArgumentException($"找不到 ID 为 {storageModeId.Value} 的存储模式。");
+            }
+
+            if (!specifiedMode.IsEnabled)
+            {
+                throw new InvalidOperationException($"存储模式 '{specifiedMode.Name}' (ID: {storageModeId.Value}) 未启用。");
             }
         }
 
-        int quality = 100;
-        string defaultQualityConfig = configuration["Upload:DefaultImageQuality"];
-        if (!string.IsNullOrEmpty(defaultQualityConfig))
+        ImageFormat convertToFormat = ImageFormat.WebP;
+
+        // 高清图片压缩质量
+        int quality = 100; // 默认值
+        string hdQualityConfigKey = "Upload:HighQualityImageCompressionQuality";
+        string? hdQualityConfig = configuration[hdQualityConfigKey];
+        if (!string.IsNullOrEmpty(hdQualityConfig) && int.TryParse(hdQualityConfig, out int parsedHdQuality))
         {
-            quality = int.Parse(defaultQualityConfig);
+            quality = Math.Clamp(parsedHdQuality, 50, 100); // 限制在 50-100 之间
+        }
+        else
+        {
+            logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认压缩质量: {DefaultQuality}", hdQualityConfigKey, quality);
         }
 
         string baseName = Guid.NewGuid().ToString();
@@ -488,92 +524,104 @@ public class PictureService(
         string? tempOriginalLocalPath = null;
         string? tempConvertedHdLocalPath = null;
         string? tempThumbnailLocalPath = null;
-        
-        string storedOriginalPath;
-        string storedHdPath;
+
         string? storedThumbnailPath = null;
 
         try
         {
             tempOriginalLocalPath = Path.GetTempFileName() + originalFileExtension;
-            File.Move(Path.GetTempFileName(), tempOriginalLocalPath); 
+            File.Move(Path.GetTempFileName(), tempOriginalLocalPath);
             await using (var tempFileStream = new FileStream(tempOriginalLocalPath, FileMode.Create))
             {
                 await fileStream.CopyToAsync(tempFileStream);
             }
 
-            await using (var originalLocalStream = new FileStream(tempOriginalLocalPath, FileMode.Open, FileAccess.Read))
+            string storedOriginalPath;
+            await using (var originalLocalStream =
+                         new FileStream(tempOriginalLocalPath, FileMode.Open, FileAccess.Read))
             {
-                storedOriginalPath = await storageService.ExecuteAsync(storageType.Value,
+                storedOriginalPath = await storageService.ExecuteAsync(storageModeId.Value,
                     provider => provider.SaveAsync(originalLocalStream, originalStorageFileName, contentType));
             }
 
-            string hdStorageFileName;
-            string hdContentType;
             string sourceForHdProcessing = tempOriginalLocalPath;
 
-            if (convertToFormat != ImageFormat.Original)
-            {
-                string convertedExtension = ImageHelper.GetFileExtensionFromFormat(convertToFormat);
-                hdStorageFileName = $"{baseName}-high-definition{convertedExtension}";
-                hdContentType = ImageHelper.GetMimeTypeFromFormat(convertToFormat);
-                
-                tempConvertedHdLocalPath = Path.GetTempFileName() + convertedExtension;
-                File.Move(Path.GetTempFileName(), tempConvertedHdLocalPath);
+            string convertedExtension = ImageHelper.GetFileExtensionFromFormat(convertToFormat);
+            var hdStorageFileName = $"{baseName}-high-definition{convertedExtension}";
+            var hdContentType = ImageHelper.GetMimeTypeFromFormat(convertToFormat);
 
-                await ImageHelper.ConvertImageFormatAsync(sourceForHdProcessing, tempConvertedHdLocalPath, convertToFormat, quality);
-                
-                await using var convertedHdStream = new FileStream(tempConvertedHdLocalPath, FileMode.Open, FileAccess.Read);
-                storedHdPath = await storageService.ExecuteAsync(storageType.Value,
-                    provider => provider.SaveAsync(convertedHdStream, hdStorageFileName, hdContentType));
-            }
-            else
-            {
-                hdStorageFileName = originalStorageFileName; // Same as original
-                hdContentType = contentType;
-                // No separate upload needed if it's the same as original; Path will point to the same stored object as OriginalPath.
-                // However, to ensure distinctness or if storage provider handles it, we can re-upload or copy.
-                // For simplicity, if no conversion, Path = OriginalPath.
-                storedHdPath = storedOriginalPath;
-            }
+            tempConvertedHdLocalPath = Path.GetTempFileName() + convertedExtension;
+            File.Move(Path.GetTempFileName(), tempConvertedHdLocalPath);
 
-            // 4. Generate and upload thumbnail (Picture.ThumbnailPath)
-            bool shouldGenerateThumbnailNow = userId.HasValue; 
+            await ImageHelper.ConvertImageFormatAsync(sourceForHdProcessing, tempConvertedHdLocalPath, convertToFormat,
+                quality);
+
+            await using var convertedHdStream =
+                new FileStream(tempConvertedHdLocalPath!, FileMode.Open, FileAccess.Read);
+            var storedHdPath = await storageService.ExecuteAsync(storageModeId.Value,
+                provider => provider.SaveAsync(convertedHdStream, hdStorageFileName!, hdContentType!));
+
+            bool shouldGenerateThumbnailNow = userId.HasValue;
             if (shouldGenerateThumbnailNow)
             {
                 try
                 {
+                    // 缩略图最大宽度
+                    int thumbnailMaxWidth = 500; // 默认值
+                    string thumbnailMaxWidthConfigKey = "Upload:ThumbnailMaxWidth";
+                    string? thumbnailMaxWidthConfig = configuration[thumbnailMaxWidthConfigKey];
+                    if (!string.IsNullOrEmpty(thumbnailMaxWidthConfig) && int.TryParse(thumbnailMaxWidthConfig, out int parsedMaxWidth))
+                    {
+                        thumbnailMaxWidth = Math.Max(100, parsedMaxWidth); // 最小宽度 100
+                    }
+                    else
+                    {
+                        logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图最大宽度: {DefaultMaxWidth}", thumbnailMaxWidthConfigKey, thumbnailMaxWidth);
+                    }
+
+                    // 缩略图压缩质量
+                    int thumbnailQuality = 75; // 默认值
+                    string thumbnailQualityConfigKey = "Upload:ThumbnailCompressionQuality";
+                    string? thumbnailQualityConfig = configuration[thumbnailQualityConfigKey];
+                    if (!string.IsNullOrEmpty(thumbnailQualityConfig) && int.TryParse(thumbnailQualityConfig, out int parsedThumbQuality))
+                    {
+                        thumbnailQuality = Math.Clamp(parsedThumbQuality, 30, 90); // 限制在 30-90 之间
+                    }
+                    else
+                    {
+                        logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图压缩质量: {DefaultThumbQuality}", thumbnailQualityConfigKey, thumbnailQuality);
+                    }
+
                     tempThumbnailLocalPath = Path.GetTempFileName() + ".webp";
                     File.Move(Path.GetTempFileName(), tempThumbnailLocalPath);
-
-                    await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, 500);
+                    await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, thumbnailMaxWidth, thumbnailQuality);
 
                     string thumbnailUploadFileName = $"{baseName}-thumbnail.webp";
-                    await using var thumbnailFileStream = new FileStream(tempThumbnailLocalPath, FileMode.Open, FileAccess.Read);
-                    storedThumbnailPath = await storageService.ExecuteAsync(storageType.Value,
-                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName, "image/webp"));
+                    await using var thumbnailFileStream =
+                        new FileStream(tempThumbnailLocalPath!, FileMode.Open, FileAccess.Read);
+                    storedThumbnailPath = await storageService.ExecuteAsync(storageModeId.Value,
+                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName!, "image/webp"));
                 }
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "生成和上传缩略图失败 during initial upload");
-                    // Continue without thumbnail if it fails here, background task can try later if needed
                 }
             }
-            
+
             string initialTitle = Path.GetFileNameWithoutExtension(fileName);
             string initialDescription = $"Uploaded on {DateTime.UtcNow}";
 
-            await using var dbContext = await contextFactory.CreateDbContextAsync();
+            await using var dbContextAsync = await contextFactory.CreateDbContextAsync();
             User? user = null;
             if (userId is not null)
             {
                 user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 if (user == null) throw new Exception("找不到指定的用户");
             }
-            Album? album = null;
+
             if (albumId.HasValue)
             {
-                album = await dbContext.Albums.Include(a => a.User)
+                var album = await dbContext.Albums.Include(a => a.User)
                     .FirstOrDefaultAsync(a => a.Id == albumId.Value);
 
                 if (album == null)
@@ -592,24 +640,21 @@ public class PictureService(
             {
                 Name = initialTitle,
                 Description = initialDescription,
-                OriginalPath = storedOriginalPath, // Store path to original uploaded file
-                Path = storedHdPath,             // Store path to HD (possibly converted) file
-                ThumbnailPath = storedThumbnailPath, // Store path to thumbnail
+                OriginalPath = storedOriginalPath,
+                Path = storedHdPath,
+                ThumbnailPath = storedThumbnailPath,
                 User = user,
                 Permission = permission,
                 AlbumId = albumId,
-                StorageType = storageType.Value,
-                // ProcessingStatus 等字段已移除
+                StorageModeId = storageModeId.Value,
             };
 
             dbContext.Pictures.Add(picture);
             await dbContext.SaveChangesAsync();
 
-            if (userId != null) // Only queue for registered users
+            if (userId != null)
             {
-                // Pass OriginalPath for EXIF extraction and other initial processing
                 await backgroundTaskQueue.QueuePictureProcessingTaskAsync(picture.Id, picture.OriginalPath);
-                
                 var visualRecognitionPayload = new Background.Processors.VisualRecognitionPayload
                 {
                     PictureId = picture.Id,
@@ -618,43 +663,50 @@ public class PictureService(
                 await backgroundTaskQueue.QueueVisualRecognitionTaskAsync(visualRecognitionPayload);
             }
 
-            var pictureResponse = new PictureResponse
-            {
-                Id = picture.Id,
-                Name = picture.Name,
-                Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
-                    Task.FromResult(provider.GetUrl(picture.Path))), 
-                OriginalPath = await storageService.ExecuteAsync(picture.StorageType, provider => // Added OriginalPath
-                    Task.FromResult(provider.GetUrl(picture.OriginalPath))),
-                ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath)
-                    ? await storageService.ExecuteAsync(picture.StorageType, provider =>
-                        Task.FromResult(provider.GetUrl(picture.ThumbnailPath)))
-                    : null,
-                Description = picture.Description,
-                CreatedAt = picture.CreatedAt,
-                Tags = new List<string>(),
-                Permission = permission,
-                AlbumId = albumId,
-                AlbumName = album?.Name,
-                // ProcessingStatus 字段已移除
-            };
-
+            var pictureResponse = await MapPictureToResponseAsync(picture);
             return (pictureResponse, picture.Id);
         }
         finally
         {
-            // Clean up temporary local files
             if (!string.IsNullOrEmpty(tempOriginalLocalPath) && File.Exists(tempOriginalLocalPath))
             {
-                try { File.Delete(tempOriginalLocalPath); } catch { /* ignored */ }
+                try
+                {
+                    File.Delete(tempOriginalLocalPath);
+                    Console.WriteLine(tempOriginalLocalPath);
+                }
+                catch
+                {
+                    /* ignored */
+                }
             }
+
             if (!string.IsNullOrEmpty(tempConvertedHdLocalPath) && File.Exists(tempConvertedHdLocalPath))
             {
-                try { File.Delete(tempConvertedHdLocalPath); } catch { /* ignored */ }
+                try
+                {
+                    File.Delete(tempConvertedHdLocalPath);
+                    Console.WriteLine(tempConvertedHdLocalPath);
+                }
+                catch
+                {
+                    /* ignored */
+                }
             }
+
             if (!string.IsNullOrEmpty(tempThumbnailLocalPath) && File.Exists(tempThumbnailLocalPath))
             {
-                try { File.Delete(tempThumbnailLocalPath); } catch { /* ignored */ }
+                try
+                {
+                    File.Delete(tempThumbnailLocalPath);
+                    Console.WriteLine(tempThumbnailLocalPath);
+
+
+                }
+                catch
+                {
+                    /* ignored */
+                }
             }
         }
     }
@@ -693,9 +745,19 @@ public class PictureService(
 
         await using var dbContext = await contextFactory.CreateDbContextAsync();
 
+        // 在查询时包含 StorageModeId
         var picturesToDelete = await dbContext.Pictures
             .Include(p => p.User)
             .Where(p => pictureIds.Contains(p.Id))
+            .Select(p => new
+            {
+                p.Id,
+                p.Path,
+                p.ThumbnailPath,
+                p.OriginalPath,
+                UserId = p.User != null ? (int?)p.User.Id : null,
+                p.StorageModeId // 获取 StorageModeId
+            })
             .ToListAsync();
 
         var foundPictureIds = picturesToDelete.Select(p => p.Id).ToHashSet();
@@ -704,60 +766,63 @@ public class PictureService(
             results[id] = (false, "找不到此图片", null);
         }
 
-        var filesToDelete =
-            new List<(int PictureId, string Path, string? ThumbnailPath, string OriginalPath, int? UserId, StorageType StorageType)>();
-        foreach (var picture in picturesToDelete)
-        {
-            filesToDelete.Add((picture.Id, picture.Path, picture.ThumbnailPath, picture.OriginalPath, picture.User?.Id,
-                picture.StorageType));
-        }
-
+        // 从数据库中删除记录
         if (picturesToDelete.Any())
         {
-            dbContext.Pictures.RemoveRange(picturesToDelete);
-            await dbContext.SaveChangesAsync();
+            var idsToRemove = picturesToDelete.Select(p => p.Id).ToList();
+            // EF Core 7+ 可以使用 ExecuteDeleteAsync
+            await dbContext.Pictures.Where(p => idsToRemove.Contains(p.Id)).ExecuteDeleteAsync();
+            // 对于旧版本 EF Core:
+            // var entitiesToRemove = await dbContext.Pictures.Where(p => idsToRemove.Contains(p.Id)).ToListAsync();
+            // dbContext.Pictures.RemoveRange(entitiesToRemove);
+            // await dbContext.SaveChangesAsync();
         }
 
-        foreach (var (pictureId, path, thumbnailPath, originalPath, userId, storageType) in filesToDelete)
+        // 从存储中删除文件
+        foreach (var picInfo in picturesToDelete)
         {
             try
             {
                 string? errorMsg = null;
+                if (picInfo.StorageModeId < 0)
+                {
+                    results[picInfo.Id] = (false, "图片记录缺少有效的StorageModeId，无法删除文件。", picInfo.UserId);
+                    logger.LogWarning("图片 {PictureId} 缺少 StorageModeId，跳过文件删除。", picInfo.Id);
+                    continue;
+                }
 
                 try
                 {
-                    // Delete original file
-                    if (!string.IsNullOrEmpty(originalPath))
+                    if (!string.IsNullOrEmpty(picInfo.OriginalPath))
                     {
-                         await storageService.ExecuteAsync(storageType,
-                            provider => provider.DeleteAsync(originalPath));
-                    }
-                   
-                    // Delete HD/processed file
-                    if (!string.IsNullOrEmpty(path) && path != originalPath) // Avoid double delete if Path is same as OriginalPath
-                    {
-                        await storageService.ExecuteAsync(storageType,
-                            provider => provider.DeleteAsync(path));
+                        await storageService.ExecuteAsync(picInfo.StorageModeId,
+                            provider => provider.DeleteAsync(picInfo.OriginalPath));
                     }
 
-                    // Delete thumbnail
-                    if (!string.IsNullOrEmpty(thumbnailPath))
+                    if (!string.IsNullOrEmpty(picInfo.Path) && picInfo.Path != picInfo.OriginalPath)
                     {
-                        await storageService.ExecuteAsync(storageType,
-                            provider => provider.DeleteAsync(thumbnailPath));
+                        await storageService.ExecuteAsync(picInfo.StorageModeId,
+                            provider => provider.DeleteAsync(picInfo.Path));
+                    }
+
+                    if (!string.IsNullOrEmpty(picInfo.ThumbnailPath))
+                    {
+                        await storageService.ExecuteAsync(picInfo.StorageModeId,
+                            provider => provider.DeleteAsync(picInfo.ThumbnailPath));
                     }
                 }
                 catch (Exception ex)
                 {
                     errorMsg = $"数据库记录已删除，但删除文件失败: {ex.Message}";
-                    logger.LogError(ex, "删除图片文件时出错");
+                    logger.LogError(ex, "删除图片文件时出错 (ID: {PictureId})", picInfo.Id);
                 }
 
-                results[pictureId] = (true, errorMsg, userId);
+                results[picInfo.Id] = (true, errorMsg, picInfo.UserId);
             }
             catch (Exception ex)
             {
-                results[pictureId] = (false, $"处理图片删除时出错: {ex.Message}", userId);
+                results[picInfo.Id] = (false, $"处理图片删除时出错: {ex.Message}", picInfo.UserId);
+                logger.LogError(ex, "处理图片删除的外部循环出错 (ID: {PictureId})", picInfo.Id);
             }
         }
 
@@ -775,6 +840,7 @@ public class PictureService(
         var picture = await dbContext.Pictures
             .Include(p => p.User)
             .Include(p => p.Tags)
+            .Include(p => p.StorageMode)
             .FirstOrDefaultAsync(p => p.Id == pictureId);
 
         if (picture == null)
@@ -840,25 +906,7 @@ public class PictureService(
         picture.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync();
-
-        var pictureResponse = new PictureResponse
-        {
-            Id = picture.Id,
-            Name = picture.Name,
-            Path = await storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.Path ?? string.Empty))),
-            OriginalPath = await storageService.ExecuteAsync(picture.StorageType, provider => // Added OriginalPath
-                Task.FromResult(provider.GetUrl(picture.OriginalPath ?? string.Empty))),
-            ThumbnailPath = !string.IsNullOrEmpty(picture.ThumbnailPath) ? 
-                            await storageService.ExecuteAsync(picture.StorageType, provider => Task.FromResult(provider.GetUrl(picture.ThumbnailPath))) 
-                            : null,
-            Description = picture.Description,
-            CreatedAt = picture.CreatedAt,
-            Tags = picture.Tags?.Select(t => t.Name).ToList() ?? new List<string>(),
-            TakenAt = picture.TakenAt,
-            ExifInfo = picture.ExifInfo
-        };
-
+        var pictureResponse = await MapPictureToResponseAsync(picture);
         return (pictureResponse, userId);
     }
 
@@ -920,5 +968,26 @@ public class PictureService(
         await using var dbContext = await contextFactory.CreateDbContextAsync();
         return await dbContext.Favorites
             .AnyAsync(f => f.PictureId == pictureId && f.User.Id == userId);
+    }
+
+    public async Task<Picture?> GetPictureByIdAsync(int pictureId)
+    {
+        await using var dbContext = await contextFactory.CreateDbContextAsync();
+        var picture = await dbContext.Pictures
+            .Include(p => p.User)
+            .Include(p => p.Tags)
+            .Include(p => p.StorageMode) // 确保加载 StorageMode 以便 MapPictureToResponseAsync 正确工作
+            .AsNoTracking() // 如果只是读取数据，使用 AsNoTracking 可以提高性能
+            .FirstOrDefaultAsync(p => p.Id == pictureId);
+
+        if (picture == null)
+        {
+            logger.LogWarning("GetPictureByIdAsync: Picture with ID {PictureId} not found.", pictureId);
+            return null;
+        }
+
+        var pictureResponse = await MapPictureToResponseAsync(picture);
+
+        return picture;
     }
 }

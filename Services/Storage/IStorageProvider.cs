@@ -15,7 +15,7 @@ public interface IStorageProvider
     /// <summary>
     /// 获取文件URL
     /// </summary>
-    string GetUrl(string storagePath);
+    string GetUrl(int pictureId,string storagePath);
 
     /// <summary>
     /// 下载文件到本地临时目录

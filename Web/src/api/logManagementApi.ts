@@ -1,5 +1,4 @@
-import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
-import { type BatchDeleteResult } from './userManagementApi';
+import { fetchApi, type BaseResult, type BatchDeleteResult, type PaginatedResult } from './fetchClient';
 
 
 // 日志级别枚举

@@ -20,6 +20,13 @@ export interface PaginatedResult<T> {
   code: number;
 }
 
+// 通用批量删除结果
+export interface BatchDeleteResult {
+  successCount: number;
+  failedCount: number;
+  failedIds?: number[];
+}
+
 export const BASE_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5153/api';
 
 export async function fetchApi<T = any>(

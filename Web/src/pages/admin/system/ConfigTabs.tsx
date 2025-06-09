@@ -1,16 +1,16 @@
 import React from 'react';
-import { Tabs, Form, Input, Button, Select, Space, Divider, Typography } from 'antd';
+import { Tabs, Form, Input, Button, Space, Divider, Slider, InputNumber } from 'antd'; // InputNumber added
 import {
   ApiOutlined, RocketOutlined, PictureOutlined, SaveOutlined,
   SafetyCertificateOutlined, LockOutlined, GlobalOutlined, SettingOutlined,
-  CloudServerOutlined, DatabaseOutlined, UploadOutlined} from '@ant-design/icons';
+  DatabaseOutlined, UploadOutlined
+} from '@ant-design/icons';
 import ConfigFormItem from './ConfigFormItem';
 import ConfigSection from './ConfigSection';
-import VectorDbConfig from './VectorDbConfig'; 
+import VectorDbConfig from './VectorDbConfig';
 
 const { TabPane } = Tabs;
-const { Option } = Select;
-const { Title, Paragraph } = Typography;
+// const { Option } = Select; // Removed
 
 interface ConfigStructure {
   [key: string]: {
@@ -24,17 +24,13 @@ interface ConfigTabsProps {
   isMobile: boolean;
   activeKey: string;
   onTabChange: (key: string) => void;
-  storageType: string;
-  onStorageTypeChange: (type: string) => void;
   formsMap: Record<string, any>;
   allDescriptions: Record<string, Record<string, string>>;
   onSaveSingleConfig: (formInstance: any, groupName: string, key: string) => Promise<void>;
   onSaveAllForGroup: (formInstance: any, groupName: string, itemKeys: string[]) => Promise<void>;
   onBaseSaveConfig: (group: string, key: string, value: string) => Promise<boolean>;
   setConfigs: React.Dispatch<React.SetStateAction<ConfigStructure>>;
-  storageOptions: Array<{ value: string; label: string; icon: React.ReactNode; }>;
-  imageFormatOptions: Array<{ value: string; label: string; description: string; }>;
-  imageQualityOptions: Array<{ value: string; label: string; description: string; }>;
+  // imageQualityOptions: Array<{ value: string; label: string; description: string; }>; // Removed
 }
 
 const ConfigTabs: React.FC<ConfigTabsProps> = ({
@@ -43,17 +39,13 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
   isMobile,
   activeKey,
   onTabChange,
-  storageType,
-  onStorageTypeChange,
   formsMap,
   allDescriptions,
   onSaveSingleConfig,
   onSaveAllForGroup,
   onBaseSaveConfig,
   setConfigs,
-  storageOptions,
-  imageFormatOptions,
-  imageQualityOptions,
+  // imageQualityOptions, // Removed
 }) => {
 
   const renderConfigFormItems = (formInstance: any, groupName: string, itemKeys: string[]) => {
@@ -306,245 +298,93 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
       )
     },
     {
-      key: 'Storage',
-      label: '存储设置',
-      icon: <CloudServerOutlined />,
+      key: 'Upload',
+      label: '上传设置',
+      icon: <UploadOutlined />,
       children: (
         <>
           <ConfigSection
-            title="存储类型配置"
-            icon={<DatabaseOutlined />}
-            description="配置系统默认使用的文件存储方式"
-            isMobile={isMobile}
-          >
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: isMobile ? 12 : 16,
-              marginBottom: 0
-            }}>
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  登录用户默认存储
-                </div>
-                <Select
-                  value={configs.Storage?.DefaultStorage || 'Local'}
-                  onChange={(value) => onBaseSaveConfig('Storage', 'DefaultStorage', value)}
-                  style={{ width: '100%' }}
-                  size="large"
-                  placeholder="选择登录用户的默认存储方式"
-                  optionLabelProp="label"
-                >
-                  {storageOptions.map(option => (
-                    <Option key={option.value} value={option.value} label={option.label}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {option.icon}
-                        <span style={{ marginLeft: 8 }}>{option.label}</span>
-                      </div>
-                    </Option>
-                  ))}
-                </Select>
-                <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                  {allDescriptions.Storage?.DefaultStorage}
-                </div>
-              </div>
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  匿名用户默认存储
-                </div>
-                <Select
-                  value={configs.Storage?.AnonymousDefaultStorage || 'Local'}
-                  onChange={(value) => onBaseSaveConfig('Storage', 'AnonymousDefaultStorage', value)}
-                  style={{ width: '100%' }}
-                  size="large"
-                  placeholder="选择匿名用户的默认存储方式"
-                  optionLabelProp="label"
-                >
-                  {storageOptions.map(option => (
-                    <Option key={option.value} value={option.value} label={option.label}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        {option.icon}
-                        <span style={{ marginLeft: 8 }}>{option.label}</span>
-                      </div>
-                    </Option>
-                  ))}
-                </Select>
-                <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                  {allDescriptions.Storage?.AnonymousDefaultStorage}
-                </div>
-              </div>
-            </div>
-          </ConfigSection>
-
-          <ConfigSection
-            title="上传设置配置"
+            title="上传参数配置"
             icon={<UploadOutlined />}
             description="配置文件上传处理方式和图片转换参数"
             isMobile={isMobile}
           >
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: isMobile ? 12 : 16,
+              gridTemplateColumns: '1fr',
+              gap: isMobile ? 20 : 24,
               marginBottom: 0
             }}>
               <div>
                 <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  默认图片格式
+                  缩略图最大宽度 (px)
                 </div>
-                <Select
-                  value={configs.Upload?.DefaultImageFormat || 'Original'}
-                  onChange={(value) => onBaseSaveConfig('Upload', 'DefaultImageFormat', value)}
+                <InputNumber
+                  min={100}
+                  max={1000}
+                  step={50}
+                  value={parseInt(configs.Upload?.ThumbnailMaxWidth || '400', 10)}
+                  onChange={(value) => {
+                    if (value !== null) {
+                      onBaseSaveConfig('Upload', 'ThumbnailMaxWidth', value.toString())
+                    }
+                  }}
                   style={{ width: '100%' }}
-                  size="large"
-                  placeholder="选择上传图片的默认处理格式"
-                  optionLabelProp="label"
-                >
-                  {imageFormatOptions.map(option => (
-                    <Option key={option.value} value={option.value} label={option.label}>
-                      <div>
-                        <div>{option.label}</div>
-                        <div style={{ fontSize: '12px', color: '#999' }}>{option.description}</div>
-                      </div>
-                    </Option>
-                  ))}
-                </Select>
+                />
                 <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                  {allDescriptions.Upload?.DefaultImageFormat}
+                  {allDescriptions.Upload?.ThumbnailMaxWidth}
                 </div>
               </div>
+
               <div>
                 <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  默认压缩质量
+                  缩略图压缩质量
                 </div>
-                <Select
-                  value={configs.Upload?.DefaultImageQuality || '95'}
-                  onChange={(value) => onBaseSaveConfig('Upload', 'DefaultImageQuality', value)}
-                  style={{ width: '100%' }}
-                  size="large"
-                  placeholder="选择图片压缩质量"
-                  optionLabelProp="label"
-                >
-                  {imageQualityOptions.map(option => (
-                    <Option key={option.value} value={option.value} label={option.label}>
-                      <div>
-                        <div>{option.label}</div>
-                        <div style={{ fontSize: '12px', color: '#999' }}>{option.description}</div>
-                      </div>
-                    </Option>
-                  ))}
-                </Select>
-                <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                  {allDescriptions.Upload?.DefaultImageQuality}
+                <Slider
+                  min={30}
+                  max={90}
+                  step={5}
+                  value={parseInt(configs.Upload?.ThumbnailCompressionQuality || '75', 10)}
+                  onChange={(value) => onBaseSaveConfig('Upload', 'ThumbnailCompressionQuality', value.toString())}
+                  style={{ margin: isMobile ? '0 5px' : '0 10px' }}
+                  tooltip={{
+                    formatter: value => `${value}%`
+                  }}
+                  marks={{
+                    30: '30%',
+                    60: '60%',
+                    90: '90%'
+                  }}
+                />
+                <div style={{ fontSize: 12, color: '#999', marginTop: 16, textAlign: 'center' }}>
+                  {allDescriptions.Upload?.ThumbnailCompressionQuality}
                 </div>
               </div>
-            </div>
-          </ConfigSection>
 
-          <ConfigSection
-            title="存储服务配置"
-            icon={<CloudServerOutlined />}
-            description="配置各种外部存储服务的连接参数"
-            isMobile={isMobile}
-          >
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                选择要配置的存储服务
-              </div>
-              <Select
-                value={storageType}
-                onChange={onStorageTypeChange}
-                style={{ width: isMobile ? '100%' : '300px' }}
-                size="large"
-                placeholder="选择需要配置的存储服务类型"
-                optionLabelProp="label"
-              >
-                {storageOptions.map(option => (
-                  <Option key={option.value} value={option.value} label={option.label}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      {option.icon}
-                      <span style={{ marginLeft: 8 }}>{option.label}</span>
-                    </div>
-                  </Option>
-                ))}
-              </Select>
-              <div style={{ fontSize: 12, color: '#999', marginTop: 4, marginBottom: 16 }}>
-                选择后将显示对应存储服务的详细配置选项
-              </div>
-            </div>
-
-            <div style={{ border: '1px solid #f0f0f0', borderRadius: 6, padding: isMobile ? 12 : 16, backgroundColor: '#fafafa' }}>
-              {storageType === 'Local' && (
-                <div style={{ textAlign: 'center', color: '#999', padding: '30px 0' }}>
-                  <DatabaseOutlined style={{ fontSize: 32, color: '#52c41a', marginBottom: 16 }} />
-                  <Title level={5}>本地存储无需额外配置</Title>
-                  <Paragraph type="secondary">文件将直接存储在服务器的本地文件系统中</Paragraph>
+              <div>
+                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
+                  高清图片压缩质量
                 </div>
-              )}
-              {storageType === 'Telegram' && (
-                <Form form={formsMap.TelegramStorage} layout="vertical" size={isMobile ? "middle" : "large"}>
-                  {renderConfigFormItems(formsMap.TelegramStorage, "Storage", ["TelegramStorageBotToken", "TelegramStorageChatId", "TelegramProxyAddress", "TelegramProxyPort", "TelegramProxyUsername", "TelegramProxyPassword"])}
-                  <Divider style={{ margin: '12px 0 20px' }} />
-                  <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      onClick={() => onSaveAllForGroup(formsMap.TelegramStorage, "Storage", ["TelegramStorageBotToken", "TelegramStorageChatId", "TelegramProxyAddress", "TelegramProxyPort", "TelegramProxyUsername", "TelegramProxyPassword"])}
-                      style={{ width: isMobile ? '100%' : '240px' }}
-                    >
-                      保存所有 Telegram 配置
-                    </Button>
-                  </Form.Item>
-                </Form>
-              )}
-              {storageType === 'S3' && (
-                <Form form={formsMap.S3Storage} layout="vertical" size={isMobile ? "middle" : "large"}>
-                  {renderConfigFormItems(formsMap.S3Storage, "Storage", ["S3StorageAccessKey", "S3StorageSecretKey", "S3StorageBucketName", "S3StorageRegion", "S3StorageEndpoint", "S3StorageCdnUrl", "S3StorageUsePathStyleUrls"])}
-                  <Divider style={{ margin: '12px 0 20px' }} />
-                  <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      onClick={() => onSaveAllForGroup(formsMap.S3Storage, "Storage", ["S3StorageAccessKey", "S3StorageSecretKey", "S3StorageBucketName", "S3StorageRegion", "S3StorageEndpoint", "S3StorageCdnUrl", "S3StorageUsePathStyleUrls"])}
-                      style={{ width: isMobile ? '100%' : '240px' }}
-                    >
-                      保存所有 S3 配置
-                    </Button>
-                  </Form.Item>
-                </Form>
-              )}
-              {storageType === 'Cos' && (
-                <Form form={formsMap.CosStorage} layout="vertical" size={isMobile ? "middle" : "large"}>
-                  {renderConfigFormItems(formsMap.CosStorage, "Storage", ["CosStorageSecretId", "CosStorageSecretKey", "CosStorageToken", "CosStorageBucketName", "CosStorageRegion", "CosStorageCdnUrl"])}
-                  <Divider style={{ margin: '12px 0 20px' }} />
-                  <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      onClick={() => onSaveAllForGroup(formsMap.CosStorage, "Storage", ["CosStorageSecretId", "CosStorageSecretKey", "CosStorageToken", "CosStorageBucketName", "CosStorageRegion", "CosStorageCdnUrl"])}
-                      style={{ width: isMobile ? '100%' : '240px' }}
-                    >
-                      保存所有 COS 配置
-                    </Button>
-                  </Form.Item>
-                </Form>
-              )}
-              {storageType === 'WebDAV' && (
-                <Form form={formsMap.WebDAVStorage} layout="vertical" size={isMobile ? "middle" : "large"}>
-                  {renderConfigFormItems(formsMap.WebDAVStorage, "Storage", ["WebDAVServerUrl", "WebDAVUserName", "WebDAVPassword", "WebDAVBasePath", "WebDAVPublicUrl"])}
-                  <Divider style={{ margin: '12px 0 20px' }} />
-                  <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      onClick={() => onSaveAllForGroup(formsMap.WebDAVStorage, "Storage", ["WebDAVServerUrl", "WebDAVUserName", "WebDAVPassword", "WebDAVBasePath", "WebDAVPublicUrl"])}
-                      style={{ width: isMobile ? '100%' : '240px' }}
-                    >
-                      保存所有 WebDAV 配置
-                    </Button>
-                  </Form.Item>
-                </Form>
-              )}
+                <Slider
+                  min={50}
+                  max={100}
+                  step={5}
+                  value={parseInt(configs.Upload?.HighQualityImageCompressionQuality || '95', 10)}
+                  onChange={(value) => onBaseSaveConfig('Upload', 'HighQualityImageCompressionQuality', value.toString())}
+                  style={{ margin: isMobile ? '0 5px' : '0 10px' }}
+                  tooltip={{
+                    formatter: value => `${value}%`
+                  }}
+                  marks={{
+                    50: '50%',
+                    75: '75%',
+                    100: '100%'
+                  }}
+                />
+                <div style={{ fontSize: 12, color: '#999', marginTop: 16, textAlign: 'center' }}>
+                  {allDescriptions.Upload?.HighQualityImageCompressionQuality}
+                </div>
+              </div>
             </div>
           </ConfigSection>
         </>

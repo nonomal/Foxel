@@ -7,16 +7,47 @@ using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
-[StorageProvider(StorageType.S3)]
-public class S3StorageProvider(IConfigService configService, ILogger<S3StorageProvider> logger) : IStorageProvider
+public class S3StorageConfig
 {
+    public string AccessKey { get; set; } = string.Empty;
+    public string SecretKey { get; set; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
+    public string? Region { get; set; } // Region 可能为空，特别是对于非AWS S3兼容存储
+    public bool UsePathStyleUrls { get; set; } = false;
+    public string BucketName { get; set; } = string.Empty;
+    public string? CdnUrl { get; set; }
+}
+
+[StorageProvider(StorageType.S3)]
+public class S3StorageProvider : IStorageProvider
+{
+    private readonly S3StorageConfig _s3Config;
+    private readonly IConfigService _configService; // 保留用于可能的应用级配置
+    private readonly ILogger<S3StorageProvider> _logger;
+
+    public S3StorageProvider(S3StorageConfig s3Config, IConfigService configService, ILogger<S3StorageProvider> logger)
+    {
+        _s3Config = s3Config;
+        _configService = configService;
+        _logger = logger;
+
+        if (string.IsNullOrEmpty(_s3Config.AccessKey) ||
+            string.IsNullOrEmpty(_s3Config.SecretKey) ||
+            string.IsNullOrEmpty(_s3Config.Endpoint) ||
+            string.IsNullOrEmpty(_s3Config.BucketName))
+        {
+            _logger.LogError("S3 Storage配置不完整 (AccessKey, SecretKey, Endpoint, BucketName 都是必需的).");
+            throw new InvalidOperationException("S3 Storage配置不完整。");
+        }
+    }
+
     private AmazonS3Client CreateClient()
     {
-        string accessKey = configService["Storage:S3StorageAccessKey"];
-        string secretKey = configService["Storage:S3StorageSecretKey"];
-        string endpoint = configService["Storage:S3StorageEndpoint"];
-        string region = configService["Storage:S3StorageRegion"];
-        bool usePathStyleUrls = bool.TryParse(configService["Storage:S3StorageUsePathStyleUrls"], out var usePathStyle) && usePathStyle;
+        string accessKey = _s3Config.AccessKey;
+        string secretKey = _s3Config.SecretKey;
+        string endpoint = _s3Config.Endpoint;
+        string? region = _s3Config.Region;
+        bool usePathStyleUrls = _s3Config.UsePathStyleUrls;
 
         var config = new AmazonS3Config
         {
@@ -25,7 +56,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
             ForcePathStyle = usePathStyleUrls
         };
 
-        if (!string.IsNullOrEmpty(region) && endpoint.Contains("amazonaws.com"))
+        if (!string.IsNullOrEmpty(region) && endpoint.Contains("amazonaws.com", StringComparison.OrdinalIgnoreCase))
         {
             config.RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region);
         }
@@ -55,7 +86,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
             {
                 InputStream = fileStream,
                 Key = objectKey,
-                BucketName = configService["Storage:S3StorageBucketName"],
+                BucketName = _s3Config.BucketName,
                 ContentType = contentType
             };
 
@@ -66,7 +97,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "上传文件到S3时出错");
+            _logger.LogError(ex, "上传文件到S3时出错");
             throw;
         }
     }
@@ -81,7 +112,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
             using var client = CreateClient();
             var deleteRequest = new DeleteObjectRequest
             {
-                BucketName = configService["Storage:S3StorageBucketName"],
+                BucketName = _s3Config.BucketName,
                 Key = storagePath
             };
 
@@ -89,30 +120,30 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "从S3删除文件时出错");
+            _logger.LogWarning(ex, "从S3删除文件时出错");
         }
     }
 
-    public string GetUrl(string storagePath)
+    public string GetUrl(int pictureId,string storagePath)
     {
         try
         {
             if (string.IsNullOrEmpty(storagePath))
                 return "/images/unavailable.gif";
 
-            string cdnUrl = configService["Storage:S3StorageCdnUrl"];
+            string? cdnUrl = _s3Config.CdnUrl;
 
             // 如果配置了CDN URL，使用CDN
             if (!string.IsNullOrEmpty(cdnUrl))
             {
-                return $"{cdnUrl}/{storagePath}";
+                return $"{cdnUrl.TrimEnd('/')}/{storagePath}";
             }
 
             // 否则使用S3直链或生成预签名URL
             using var client = CreateClient();
             var request = new GetPreSignedUrlRequest
             {
-                BucketName = configService["Storage:S3StorageBucketName"],
+                BucketName = _s3Config.BucketName,
                 Key = storagePath,
                 Expires = DateTime.UtcNow.AddHours(1) // URL有效期1小时
             };
@@ -121,7 +152,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "生成S3文件URL时出错");
+            _logger.LogError(ex, "生成S3文件URL时出错");
             return "/images/unavailable.gif";
         }
     }
@@ -150,7 +181,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
             using var client = CreateClient();
             var request = new GetObjectRequest
             {
-                BucketName = configService["Storage:S3StorageBucketName"],
+                BucketName = _s3Config.BucketName,
                 Key = storagePath
             };
 
@@ -162,7 +193,7 @@ public class S3StorageProvider(IConfigService configService, ILogger<S3StoragePr
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "从S3下载文件时出错");
+            _logger.LogError(ex, "从S3下载文件时出错");
             throw;
         }
     }

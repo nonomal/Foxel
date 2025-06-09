@@ -1,6 +1,5 @@
-import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
+import { fetchApi, type BaseResult, type BatchDeleteResult, type PaginatedResult } from './fetchClient';
 import { type PictureResponse } from './pictureApi';
-import { type BatchDeleteResult } from './userManagementApi';
 
 
 // 获取图片列表

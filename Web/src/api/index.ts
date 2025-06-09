@@ -9,3 +9,4 @@ export * from './pictureManagementApi';
 export * from './tagApi';
 export * from './userManagementApi';
 export * from './vectorDbApi';
+export * from './storageManagementApi';

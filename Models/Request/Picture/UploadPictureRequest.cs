@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Foxel.Models.DataBase;
-using Foxel.Models.Enums;
-using Foxel.Services.Attributes;
+
 
 namespace Foxel.Models.Request.Picture;
 
@@ -15,5 +13,5 @@ public record UploadPictureRequest
 
     public int? AlbumId { get; set; }
 
-    public StorageType? StorageType { get; set; }
+    public int? StorageModeId { get; set; }
 }

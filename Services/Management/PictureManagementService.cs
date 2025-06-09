@@ -48,10 +48,10 @@ public class PictureManagementService(
         {
             Id = picture.Id,
             Name = picture.Name,
-            Path = storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.Path))).Result,
-            ThumbnailPath = storageService.ExecuteAsync(picture.StorageType, provider =>
-                Task.FromResult(provider.GetUrl(picture.ThumbnailPath ?? string.Empty))).Result,
+            Path = storageService.ExecuteAsync(picture.StorageModeId, provider =>
+                Task.FromResult(provider.GetUrl(picture.Id,picture.Path))).Result,
+            ThumbnailPath = storageService.ExecuteAsync(picture.StorageModeId, provider =>
+                Task.FromResult(provider.GetUrl(picture.Id,picture.ThumbnailPath ?? string.Empty))).Result,
             Description = picture.Description,
             CreatedAt = picture.CreatedAt,
             TakenAt = picture.TakenAt,
@@ -119,7 +119,7 @@ public class PictureManagementService(
         // 保存文件路径信息用于后续删除
         var filePath = picture.Path;
         var thumbnailPath = picture.ThumbnailPath;
-        var storageType = picture.StorageType;
+        var storageType = picture.StorageModeId;
 
         // 删除数据库记录
         dbContext.Pictures.Remove(picture);

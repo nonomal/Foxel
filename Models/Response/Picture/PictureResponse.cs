@@ -21,4 +21,6 @@ public record PictureResponse
     public int? AlbumId { get; set; }
     public string? AlbumName { get; set; }
     public PermissionType Permission { get; set; } = PermissionType.Public;
+    public string? StorageModeName { get; set; }
+    
 }

@@ -1,4 +1,4 @@
-import { fetchApi, type BaseResult, type PaginatedResult } from './fetchClient';
+import { fetchApi, type BaseResult, type BatchDeleteResult, type PaginatedResult } from './fetchClient';
 
 export type UserRole = "Administrator" | "User" | "";
 
@@ -32,13 +32,6 @@ export interface AdminUpdateUserRequest {
   userName?: string;
   email?: string;
   role?: string;
-}
-
-// 批量删除结果
-export interface BatchDeleteResult {
-  successCount: number;
-  failedCount: number;
-  failedIds?: number[];
 }
 
 // 用户筛选请求参数

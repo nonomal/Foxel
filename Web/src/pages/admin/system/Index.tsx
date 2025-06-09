@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Card, message, Spin, Button, Upload, Modal, Space, Tooltip, Form, Typography, notification } from 'antd';
 import {
-  CloudOutlined, DatabaseOutlined, CloudServerOutlined, GlobalOutlined,
   DownloadOutlined, UploadOutlined, QuestionCircleOutlined,
   SettingOutlined,
   CheckCircleOutlined
@@ -46,37 +45,10 @@ const allDescriptions: Record<string, Record<string, string>> = {
     ServerUrl: '服务器URL',
     MaxConcurrentTasks: '后台任务最大并发处理数量 (例如: 图像分析、标签生成等)'
   },
-  Storage: {
-    DefaultStorage: '已登录用户上传文件时的默认存储位置',
-    AnonymousDefaultStorage: '未登录用户上传文件时的默认存储位置',
-    TelegramStorageBotToken: 'Telegram 机器人令牌',
-    TelegramStorageChatId: 'Telegram 聊天ID',
-    TelegramProxyAddress: '代理服务器地址 (例如: 127.0.0.1)',
-    TelegramProxyPort: '代理服务器端口 (例如: 1080)',
-    TelegramProxyUsername: '代理用户名 (可选)',
-    TelegramProxyPassword: '代理密码 (可选)',
-    S3StorageAccessKey: 'S3访问密钥',
-    S3StorageSecretKey: 'S3私有密钥',
-    S3StorageBucketName: 'S3存储桶名称',
-    S3StorageRegion: 'S3区域 (例如:us-east-1)',
-    S3StorageEndpoint: 'S3端点URL (可选,默认为AWS S3)',
-    S3StorageCdnUrl: 'CDN URL (可选,用于加速文件访问)',
-    S3StorageUsePathStyleUrls: '使用路径形式URLs (true/false,兼容非AWS服务)',
-    CosStorageSecretId: '腾讯云COS密钥ID',
-    CosStorageSecretKey: '腾讯云COS私有密钥',
-    CosStorageToken: '腾讯云COS临时令牌(可选)',
-    CosStorageBucketName: 'COS存储桶名称',
-    CosStorageRegion: 'COS区域 (例如:ap-shanghai)',
-    CosStorageCdnUrl: 'CDN URL (可选,用于加速文件访问)',
-    WebDAVServerUrl: 'WebDAV 服务器 URL (例如: https://dav.example.com)',
-    WebDAVUserName: 'WebDAV 用户名',
-    WebDAVPassword: 'WebDAV 密码',
-    WebDAVBasePath: 'WebDAV 基础路径 (例如: files/upload)',
-    WebDAVPublicUrl: 'WebDAV 公共访问 URL (可选,用于文件访问)',
-  },
   Upload: {
-    DefaultImageFormat: '上传图片时的默认处理格式，选择合适的格式可以优化存储和显示',
-    DefaultImageQuality: '适用于JPEG和WebP格式的图片质量设置，越高图片质量越好但文件越大'
+    HighQualityImageCompressionQuality: '高清图片的压缩质量，越高图片质量越好但文件越大。范围 50-100。',
+    ThumbnailMaxWidth: '缩略图的最大宽度（像素），例如设置为 400。',
+    ThumbnailCompressionQuality: '缩略图的压缩质量，用于平衡文件大小和清晰度。范围 30-90。'
   }
 };
 
@@ -86,7 +58,6 @@ const System: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [configs, setConfigs] = useState<ConfigStructure>({});
   const [activeKey, setActiveKey] = useState('AI');
-  const [storageType, setStorageType] = useState('Telegram');
   const [backupLoading, setBackupLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [restoreModalVisible, setRestoreModalVisible] = useState(false);
@@ -100,10 +71,6 @@ const System: React.FC = () => {
   const [jwtForm] = Form.useForm();
   const [authForm] = Form.useForm();
   const [appSettingsForm] = Form.useForm();
-  const [telegramForm] = Form.useForm();
-  const [s3Form] = Form.useForm();
-  const [cosForm] = Form.useForm();
-  const [webDAVForm] = Form.useForm();
   const [uploadForm] = Form.useForm();
 
   const formsMap: Record<string, any> = {
@@ -111,10 +78,6 @@ const System: React.FC = () => {
     Jwt: jwtForm,
     Authentication: authForm,
     AppSettings: appSettingsForm,
-    TelegramStorage: telegramForm,
-    S3Storage: s3Form,
-    CosStorage: cosForm,
-    WebDAVStorage: webDAVForm,
     Upload: uploadForm,
   };
 
@@ -145,20 +108,11 @@ const System: React.FC = () => {
         setConfigs(configGroups);
         setSecretFields(secretFieldsMap);
 
-        if (configGroups.Storage?.DefaultStorage) {
-          setStorageType(configGroups.Storage.DefaultStorage);
-        }
-
         // 更高效地更新表单值
         Object.keys(configGroups).forEach(group => {
           let formInstanceKey = group;
-          if (group === "Storage") {
-          } else if (group.endsWith("Storage") && formsMap[group]) {
-            formInstanceKey = group;
-          }
 
-
-          const formInstance = formsMap[formInstanceKey] || (group === "Storage" ? formsMap[`${configGroups.Storage.DefaultStorage}Storage`] : null);
+          const formInstance = formsMap[formInstanceKey];
 
           if (formInstance) {
             const initialGroupValues: Record<string, string> = {};
@@ -456,34 +410,6 @@ const System: React.FC = () => {
     }
   };
 
-  // 存储类型选项
-  const storageOptions = [
-    { value: 'Local', label: '本地存储', icon: <DatabaseOutlined style={{ color: '#52c41a' }} /> },
-    { value: 'Telegram', label: 'Telegram 频道', icon: <CloudOutlined style={{ color: '#0088cc' }} /> },
-    { value: 'S3', label: '亚马逊 S3', icon: <CloudServerOutlined style={{ color: '#ff9900' }} /> },
-    { value: 'Cos', label: '腾讯云 COS', icon: <CloudServerOutlined style={{ color: '#00a4ff' }} /> },
-    { value: 'WebDAV', label: 'WebDAV 存储', icon: <GlobalOutlined style={{ color: '#1890ff' }} /> },
-  ];
-
-  // 上传格式选项
-  const imageFormatOptions = [
-    { value: 'Original', label: '保持原始格式', description: '不改变原始图片格式' },
-    { value: 'Jpeg', label: '转换为JPEG', description: '适合照片，文件较小但有损压缩' },
-    { value: 'Png', label: '转换为PNG', description: '适合图形，无损但文件较大' },
-    { value: 'Webp', label: '转换为WebP', description: '现代格式，体积小且质量好' },
-  ];
-
-  // 图片质量选项
-  const imageQualityOptions = [
-    { value: '100', label: '100% - 最高质量', description: '无损压缩，文件较大' },
-    { value: '95', label: '95% - 高质量', description: '几乎无损，推荐用于高质量需求' },
-    { value: '90', label: '90% - 优质', description: '良好平衡，推荐一般用途' },
-    { value: '85', label: '85% - 良好', description: '适合网页展示，节省空间' },
-    { value: '80', label: '80% - 节省空间', description: '明显压缩但质量可接受' },
-    { value: '75', label: '75% - 平衡', description: '显著减小文件大小' },
-    { value: '70', label: '70% - 压缩', description: '最大压缩，质量较低' },
-  ];
-
   useEffect(() => {
     fetchConfigs();
   }, []);
@@ -546,17 +472,12 @@ const System: React.FC = () => {
           isMobile={isMobile}
           activeKey={activeKey}
           onTabChange={setActiveKey}
-          storageType={storageType}
-          onStorageTypeChange={setStorageType}
           formsMap={formsMap}
           allDescriptions={allDescriptions}
           onSaveSingleConfig={handleSaveSingleConfig}
           onSaveAllForGroup={handleSaveAllForGroup}
           onBaseSaveConfig={baseSaveConfig}
           setConfigs={setConfigs}
-          storageOptions={storageOptions}
-          imageFormatOptions={imageFormatOptions}
-          imageQualityOptions={imageQualityOptions}
         />
       )}
 

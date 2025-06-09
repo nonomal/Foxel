@@ -16,12 +16,6 @@ public class ConfigService(
     {
         "AI:ApiKey",
         "Authentication:GitHubClientSecret",
-        "Storage:TelegramStorageBotToken",
-        "Storage:S3StorageAccessKey",
-        "Storage:S3StorageSecretKey",
-        "Storage:CosStorageSecretId",
-        "Storage:CosStorageSecretKey",
-        "Storage:WebDAVPassword",
     };
 
     // 缓存过期时间

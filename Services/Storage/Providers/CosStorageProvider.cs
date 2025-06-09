@@ -10,15 +10,26 @@ using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 
+public class CosStorageConfig
+{
+    public string Region { get; set; } = string.Empty;
+    public string SecretId { get; set; } = string.Empty;
+    public string SecretKey { get; set; } = string.Empty;
+    public string? Token { get; set; } // Token 可能为空
+    public string BucketName { get; set; } = string.Empty;
+    public string? CdnUrl { get; set; }
+    public bool PublicRead { get; set; } = false;
+}
+
 public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProvider
 {
-    private readonly IConfigService _configService;
+    private readonly CosStorageConfig _config;
     private readonly ILogger<CustomQCloudCredentialProvider> _logger;
 
-    public CustomQCloudCredentialProvider(IConfigService configService, ILogger<CustomQCloudCredentialProvider> logger) 
-        : base(null, null, 0L, null)
+    public CustomQCloudCredentialProvider(CosStorageConfig config, ILogger<CustomQCloudCredentialProvider> logger) 
+        : base(null, null, 0L, null) // Base constructor parameters are set in Refresh
     {
-        _configService = configService;
+        _config = config;
         _logger = logger;
         Refresh();
     }
@@ -27,11 +38,12 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
     {
         try
         {
-            string tmpSecretId = _configService["Storage:CosStorageSecretId"];
-            string tmpSecretKey = _configService["Storage:CosStorageSecretKey"];
-            string tmpToken = _configService["Storage:CosStorageToken"]; 
+            string tmpSecretId = _config.SecretId;
+            string tmpSecretKey = _config.SecretKey;
+            string? tmpToken = _config.Token; 
             long tmpStartTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            long tmpExpiredTime = tmpStartTime + 7200;
+            // 腾讯云建议临时密钥有效期最长2小时（7200秒）
+            long tmpExpiredTime = tmpStartTime + 7200; 
             SetQCloudCredential(tmpSecretId, tmpSecretKey,
                 $"{tmpStartTime};{tmpExpiredTime}", tmpToken);
         }
@@ -44,18 +56,38 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
 }
 
 [StorageProvider(StorageType.Cos)]
-public class CosStorageProvider(IConfigService configService, ILogger<CosStorageProvider> logger) : IStorageProvider
+public class CosStorageProvider : IStorageProvider
 {
+    private readonly CosStorageConfig _cosConfig;
+    private readonly IConfigService _configService; // 保留用于可能的应用级配置
+    private readonly ILogger<CosStorageProvider> _logger;
+
+    public CosStorageProvider(CosStorageConfig cosConfig, IConfigService configService, ILogger<CosStorageProvider> logger)
+    {
+        _cosConfig = cosConfig;
+        _configService = configService; // 存储起来以备后用
+        _logger = logger;
+
+        if (string.IsNullOrEmpty(_cosConfig.Region) ||
+            string.IsNullOrEmpty(_cosConfig.SecretId) ||
+            string.IsNullOrEmpty(_cosConfig.SecretKey) ||
+            string.IsNullOrEmpty(_cosConfig.BucketName))
+        {
+            _logger.LogError("COS Storage配置不完整 (Region, SecretId, SecretKey, BucketName 都是必需的).");
+            throw new InvalidOperationException("COS Storage配置不完整。");
+        }
+    }
+
     private CosXml CreateClient()
     {
         var config = new CosXmlConfig.Builder()
             .IsHttps(true) 
-            .SetRegion(configService["Storage:CosStorageRegion"])
+            .SetRegion(_cosConfig.Region)
             .SetDebugLog(true) 
             .Build();
             
-        var cosCredentialProvider = new CustomQCloudCredentialProvider(configService, 
-            logger.IsEnabled(LogLevel.Debug) ? 
+        var cosCredentialProvider = new CustomQCloudCredentialProvider(_cosConfig, 
+            _logger.IsEnabled(LogLevel.Debug) ? 
                 Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<CustomQCloudCredentialProvider>() :
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<CustomQCloudCredentialProvider>.Instance);
         
@@ -85,7 +117,7 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
                 var cosXmlClient = CreateClient();
                 var transferConfig = new TransferConfig();
                 var transferManager = new TransferManager(cosXmlClient, transferConfig);
-                var uploadTask = new COSXMLUploadTask(configService["Storage:CosStorageBucketName"], objectKey);
+                var uploadTask = new COSXMLUploadTask(_cosConfig.BucketName, objectKey);
                 uploadTask.SetSrcPath(tempPath);
                 await transferManager.UploadAsync(uploadTask);
                 return objectKey;
@@ -101,17 +133,17 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
         }
         catch (CosClientException clientEx)
         {
-            logger.LogError(clientEx, "COS客户端异常");
+            _logger.LogError(clientEx, "COS客户端异常");
             throw;
         }
         catch (CosServerException serverEx)
         {
-            logger.LogError(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
+            _logger.LogError(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "上传文件到腾讯云COS时出错");
+            _logger.LogError(ex, "上传文件到腾讯云COS时出错");
             throw;
         }
     }
@@ -124,38 +156,38 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
                 return;
 
             var cosXmlClient = CreateClient();
-            var request = new DeleteObjectRequest(configService["Storage:CosStorageBucketName"], storagePath);
+            var request = new DeleteObjectRequest(_cosConfig.BucketName, storagePath);
             await Task.Run(() => cosXmlClient.DeleteObject(request));
         }
         catch (CosClientException clientEx)
         {
-            logger.LogWarning(clientEx, "COS客户端异常");
+            _logger.LogWarning(clientEx, "COS客户端异常");
         }
         catch (CosServerException serverEx)
         {
-            logger.LogWarning(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
+            _logger.LogWarning(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "从腾讯云COS删除文件时出错");
+            _logger.LogWarning(ex, "从腾讯云COS删除文件时出错");
         }
     }
 
-    public string GetUrl(string storagePath)
+    public string GetUrl(int pictureId,string storagePath)
     {
         try
         {
             if (string.IsNullOrEmpty(storagePath))
                 return "/images/unavailable.gif";
 
-            string cdnUrl = configService["Storage:CosStorageCdnUrl"];
-            string bucketName = configService["Storage:CosStorageBucketName"];
-            string region = configService["Storage:CosStorageRegion"];
-            bool isPublicRead = bool.TryParse(configService["Storage:CosStoragePublicRead"], out var publicRead) && publicRead;
+            string? cdnUrl = _cosConfig.CdnUrl;
+            string bucketName = _cosConfig.BucketName;
+            string region = _cosConfig.Region;
+            bool isPublicRead = _cosConfig.PublicRead;
 
             // 优先使用CDN
             if (!string.IsNullOrEmpty(cdnUrl))
-                return $"{cdnUrl}/{storagePath}";
+                return $"{cdnUrl.TrimEnd('/')}/{storagePath}";
 
             // 公开读取的桶可直接访问
             if (isPublicRead)
@@ -179,7 +211,7 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "生成腾讯云COS文件URL时出错");
+            _logger.LogError(ex, "生成腾讯云COS文件URL时出错");
             return "/images/unavailable.gif";
         }
     }
@@ -200,7 +232,7 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
                 Directory.CreateDirectory(tempDir);
             }
 
-            string bucketName = configService["Storage:CosStorageBucketName"];
+            string bucketName = _cosConfig.BucketName;
             string fileName = Path.GetFileName(storagePath);
             
             var cosXmlClient = CreateClient();
@@ -212,17 +244,17 @@ public class CosStorageProvider(IConfigService configService, ILogger<CosStorage
         }
         catch (CosClientException clientEx)
         {
-            logger.LogError(clientEx, "COS客户端异常");
+            _logger.LogError(clientEx, "COS客户端异常");
             throw;
         }
         catch (CosServerException serverEx)
         {
-            logger.LogError(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
+            _logger.LogError(serverEx, "COS服务器异常: {ServerInfo}", serverEx.GetInfo());
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "从腾讯云COS下载文件时出错");
+            _logger.LogError(ex, "从腾讯云COS下载文件时出错");
             throw;
         }
     }

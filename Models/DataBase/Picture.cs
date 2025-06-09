@@ -35,7 +35,9 @@ public class Picture : BaseModel
         set => ExifInfoJson = value != null ? JsonSerializer.Serialize(value) : null;
     }
 
-    public StorageType StorageType { get; set; } = StorageType.Local;
+    public int StorageModeId { get; set; }
+    [ForeignKey("StorageModeId")]
+    public StorageMode? StorageMode { get; set; } = null!;
 
     public ICollection<Tag>? Tags { get; set; }
     public int? UserId { get; set; }

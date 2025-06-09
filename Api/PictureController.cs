@@ -1,22 +1,23 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
+using Foxel.Controllers;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Picture;
 using Foxel.Models.Response.Picture;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Foxel.Services.Media;
 using Foxel.Services.Storage;
-using System.IO;
-using Foxel.Services.Attributes;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json; // Added for JsonSerializer in GetTelegramFile if it were kept
 
-namespace Foxel.Controllers;
+namespace Foxel.Api;
 
 [Authorize]
 [Route("api/picture")]
-public class PictureController(IPictureService pictureService, IStorageService storageService) : BaseApiController
+public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger) : BaseApiController
 {
+    private readonly ILogger<PictureController> _logger = logger;
+
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(
         [FromQuery] FilteredPicturesRequest request)
@@ -81,7 +82,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 userId,
                 (PermissionType)request.Permission!,
                 request.AlbumId,
-                request.StorageType
+                request.StorageModeId
             );
 
             var picture = result.Picture;
@@ -260,92 +261,76 @@ public class PictureController(IPictureService pictureService, IStorageService s
         }
     }
 
-    [HttpGet("get_telegram_file")]
+    [HttpGet("file/{pictureId}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetTelegramFile([FromQuery] string fileId)
+    public async Task<IActionResult> GetPictureFile(int pictureId)
     {
         try
         {
-            // 创建一个模拟的存储元数据
-            var metadata = new
+            var picture = await pictureService.GetPictureByIdAsync(pictureId);
+            if (picture == null)
             {
-                FileId = fileId,
-                OriginalFileName = "telegram_file"
-            };
-            
-            // 序列化为 JSON 字符串，与 TelegramStorageProvider 中的格式保持一致
-            string storagePath = JsonSerializer.Serialize(metadata);
-            
-            try
-            {
-                // 使用 storageService 下载文件，这样会自动使用配置的代理
-                string tempFilePath = await storageService.ExecuteAsync(StorageType.Telegram, 
-                    provider => provider.DownloadFileAsync(storagePath));
-                
-                // 获取文件内容类型
-                string contentType = GetContentTypeFromPath(tempFilePath);
-                
-                // 返回文件
-                return PhysicalFile(tempFilePath, contentType, Path.GetFileName(tempFilePath));
+                _logger.LogWarning("GetPictureFile: Picture with ID {PictureId} not found.", pictureId);
+                return NotFound("Picture not found.");
             }
-            catch (Exception ex)
+            var currentUserId = GetCurrentUserId();
+            if (picture.Permission != PermissionType.Public)
             {
-                return StatusCode(500, $"下载 Telegram 文件失败: {ex.Message}");
+                if (currentUserId == null || picture.UserId != currentUserId.Value)
+                {
+                    _logger.LogWarning("GetPictureFile: User {UserId} forbidden to access picture {PictureId}.", currentUserId, pictureId);
+                    return Forbid();
+                }
             }
+
+            // 3. 使用 StorageService 下载文件
+            string tempFilePath = await storageService.ExecuteAsync(
+                picture.StorageModeId,
+                provider => provider.DownloadFileAsync(picture.Path)
+            );
+
+            if (string.IsNullOrEmpty(tempFilePath) || !System.IO.File.Exists(tempFilePath))
+            {
+                _logger.LogError("GetPictureFile: Failed to download file or file not found at temp path for picture ID {PictureId}. TempPath: {TempPath}", pictureId, tempFilePath);
+                return StatusCode(500, "Failed to retrieve file from storage.");
+            }
+            // 4. 确定内容类型
+            string contentType = GetContentTypeFromPath(tempFilePath);
+
+            // 5. 返回文件
+            return PhysicalFile(tempFilePath, contentType, Path.GetFileName(picture.Name));
+        }
+        catch (KeyNotFoundException knfEx)
+        {
+            _logger.LogWarning(knfEx, "GetPictureFile: Resource not found for picture ID {PictureId}.", pictureId);
+            return NotFound($"Resource related to picture ID {pictureId} not found.");
+        }
+        catch (FileNotFoundException fnfEx)
+        {
+            _logger.LogWarning(fnfEx, "GetPictureFile: File not found in storage for picture ID {PictureId}.", pictureId);
+            return NotFound("File not found in storage.");
+        }
+        catch (NotImplementedException niEx)
+        {
+            _logger.LogError(niEx, "GetPictureFile: DownloadFileAsync not implemented for the storage provider of picture ID {PictureId}.", pictureId);
+            return StatusCode(501, "File download is not supported for this storage type.");
+        }
+        catch (InvalidOperationException ioEx)
+        {
+            _logger.LogError(ioEx, "GetPictureFile: Invalid operation for picture ID {PictureId}.", pictureId);
+            return StatusCode(500, $"Error processing file request: {ioEx.Message}");
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"代理获取文件失败: {ex.Message}");
-        }
-    }
-
-    // 用于解析 Telegram getFile API 响应的辅助类
-    private class TelegramGetFileResponse
-    {
-        [JsonPropertyName("ok")]
-        public bool Ok { get; set; }
-
-        [JsonPropertyName("result")]
-        public TelegramFileResult? Result { get; set; }
-    }
-
-    private class TelegramFileResult
-    {
-        [JsonPropertyName("file_path")]
-        public string? FilePath { get; set; }
-    }
-
-    [HttpGet("proxy")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetWebDavFile([FromQuery] string path)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(path))
-            {
-                return BadRequest("文件路径不能为空");
-            }
-
-            // 下载文件到临时位置
-            string filePath = await storageService.ExecuteAsync(StorageType.WebDAV,
-                provider => provider.DownloadFileAsync(path));
-            
-            // 确定内容类型
-            string contentType = GetContentTypeFromPath(path);
-            
-            // 返回文件内容
-            return PhysicalFile(filePath, contentType, Path.GetFileName(path));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"代理获取WebDAV文件失败: {ex.Message}");
+            _logger.LogError(ex, "GetPictureFile: Error getting file for picture ID {PictureId}", pictureId);
+            return StatusCode(500, "An error occurred while retrieving the file.");
         }
     }
 
     private string GetContentTypeFromPath(string path)
     {
         string extension = Path.GetExtension(path).ToLowerInvariant();
-        
+
         return extension switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",

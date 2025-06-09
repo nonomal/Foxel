@@ -14,4 +14,5 @@ public class MyDbContext(DbContextOptions<MyDbContext> options) : DbContext(opti
     public DbSet<Role> Roles { get; set; } = null!;
     public DbSet<Log> Logs { get; set; } = null!;
     public DbSet<BackgroundTask> BackgroundTasks { get; set; } = null!;
+    public DbSet<StorageMode> StorageModes { get; set; } = null!;
 }
