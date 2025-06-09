@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { 
   Typography, Button, Spin, Empty, message, 
-  Popconfirm, Modal, Form, Input, InputNumber, Select // Added InputNumber, Select
-} from 'antd';
+  Popconfirm, Modal, Form, Input, InputNumber} from 'antd';
 import { 
   EditOutlined, DeleteOutlined, PlusOutlined} from '@ant-design/icons';
 import { getAlbumById, deleteAlbum, favoritePicture, unfavoritePicture, addPicturesToAlbum, updateAlbum } from '../../api';
@@ -30,7 +29,7 @@ function AlbumDetail() {
   const [editForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); 
-  const [albumPicturesForSelect, setAlbumPicturesForSelect] = useState<PictureResponse[]>([]); // 用于编辑时选择封面
+  const [] = useState<PictureResponse[]>([]); 
 
   const loadAlbum = async () => {
     if (!id) return;

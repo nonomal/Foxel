@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Typography, Row, Col, Card, Button, Modal, Form, Input, Spin, Empty, message, Popconfirm, InputNumber, Select } from 'antd';
+import { Typography, Row, Col, Card, Button, Modal, Form, Input, Spin, Empty, message, Popconfirm, InputNumber } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PictureOutlined } from '@ant-design/icons';
 import { getAlbums, createAlbum, updateAlbum, deleteAlbum } from '../../api';
 import type { AlbumResponse, CreateAlbumRequest, UpdateAlbumRequest } from '../../api';

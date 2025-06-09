@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Row, Col, Card, Statistic, Table, Button, Spin, Typography, Space, Tag, message } from 'antd';
+import { Row, Col, Card, Statistic, Table, Button, Spin, Typography, Space, message } from 'antd';
 import {
   UserOutlined,
   PictureOutlined,
   EyeOutlined,
   ClockCircleOutlined,
-  ArrowUpOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
