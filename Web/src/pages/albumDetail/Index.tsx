@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router';
 import { 
   Typography, Button, Spin, Empty, message, 
-  Popconfirm, Modal, Form, Input} from 'antd';
+  Popconfirm, Modal, Form, Input, InputNumber, Select // Added InputNumber, Select
+} from 'antd';
 import { 
   EditOutlined, DeleteOutlined, PlusOutlined} from '@ant-design/icons';
 import { getAlbumById, deleteAlbum, favoritePicture, unfavoritePicture, addPicturesToAlbum, updateAlbum } from '../../api';
@@ -28,7 +29,8 @@ function AlbumDetail() {
   const [selectedPictures, setSelectedPictures] = useState<number[]>([]);
   const [editForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // 添加刷新触发器
+  const [refreshTrigger, setRefreshTrigger] = useState(0); 
+  const [albumPicturesForSelect, setAlbumPicturesForSelect] = useState<PictureResponse[]>([]); // 用于编辑时选择封面
 
   const loadAlbum = async () => {
     if (!id) return;
@@ -37,10 +39,11 @@ function AlbumDetail() {
       const result = await getAlbumById(parseInt(id));
       if (result.success && result.data) {
         setAlbum(result.data);
-        // 添加检查确保 updateBreadcrumbTitle 是一个函数
         if (typeof updateBreadcrumbTitle === 'function') {
           updateBreadcrumbTitle(result.data.name);
         }
+        // 假设相册详情API返回了图片列表，或者需要另外获取
+        // setAlbumPicturesForSelect(result.data.pictures || []); 
       } else {
         message.error(result.message || '获取相册失败');
       }
@@ -54,7 +57,22 @@ function AlbumDetail() {
 
   useEffect(() => {
     loadAlbum();
-  }, [id]);
+    // 如果需要单独获取相册图片用于选择器：
+    // if (id) fetchPicturesForAlbumSelect(parseInt(id));
+  }, [id, refreshTrigger]); // refreshTrigger 确保编辑后重新加载图片列表（如果需要）
+
+  // 示例：获取相册内图片用于选择封面的函数
+  // const fetchPicturesForAlbumSelect = async (albumId: number) => {
+  //   try {
+  //     // 替换为实际获取相册内图片的API调用
+  //     // const picturesResult = await getPicturesInAlbum(albumId, 1, 200); // 获取相册内所有图片
+  //     // if (picturesResult.success && picturesResult.data) {
+  //     //   setAlbumPicturesForSelect(picturesResult.data);
+  //     // }
+  //   } catch (error) {
+  //     message.error('获取相册内图片列表失败');
+  //   }
+  // };
 
   const handleDeleteAlbum = async () => {
     if (!album) return;
@@ -152,8 +170,12 @@ function AlbumDetail() {
     if (album) {
       editForm.setFieldsValue({
         name: album.name,
-        description: album.description || ''
+        description: album.description || '',
+        coverPictureId: album.coverPictureId // 设置当前封面ID
       });
+      // 如果 album.pictures 存在，可以用它来填充选择器
+      // 或者在打开模态框时调用 fetchPicturesForAlbumSelect(album.id)
+      // setAlbumPicturesForSelect(album.pictures || []); // 假设 album 对象包含 pictures 数组
       setIsEditModalVisible(true);
     }
   };
@@ -164,12 +186,13 @@ function AlbumDetail() {
     
     try {
       setSubmitting(true);
-      const values = await editForm.validateFields();
+      const values = await editForm.validateFields(); // values 包含 name, description, coverPictureId
       
       const result = await updateAlbum({
         id: album.id,
         name: values.name,
-        description: values.description
+        description: values.description,
+        coverPictureId: values.coverPictureId // 传递封面ID
       });
       
       if (result.success) {
@@ -350,7 +373,8 @@ function AlbumDetail() {
           layout="vertical"
           initialValues={{
             name: album.name,
-            description: album.description || ''
+            description: album.description || '',
+            coverPictureId: album.coverPictureId // 初始化表单的封面ID
           }}
         >
           <Form.Item
@@ -370,6 +394,36 @@ function AlbumDetail() {
               maxLength={500} 
               showCount 
             />
+          </Form.Item>
+          <Form.Item
+            name="coverPictureId"
+            label="封面图片 (可选)"
+            tooltip="从当前相册中选择一张图片作为封面。实际应用中应为图片选择器。"
+          >
+            {/* 
+              实际应用中替换为图片选择器，例如:
+              <Select
+                showSearch
+                allowClear
+                placeholder="选择封面图片"
+                // loading={loadingAlbumPicturesForSelect}
+                filterOption={(input, option) => 
+                  option?.label.toLowerCase().includes(input.toLowerCase())
+                }
+                options={albumPicturesForSelect.map(p => ({ 
+                  value: p.id, 
+                  label: p.name || `图片 ${p.id}`, 
+                  thumbnail: p.thumbnailPath || p.path 
+                }))}
+                // optionRender={(option) => (
+                //   <Space>
+                //     {option.data.thumbnail && <img src={option.data.thumbnail} alt={option.label} style={{width: 24, height: 24, objectFit: 'cover'}}/>}
+                //     <span>{option.label}</span>
+                //   </Space>
+                // )}
+              />
+            */}
+            <InputNumber placeholder="输入封面图片ID" style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

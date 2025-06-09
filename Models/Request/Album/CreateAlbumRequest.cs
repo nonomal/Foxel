@@ -10,4 +10,7 @@ public record CreateAlbumRequest
     
     [StringLength(500)]
     public string? Description { get; set; }
+    
+    
+    public int? CoverPictureId { get; set; }
 }

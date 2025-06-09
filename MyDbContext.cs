@@ -15,4 +15,20 @@ public class MyDbContext(DbContextOptions<MyDbContext> options) : DbContext(opti
     public DbSet<Log> Logs { get; set; } = null!;
     public DbSet<BackgroundTask> BackgroundTasks { get; set; } = null!;
     public DbSet<StorageMode> StorageModes { get; set; } = null!;
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Album>()
+            .HasOne(a => a.CoverPicture)
+            .WithMany()
+            .HasForeignKey(a => a.CoverPictureId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Album>()
+            .HasMany(a => a.Pictures)
+            .WithOne(p => p.Album)
+            .HasForeignKey(p => p.AlbumId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
 }

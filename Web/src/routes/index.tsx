@@ -26,6 +26,7 @@ import PictureManagement from '../pages/admin/pictures/Index';
 import UserDetail from '../pages/admin/users/UserDetail';
 import AdminLogManagement from '../pages/admin/log/Index';
 import StorageManagementPage from '../pages/admin/storage/StorageManagement';
+import AlbumManagement from '../pages/admin/album/Index';
 
 export interface RouteConfig {
   path: string;
@@ -173,6 +174,18 @@ const routes: RouteConfig[] = [
     groupLabel: '内容管理',
     breadcrumb: {
       title: '图片管理'
+    }
+  },
+  {
+    path: 'albums-admin',
+    key: 'admin-album',
+    icon: <FolderOutlined />,
+    label: '相册管理',
+    element: <AlbumManagement />,
+    area: 'admin',
+    groupLabel: '内容管理',
+    breadcrumb: {
+      title: '相册管理'
     }
   },
   {

@@ -8,6 +8,7 @@ using Foxel.Services.Background;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
 using Foxel.Services.VectorDB;
+using Foxel.Services.Mapping;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,50 +21,10 @@ public class PictureService(
     IBackgroundTaskQueue backgroundTaskQueue,
     IVectorDbService vectorDbService,
     IStorageService storageService,
+    IMappingService mappingService, // 添加 IMappingService
     ILogger<PictureService> logger)
     : IPictureService
 {
-    private async Task<PictureResponse> MapPictureToResponseAsync(Picture picture)
-    {
-        string pathUrl = string.Empty;
-        if (!string.IsNullOrEmpty(picture.Path))
-        {
-            pathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.Path)));
-        }
-
-        string originalPathUrl = string.Empty;
-        if (!string.IsNullOrEmpty(picture.OriginalPath))
-        {
-            originalPathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.OriginalPath)));
-        }
-
-        string? thumbnailPathUrl = null;
-        if (!string.IsNullOrEmpty(picture.ThumbnailPath))
-        {
-            thumbnailPathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.ThumbnailPath)));
-        }
-        return new PictureResponse
-        {
-            Id = picture.Id,
-            Name = picture.Name,
-            Path = pathUrl,
-            OriginalPath = originalPathUrl,
-            ThumbnailPath = thumbnailPathUrl,
-            Description = picture.Description,
-            CreatedAt = picture.CreatedAt,
-            Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
-            TakenAt = picture.TakenAt,
-            ExifInfo = picture.ExifInfo ?? new ExifInfo(),
-            UserId = picture.UserId,
-            Username = picture.User?.UserName,
-            AlbumId = picture.AlbumId,
-            Permission = picture.Permission,
-            StorageModeName = picture.StorageMode?.Name
-        };
-    }
 
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(
         int page = 1,
@@ -143,20 +104,19 @@ public class PictureService(
         var picturesData = await dbContext.Pictures
             .Include(p => p.Tags)
             .Include(p => p.User)
-            .Include(p=>p.StorageMode)
+            .Include(p => p.StorageMode)
             .Where(p => ids.Contains((ulong)p.Id))
             .ToListAsync();
         var picturesOrdered = ids
             .Select(id => picturesData.FirstOrDefault(p => p.Id == (int)id))
             .Where(p => p != null)
             .ToList();
-        var paginatedResultsTasks = picturesOrdered
+        var paginatedResults = picturesOrdered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(async p => await MapPictureToResponseAsync(p!))
+            .Select(p => mappingService.MapPictureToResponse(p!))
             .ToList();
 
-        var paginatedResults = (await Task.WhenAll(paginatedResultsTasks)).ToList();
 
         var totalCount = picturesOrdered.Count;
 
@@ -220,16 +180,15 @@ public class PictureService(
 
         // 获取分页数据
         var picturesData = await query
-            .Include(x=>x.StorageMode)
+            .Include(x => x.StorageMode)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         // 转换为响应格式
-        var picturesTasks = picturesData
-            .Select(async p => await MapPictureToResponseAsync(p))
+        var pictures = picturesData
+            .Select(p => mappingService.MapPictureToResponse(p))
             .ToList();
-        var pictures = (await Task.WhenAll(picturesTasks)).ToList();
 
         // 处理收藏信息
         await PopulateFavoriteInfo(dbContext, pictures, userId);
@@ -663,7 +622,7 @@ public class PictureService(
                 await backgroundTaskQueue.QueueVisualRecognitionTaskAsync(visualRecognitionPayload);
             }
 
-            var pictureResponse = await MapPictureToResponseAsync(picture);
+            var pictureResponse = mappingService.MapPictureToResponse(picture);
             return (pictureResponse, picture.Id);
         }
         finally
@@ -906,7 +865,7 @@ public class PictureService(
         picture.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync();
-        var pictureResponse = await MapPictureToResponseAsync(picture);
+        var pictureResponse = mappingService.MapPictureToResponse(picture);
         return (pictureResponse, userId);
     }
 
@@ -986,7 +945,7 @@ public class PictureService(
             return null;
         }
 
-        var pictureResponse = await MapPictureToResponseAsync(picture);
+        var pictureResponse = mappingService.MapPictureToResponse(picture);
 
         return picture;
     }
