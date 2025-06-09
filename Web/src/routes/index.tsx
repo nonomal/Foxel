@@ -8,7 +8,8 @@ import {
   CompassOutlined,
   DashboardOutlined,
   UserOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons';
 
 import AllImages from '../pages/allImages/Index';
@@ -145,6 +146,7 @@ const routes: RouteConfig[] = [
     label: '用户管理',
     element: <UserManagement />,
     area: 'admin',
+    groupLabel: '用户中心',
     breadcrumb: {
       title: '用户管理'
     }
@@ -165,13 +167,13 @@ const routes: RouteConfig[] = [
     path: 'pictures',
     key: 'admin-picture',
     icon: <PictureOutlined />,
-    label: '图片',
+    label: '图片管理',
     element: <PictureManagement />,
     area: 'admin',
-    groupLabel: '资源管理',
+    groupLabel: '内容管理',
     breadcrumb: {
-      title: '图片'
-    }    
+      title: '图片管理'
+    }
   },
   {
     path: 'log',
@@ -180,17 +182,19 @@ const routes: RouteConfig[] = [
     label: '日志中心',
     element: <AdminLogManagement />,
     area: 'admin',
+    groupLabel: '系统运维',
     breadcrumb: {
       title: '日志中心'
     }
   },
-    {
+  {
     path: 'storage',
     key: 'admin-storage',
-    icon: <FileTextOutlined />,
+    icon: <DatabaseOutlined />,
     label: '存储配置',
     element: <StorageManagementPage />,
     area: 'admin',
+    groupLabel: '系统运维',
     breadcrumb: {
       title: '存储配置'
     }
@@ -202,6 +206,7 @@ const routes: RouteConfig[] = [
     label: '系统设置',
     element: <System />,
     area: 'admin',
+    groupLabel: '系统运维',
     breadcrumb: {
       title: '系统设置'
     }
