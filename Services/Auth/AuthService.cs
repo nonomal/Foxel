@@ -5,7 +5,6 @@ using Foxel.Models.DataBase;
 using Foxel.Models.Request.Auth;
 using Foxel.Services.Configuration;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using static Foxel.Utils.AuthHelper;
 

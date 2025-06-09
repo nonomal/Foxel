@@ -273,7 +273,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 _logger.LogWarning("GetPictureFile: Picture with ID {PictureId} not found.", pictureId);
                 return NotFound("Picture not found.");
             }
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = GetUserIdFromCookie();
             if (picture.Permission != PermissionType.Public)
             {
                 if (currentUserId == null || picture.UserId != currentUserId.Value)

@@ -43,6 +43,17 @@ const customTheme = {
       itemHoverColor: '#333333',
       itemBorderRadius: 8,
     },
+    Table: {
+      rowSelectedBg: '#f8f9fa',
+      rowSelectedHoverBg: '#e9ecef',
+      rowHoverBg: '#fafbfc',
+      headerBg: '#ffffff',
+      headerColor: '#495057',
+      colorBgContainer: '#ffffff',
+      colorText: '#212529',
+      colorTextHeading: '#343a40',
+      borderColor: '#dee2e6',
+    },
   }
 };
 
