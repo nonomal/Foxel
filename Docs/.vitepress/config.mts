@@ -5,6 +5,10 @@ export default defineConfig({
   title: "Foxel",
   description: "光影如诗，一眼千寻。",
   themeConfig: {
+    editLink: {
+      text: '在 GitHub 上编辑此页',
+      pattern: 'https://github.com/DrizzleTime/Foxel/edit/master/Docs/:path'
+    },
     nav: [
       { text: '指南', link: '/guide/what-is-foxel' },
     ],
