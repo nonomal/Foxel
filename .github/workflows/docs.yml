@@ -48,3 +48,4 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: "Docs/.vitepress/dist/*"
           target: "/opt/1panel/www/sites/foxel.cc/index"
+          strip_components: 3
