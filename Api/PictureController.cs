@@ -9,12 +9,13 @@ using Foxel.Services.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json; // Added for JsonSerializer in GetTelegramFile if it were kept
+using Foxel.Services.Configuration; // Added for IConfigService
 
 namespace Foxel.Api;
 
 [Authorize]
 [Route("api/picture")]
-public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger) : BaseApiController
+public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger, IConfigService configuration) : BaseApiController
 {
     private readonly ILogger<PictureController> _logger = logger;
 
@@ -74,6 +75,16 @@ public class PictureController(IPictureService pictureService, IStorageService s
         try
         {
             var userId = GetCurrentUserId();
+
+            if (userId == null)
+            {
+                var enableAnonymousUpload = configuration["AppSettings:EnableAnonymousImageHosting"];
+                if (string.Equals(enableAnonymousUpload, "false", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Error<PictureResponse>("匿名上传功能已关闭，请登录后操作", 403);
+                }
+            }
+
             await using var stream = request.File.OpenReadStream();
             var result = await pictureService.UploadPictureAsync(
                 request.File.FileName,

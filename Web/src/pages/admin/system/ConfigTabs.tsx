@@ -281,13 +281,13 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
           isMobile={isMobile}
         >
           <Form form={formsMap.AppSettings} layout="vertical" size={isMobile ? "middle" : "large"}>
-            {renderConfigFormItems(formsMap.AppSettings, "AppSettings", ['ServerUrl', 'MaxConcurrentTasks'])}
+            {renderConfigFormItems(formsMap.AppSettings, "AppSettings", ['ServerUrl', 'MaxConcurrentTasks', 'EnableRegistration', 'EnableAnonymousImageHosting'])}
             <Divider style={{ margin: '12px 0 20px' }} />
             <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
               <Button
                 type="primary"
                 icon={<SaveOutlined />}
-                onClick={() => onSaveAllForGroup(formsMap.AppSettings, "AppSettings", ['ServerUrl', 'MaxConcurrentTasks'])}
+                onClick={() => onSaveAllForGroup(formsMap.AppSettings, "AppSettings", ['ServerUrl', 'MaxConcurrentTasks', 'EnableRegistration', 'EnableAnonymousImageHosting'])}
                 style={{ width: isMobile ? '100%' : '240px' }}
               >
                 保存所有应用设置
@@ -309,83 +309,98 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
             description="配置文件上传处理方式和图片转换参数"
             isMobile={isMobile}
           >
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr',
-              gap: isMobile ? 20 : 24,
-              marginBottom: 0
-            }}>
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  缩略图最大宽度 (px)
-                </div>
-                <InputNumber
-                  min={100}
-                  max={1000}
-                  step={50}
-                  value={parseInt(configs.Upload?.ThumbnailMaxWidth || '400', 10)}
-                  onChange={(value) => {
-                    if (value !== null) {
-                      onBaseSaveConfig('Upload', 'ThumbnailMaxWidth', value.toString())
-                    }
-                  }}
-                  style={{ width: '100%' }}
-                />
-                <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                  {allDescriptions.Upload?.ThumbnailMaxWidth}
-                </div>
-              </div>
+            <Form form={formsMap.Upload} layout="vertical" size={isMobile ? "middle" : "large"}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: isMobile ? 20 : 24,
+                marginBottom: 0
+              }}>
+                <Form.Item
+                  name="ThumbnailMaxWidth"
+                  label={
+                    <div style={{ fontSize: 14, fontWeight: 500, color: '#666' }}>
+                      缩略图最大宽度 (px)
+                    </div>
+                  }
+                  help={<div style={{ fontSize: 12, color: '#999', marginTop: 0 }}>{allDescriptions.Upload?.ThumbnailMaxWidth}</div>}
+                  initialValue={parseInt(configs.Upload?.ThumbnailMaxWidth || '400', 10)}
+                  style={{ marginBottom: 0 }}
+                >
+                  <InputNumber
+                    min={100}
+                    max={1000}
+                    step={50}
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
 
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  缩略图压缩质量
-                </div>
-                <Slider
-                  min={30}
-                  max={90}
-                  step={5}
-                  value={parseInt(configs.Upload?.ThumbnailCompressionQuality || '75', 10)}
-                  onChange={(value) => onBaseSaveConfig('Upload', 'ThumbnailCompressionQuality', value.toString())}
-                  style={{ margin: isMobile ? '0 5px' : '0 10px' }}
-                  tooltip={{
-                    formatter: value => `${value}%`
-                  }}
-                  marks={{
-                    30: '30%',
-                    60: '60%',
-                    90: '90%'
-                  }}
-                />
-                <div style={{ fontSize: 12, color: '#999', marginTop: 16, textAlign: 'center' }}>
-                  {allDescriptions.Upload?.ThumbnailCompressionQuality}
-                </div>
-              </div>
+                <Form.Item
+                  name="ThumbnailCompressionQuality"
+                  label={
+                    <div style={{ fontSize: 14, fontWeight: 500, color: '#666' }}>
+                      缩略图压缩质量
+                    </div>
+                  }
+                  help={<div style={{ fontSize: 12, color: '#999', marginTop: isMobile ? 8 : 16, textAlign: 'center' }}>{allDescriptions.Upload?.ThumbnailCompressionQuality}</div>}
+                  initialValue={parseInt(configs.Upload?.ThumbnailCompressionQuality || '75', 10)}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Slider
+                    min={30}
+                    max={90}
+                    step={5}
+                    style={{ margin: isMobile ? '0 5px' : '0 10px' }}
+                    tooltip={{
+                      formatter: value => `${value}%`
+                    }}
+                    marks={{
+                      30: '30%',
+                      60: '60%',
+                      90: '90%'
+                    }}
+                  />
+                </Form.Item>
 
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500, color: '#666' }}>
-                  高清图片压缩质量
-                </div>
-                <Slider
-                  min={50}
-                  max={100}
-                  step={5}
-                  value={parseInt(configs.Upload?.HighQualityImageCompressionQuality || '95', 10)}
-                  onChange={(value) => onBaseSaveConfig('Upload', 'HighQualityImageCompressionQuality', value.toString())}
-                  style={{ margin: isMobile ? '0 5px' : '0 10px' }}
-                  tooltip={{
-                    formatter: value => `${value}%`
-                  }}
-                  marks={{
-                    50: '50%',
-                    75: '75%',
-                    100: '100%'
-                  }}
-                />
-                <div style={{ fontSize: 12, color: '#999', marginTop: 16, textAlign: 'center' }}>
-                  {allDescriptions.Upload?.HighQualityImageCompressionQuality}
-                </div>
+                <Form.Item
+                  name="HighQualityImageCompressionQuality"
+                  label={
+                    <div style={{ fontSize: 14, fontWeight: 500, color: '#666' }}>
+                      高清图片压缩质量
+                    </div>
+                  }
+                  help={<div style={{ fontSize: 12, color: '#999', marginTop: isMobile ? 8 : 16, textAlign: 'center' }}>{allDescriptions.Upload?.HighQualityImageCompressionQuality}</div>}
+                  initialValue={parseInt(configs.Upload?.HighQualityImageCompressionQuality || '95', 10)}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Slider
+                    min={50}
+                    max={100}
+                    step={5}
+                    style={{ margin: isMobile ? '0 5px' : '0 10px' }}
+                    tooltip={{
+                      formatter: value => `${value}%`
+                    }}
+                    marks={{
+                      50: '50%',
+                      75: '75%',
+                      100: '100%'
+                    }}
+                  />
+                </Form.Item>
               </div>
-            </div>
+              <Divider style={{ margin: '24px 0 20px' }} />
+              <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={() => onSaveAllForGroup(formsMap.Upload, "Upload", ['ThumbnailMaxWidth', 'ThumbnailCompressionQuality', 'HighQualityImageCompressionQuality'])}
+                  style={{ width: isMobile ? '100%' : '240px' }}
+                >
+                  保存所有上传设置
+                </Button>
+              </Form.Item>
+            </Form>
           </ConfigSection>
         </>
       )
