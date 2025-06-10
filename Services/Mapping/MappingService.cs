@@ -17,12 +17,12 @@ namespace Foxel.Services.Mapping
             {
                 coverPath = storageService.ExecuteAsync(album.CoverPicture.StorageModeId,
                         provider => Task.FromResult(provider.GetUrl(album.CoverPicture.Id, album.CoverPicture.Path)))
-                    .Result; // Consider making this async if possible in the future
+                    .Result; 
                 if (!string.IsNullOrEmpty(album.CoverPicture.ThumbnailPath))
                 {
                     coverThumbnailPath = storageService.ExecuteAsync(album.CoverPicture.StorageModeId,
                         provider => Task.FromResult(provider.GetUrl(album.CoverPicture.Id,
-                            album.CoverPicture.ThumbnailPath))).Result; // Consider async
+                            album.CoverPicture.ThumbnailPath))).Result; 
                 }
             }
 
@@ -50,7 +50,7 @@ namespace Foxel.Services.Mapping
                 Path = storageService.ExecuteAsync(picture.StorageModeId, provider =>
                     Task.FromResult(provider.GetUrl(picture.Id, picture.Path))).Result,
                 ThumbnailPath = storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                        Task.FromResult(provider.GetUrl(picture.Id, picture.ThumbnailPath ?? string.Empty)))
+                        Task.FromResult(provider.GetUrl(picture.Id, picture.ThumbnailPath ?? picture.Path)))
                     .Result,
                 Description = picture.Description,
                 CreatedAt = picture.CreatedAt,

@@ -520,51 +520,47 @@ public class PictureService(
             var storedHdPath = await storageService.ExecuteAsync(storageModeId.Value,
                 provider => provider.SaveAsync(convertedHdStream, hdStorageFileName!, hdContentType!));
 
-            bool shouldGenerateThumbnailNow = userId.HasValue;
-            if (shouldGenerateThumbnailNow)
+            try
             {
-                try
+                // 缩略图最大宽度
+                int thumbnailMaxWidth = 500; // 默认值
+                string thumbnailMaxWidthConfigKey = "Upload:ThumbnailMaxWidth";
+                string? thumbnailMaxWidthConfig = configuration[thumbnailMaxWidthConfigKey];
+                if (!string.IsNullOrEmpty(thumbnailMaxWidthConfig) && int.TryParse(thumbnailMaxWidthConfig, out int parsedMaxWidth))
                 {
-                    // 缩略图最大宽度
-                    int thumbnailMaxWidth = 500; // 默认值
-                    string thumbnailMaxWidthConfigKey = "Upload:ThumbnailMaxWidth";
-                    string? thumbnailMaxWidthConfig = configuration[thumbnailMaxWidthConfigKey];
-                    if (!string.IsNullOrEmpty(thumbnailMaxWidthConfig) && int.TryParse(thumbnailMaxWidthConfig, out int parsedMaxWidth))
-                    {
-                        thumbnailMaxWidth = Math.Max(100, parsedMaxWidth); // 最小宽度 100
-                    }
-                    else
-                    {
-                        logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图最大宽度: {DefaultMaxWidth}", thumbnailMaxWidthConfigKey, thumbnailMaxWidth);
-                    }
-
-                    // 缩略图压缩质量
-                    int thumbnailQuality = 75; // 默认值
-                    string thumbnailQualityConfigKey = "Upload:ThumbnailCompressionQuality";
-                    string? thumbnailQualityConfig = configuration[thumbnailQualityConfigKey];
-                    if (!string.IsNullOrEmpty(thumbnailQualityConfig) && int.TryParse(thumbnailQualityConfig, out int parsedThumbQuality))
-                    {
-                        thumbnailQuality = Math.Clamp(parsedThumbQuality, 30, 90); // 限制在 30-90 之间
-                    }
-                    else
-                    {
-                        logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图压缩质量: {DefaultThumbQuality}", thumbnailQualityConfigKey, thumbnailQuality);
-                    }
-
-                    tempThumbnailLocalPath = Path.GetTempFileName() + ".webp";
-                    File.Move(Path.GetTempFileName(), tempThumbnailLocalPath);
-                    await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, thumbnailMaxWidth, thumbnailQuality);
-
-                    string thumbnailUploadFileName = $"{baseName}-thumbnail.webp";
-                    await using var thumbnailFileStream =
-                        new FileStream(tempThumbnailLocalPath!, FileMode.Open, FileAccess.Read);
-                    storedThumbnailPath = await storageService.ExecuteAsync(storageModeId.Value,
-                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName!, "image/webp"));
+                    thumbnailMaxWidth = Math.Max(100, parsedMaxWidth); // 最小宽度 100
                 }
-                catch (Exception ex)
+                else
                 {
-                    logger.LogError(ex, "生成和上传缩略图失败 during initial upload");
+                    logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图最大宽度: {DefaultMaxWidth}", thumbnailMaxWidthConfigKey, thumbnailMaxWidth);
                 }
+
+                // 缩略图压缩质量
+                int thumbnailQuality = 75; // 默认值
+                string thumbnailQualityConfigKey = "Upload:ThumbnailCompressionQuality";
+                string? thumbnailQualityConfig = configuration[thumbnailQualityConfigKey];
+                if (!string.IsNullOrEmpty(thumbnailQualityConfig) && int.TryParse(thumbnailQualityConfig, out int parsedThumbQuality))
+                {
+                    thumbnailQuality = Math.Clamp(parsedThumbQuality, 30, 90); // 限制在 30-90 之间
+                }
+                else
+                {
+                    logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图压缩质量: {DefaultThumbQuality}", thumbnailQualityConfigKey, thumbnailQuality);
+                }
+
+                tempThumbnailLocalPath = Path.GetTempFileName() + ".webp";
+                File.Move(Path.GetTempFileName(), tempThumbnailLocalPath);
+                await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, thumbnailMaxWidth, thumbnailQuality);
+
+                string thumbnailUploadFileName = $"{baseName}-thumbnail.webp";
+                await using var thumbnailFileStream =
+                    new FileStream(tempThumbnailLocalPath!, FileMode.Open, FileAccess.Read);
+                storedThumbnailPath = await storageService.ExecuteAsync(storageModeId.Value,
+                    provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName!, "image/webp"));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "生成和上传缩略图失败 during initial upload");
             }
 
             string initialTitle = Path.GetFileNameWithoutExtension(fileName);
