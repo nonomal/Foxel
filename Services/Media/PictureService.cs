@@ -788,7 +788,8 @@ public class PictureService(
         int pictureId,
         string? name = null,
         string? description = null,
-        List<string>? tags = null)
+        List<string>? tags = null,
+        PermissionType? permission = null)
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync();
 
@@ -811,6 +812,11 @@ public class PictureService(
         if (!string.IsNullOrWhiteSpace(description))
         {
             picture.Description = description.Trim();
+        }
+
+        if (permission.HasValue)
+        {
+            picture.Permission = permission.Value;
         }
 
         // 只有当名称或描述发生变化时才更新嵌入向量

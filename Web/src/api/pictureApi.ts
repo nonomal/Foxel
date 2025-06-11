@@ -88,6 +88,7 @@ export interface UpdatePictureRequest {
   name?: string;
   description?: string;
   tags?: string[];
+  permission?: number;
 }
 
 // 获取图片列表

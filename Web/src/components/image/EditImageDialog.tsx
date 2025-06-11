@@ -28,7 +28,8 @@ const EditImageDialog: React.FC<EditImageDialogProps> = ({
       form.setFieldsValue({
         name: image.name,
         description: image.description,
-        tags: image.tags || []
+        tags: image.tags || [],
+        permission: image.permission === undefined ? 0 : image.permission // Default to Public if undefined
       });
     }
   }, [visible, image, form]);
@@ -45,7 +46,8 @@ const EditImageDialog: React.FC<EditImageDialogProps> = ({
         id: image.id,
         name: values.name,
         description: values.description,
-        tags: values.tags
+        tags: values.tags,
+        permission: values.permission
       });
       
       if (result.success) {
@@ -165,6 +167,19 @@ const EditImageDialog: React.FC<EditImageDialogProps> = ({
                 ))}
               </Select>
             </Form.Item>
+
+            <Form.Item
+              name="permission"
+              label="权限设置"
+              rules={[{ required: true, message: '请选择权限' }]}
+            >
+              <Select placeholder="选择权限">
+                <Option value={0}>公开</Option>
+                <Option value={1}>好友可见</Option>
+                <Option value={2}>私密</Option>
+              </Select>
+            </Form.Item>
+
             <Form.Item className="edit-form-actions">
               <Button onClick={onClose} style={{ marginRight: 8 }}>取消</Button>
               <Button 
