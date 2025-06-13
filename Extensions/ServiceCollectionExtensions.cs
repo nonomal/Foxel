@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<QueuedHostedService>();
         services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<PictureTaskProcessor>();
+        services.AddSingleton<FaceRecognitionTaskProcessor>();
         services.AddSingleton<VisualRecognitionTaskProcessor>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
         services.AddSingleton<IMappingService, MappingService>();

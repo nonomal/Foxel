@@ -24,6 +24,13 @@ public interface IBackgroundTaskQueue
     Task<Guid> QueueVisualRecognitionTaskAsync(VisualRecognitionPayload payload);
 
     /// <summary>
+    /// 将人脸识别任务添加到队列
+    /// </summary>
+    /// <param name="payload">人脸识别任务的Payload</param>
+    /// <returns>任务ID</returns>
+    Task<Guid> QueueFaceRecognitionTaskAsync(FaceRecognitionPayload payload);
+
+    /// <summary>
     /// 获取用户的所有任务状态 (目前主要指图片处理任务)
     /// </summary>
     /// <param name="userId">用户ID</param>

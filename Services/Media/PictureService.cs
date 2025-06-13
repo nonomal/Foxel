@@ -616,6 +616,14 @@ public class PictureService(
                     UserIdForPicture = picture.UserId
                 };
                 await backgroundTaskQueue.QueueVisualRecognitionTaskAsync(visualRecognitionPayload);
+                
+                // 添加人脸识别任务
+                var faceRecognitionPayload = new Background.Processors.FaceRecognitionPayload
+                {
+                    PictureId = picture.Id,
+                    UserIdForPicture = picture.UserId
+                };
+                await backgroundTaskQueue.QueueFaceRecognitionTaskAsync(faceRecognitionPayload);
             }
 
             var pictureResponse = mappingService.MapPictureToResponse(picture);

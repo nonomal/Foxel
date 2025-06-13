@@ -188,6 +188,29 @@ const ConfigTabs: React.FC<ConfigTabsProps> = ({
               </div>
             </ConfigSection>
           </TabPane>
+          <TabPane tab="人脸识别" key="facerecognition">
+            <ConfigSection
+              title="人脸识别服务配置"
+              icon={<ApiOutlined />}
+              description="配置人脸识别API服务的基本参数"
+              isMobile={isMobile}
+            >
+              <Form form={formsMap.FaceRecognition} layout="vertical" size={isMobile ? "middle" : "large"}>
+                {renderConfigFormItems(formsMap.FaceRecognition, "FaceRecognition", ['ApiEndpoint', 'ApiKey'])}
+                <Divider style={{ margin: '12px 0 20px' }} />
+                <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={() => onSaveAllForGroup(formsMap.FaceRecognition, "FaceRecognition", ['ApiEndpoint', 'ApiKey'])}
+                    style={{ width: isMobile ? '100%' : '240px' }}
+                  >
+                    保存所有人脸识别配置
+                  </Button>
+                </Form.Item>
+              </Form>
+            </ConfigSection>
+          </TabPane>
         </Tabs>
       )
     },

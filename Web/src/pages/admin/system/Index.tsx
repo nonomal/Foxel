@@ -28,6 +28,10 @@ const allDescriptions: Record<string, Record<string, string>> = {
     TagGenerationPrompt: '用于从图片内容生成标签的提示词。请确保提示词包含返回JSON格式的指示，并且要求返回tags数组字段。',
     TagMatchingPrompt: '用于将描述内容与已有标签进行匹配的提示词。请确保提示词包含{\'{tagsText}\'}和{\'{description}\'}占位符，系统将会用实际的标签列表和描述内容替换这些占位符。'
   },
+  FaceRecognition: {
+    ApiEndpoint: '人脸识别服务的API端点地址',
+    ApiKey: '人脸识别服务的API密钥'
+  },
   Jwt: {
     SecretKey: 'JWT 加密密钥',
     Issuer: 'JWT 签发者',
@@ -75,9 +79,11 @@ const System: React.FC = () => {
   const [authForm] = Form.useForm();
   const [appSettingsForm] = Form.useForm();
   const [uploadForm] = Form.useForm();
+  const [faceRecognitionForm] = Form.useForm();
 
   const formsMap: Record<string, any> = {
     AI: aiForm,
+    FaceRecognition: faceRecognitionForm,
     Jwt: jwtForm,
     Authentication: authForm,
     AppSettings: appSettingsForm,

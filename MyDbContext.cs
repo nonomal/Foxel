@@ -15,6 +15,7 @@ public class MyDbContext(DbContextOptions<MyDbContext> options) : DbContext(opti
     public DbSet<Log> Logs { get; set; } = null!;
     public DbSet<BackgroundTask> BackgroundTasks { get; set; } = null!;
     public DbSet<StorageMode> StorageModes { get; set; } = null!;
+    public DbSet<Face> Faces { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
