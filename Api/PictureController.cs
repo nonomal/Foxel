@@ -63,7 +63,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
     [HttpPost("upload_picture")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<BaseResult<PictureResponse>>> UploadPicture(
-        [FromForm] UploadPictureRequest request)
+        [FromForm] UploadPictureRequest request) // UploadPictureRequest 模型需要添加 StorageModeId 属性
     {
         if (request.File.Length == 0)
             return Error<PictureResponse>("没有上传文件");
@@ -87,9 +87,9 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 stream,
                 request.File.ContentType,
                 userId,
-                (PermissionType)request.Permission!,
+                (PermissionType)request.Permission!, // 确保 PermissionType 的转换是安全的
                 request.AlbumId,
-                request.StorageModeId
+                request.StorageModeId // 传递 StorageModeId
             );
 
             var picture = result.Picture;
