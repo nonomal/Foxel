@@ -7,7 +7,7 @@ import { isAuthenticated } from './api';
 import type { JSX } from 'react';
 import { ConfigProvider } from 'antd';
 import { getMainRoutes, getAdminRoutes } from './routes';
-import { AuthProvider } from './auth/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import AnonymousPage from './pages/anonymous/Index';
 import AdminLayout from './layouts/AdminLayout';
 import Bind from './pages/bind/Index';
