@@ -31,6 +31,8 @@
     <ItemGroup>
       <Content Include=".github\workflows\deployment.yml" />
       <Content Include=".github\workflows\docker.yml" />
+      <Content Include=".github\workflows\docs.yml" />
+      <Content Include="Docs\.vitepress\config.mts" />
     </ItemGroup>
 
 </Project>

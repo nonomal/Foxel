@@ -108,6 +108,37 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
         return backgroundTask.Id;
     }
 
+    public async Task<Guid> QueueFaceRecognitionTaskAsync(FaceRecognitionPayload payload)
+    {
+        await using var dbContext = await _contextFactory.CreateDbContextAsync();
+        var picture = await dbContext.Pictures.FindAsync(payload.PictureId);
+        if (picture == null)
+        {
+            _logger.LogError("无法为不存在的图片 PictureId: {PictureId} 创建人脸识别任务", payload.PictureId);
+            throw new KeyNotFoundException($"尝试为 PictureId: {payload.PictureId} 创建人脸识别任务时找不到图片");
+        }
+
+        var backgroundTask = new BackgroundTask
+        {
+            Type = TaskType.FaceRecognition,
+            Payload = JsonSerializer.Serialize(payload),
+            UserId = payload.UserIdForPicture,
+            RelatedEntityId = payload.PictureId,
+            Status = TaskExecutionStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        dbContext.BackgroundTasks.Add(backgroundTask);
+        await dbContext.SaveChangesAsync();
+
+        await _queue.Writer.WriteAsync(backgroundTask.Id);
+        _logger.LogInformation("人脸识别任务已加入队列: TaskId={TaskId}, PictureId={PictureId}", backgroundTask.Id, payload.PictureId);
+        
+        StartProcessor();
+
+        return backgroundTask.Id;
+    }
+
     public async Task<List<TaskDetailsDto>> GetUserTasksStatusAsync(int userId)
     {
         await using var dbContext = await _contextFactory.CreateDbContextAsync();
@@ -132,7 +163,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                     taskName = "图片处理 (图片信息丢失)";
                 }
             }
-            else if (task.Type == TaskType.VisualRecognition && task.RelatedEntityId.HasValue) // Added for VisualRecognition
+            else if (task.Type == TaskType.VisualRecognition && task.RelatedEntityId.HasValue)
             {
                 var picture = await dbContext.Pictures.FindAsync(task.RelatedEntityId.Value);
                 if (picture != null)
@@ -142,6 +173,18 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                 else
                 {
                     taskName = "视觉识别 (图片信息丢失)";
+                }
+            }
+            else if (task.Type == TaskType.FaceRecognition && task.RelatedEntityId.HasValue)
+            {
+                var picture = await dbContext.Pictures.FindAsync(task.RelatedEntityId.Value);
+                if (picture != null)
+                {
+                    taskName = $"人脸识别: {picture.Name}";
+                }
+                else
+                {
+                    taskName = "人脸识别 (图片信息丢失)";
                 }
             }
             else
@@ -201,7 +244,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
         {
             await using var dbContext = await _contextFactory.CreateDbContextAsync();
             var unfinishedTasks = await dbContext.BackgroundTasks
-                .Where(bt => (bt.Type == TaskType.PictureProcessing || bt.Type == TaskType.VisualRecognition) && // Added VisualRecognition
+                .Where(bt => (bt.Type == TaskType.PictureProcessing || bt.Type == TaskType.VisualRecognition || bt.Type == TaskType.FaceRecognition) &&
                              (bt.Status == TaskExecutionStatus.Pending || bt.Status == TaskExecutionStatus.Processing))
                 .ToListAsync();
 
@@ -286,13 +329,16 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
                             case TaskType.PictureProcessing:
                                 processor = scope.ServiceProvider.GetRequiredService<PictureTaskProcessor>();
                                 break;
-                            case TaskType.VisualRecognition: // Added case for VisualRecognition
+                            case TaskType.VisualRecognition:
                                 processor = scope.ServiceProvider.GetRequiredService<VisualRecognitionTaskProcessor>();
+                                break;
+                            case TaskType.FaceRecognition:
+                                processor = scope.ServiceProvider.GetRequiredService<FaceRecognitionTaskProcessor>();
                                 break;
                             default:
                                 _logger.LogError("未找到任务类型 {TaskType} 的处理器: TaskId={TaskId}", taskToCheck.Type, taskToCheck.Id);
                                 await MarkTaskAsFailedByQueue(taskToCheck.Id, $"未找到任务类型 {taskToCheck.Type} 的处理器。");
-                                continue; // Continue to next task in queue
+                                continue;
                         }
                         await processor.ProcessAsync(taskToCheck); // Processor handles its own final status update
                     }

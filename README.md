@@ -16,7 +16,7 @@
 ---
 
 > 🖥️ **在线演示：**  
-> 访问 [https://foxel.cc](https://foxel.cc) 体验 Foxel 部分功能。  
+> 访问 [https://demo.foxel.cc](https://foxel.cc) 体验 Foxel 部分功能。  
 > 管理员账号：`demo@foxel.cc` 密码: `foxel_demo`  
 > ⚠️ **注意：演示环境数据可能不定期清理，请勿存放重要信息。**
 

@@ -15,6 +15,7 @@ using Foxel.Services.Storage;
 using Foxel.Services.Storage.Providers;
 using Foxel.Services.VectorDB;
 using Foxel.Services.Background.Processors;
+using Foxel.Services.Mapping;
 
 namespace Foxel.Extensions;
 
@@ -30,14 +31,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAlbumService, AlbumService>();
         services.AddSingleton<IUserManagementService, UserManagementService>();
         services.AddSingleton<IPictureManagementService, PictureManagementService>();
+        services.AddSingleton<IAlbumManagementService, AlbumManagementService>();
         services.AddSingleton<ILogManagementService, LogManagementService>();
         services.AddSingleton<IStorageManagementService, StorageManagementService>();
         services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         services.AddHostedService<QueuedHostedService>();
         services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<PictureTaskProcessor>();
+        services.AddSingleton<FaceRecognitionTaskProcessor>();
         services.AddSingleton<VisualRecognitionTaskProcessor>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
+        services.AddSingleton<IMappingService, MappingService>();
     }
 
     public static void AddApplicationDbContext(this IServiceCollection services, IConfiguration configuration)

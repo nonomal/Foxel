@@ -1,5 +1,6 @@
 export * from './authApi';
 export * from './albumApi';
+export * from './albumManagementApi';
 export * from './backgroundTaskApi';
 export * from './configApi';
 export * from './fetchClient';

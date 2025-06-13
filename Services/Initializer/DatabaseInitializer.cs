@@ -73,6 +73,8 @@ public class DatabaseInitializer(
             // 其他配置
             ["Storage:DefaultStorageModeId"] = "1",
             ["AppSettings:ServerUrl"] = "",
+            ["AppSettings:EnableRegistration"] = "true",
+            ["AppSettings:EnableAnonymousImageHosting"] = "true",
             ["VectorDb:Type"] = "InMemory"
         };
 

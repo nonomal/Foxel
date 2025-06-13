@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Typography, Row, Col, Card, Button, Modal, Form, Input, Spin, Empty, message, Popconfirm } from 'antd';
+import { Typography, Row, Col, Card, Button, Modal, Form, Input, Spin, Empty, message, Popconfirm, InputNumber } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PictureOutlined } from '@ant-design/icons';
 import { getAlbums, createAlbum, updateAlbum, deleteAlbum } from '../../api';
 import type { AlbumResponse, CreateAlbumRequest, UpdateAlbumRequest } from '../../api';
@@ -43,7 +43,7 @@ function Albums() {
 
   const handleCreateAlbum = async (values: CreateAlbumRequest) => {
     try {
-      const result = await createAlbum(values);
+      const result = await createAlbum(values); // values 现在可以包含 coverPictureId
       if (result.success && result.data) {
         message.success('相册创建成功');
         setIsCreateModalVisible(false);
@@ -58,14 +58,16 @@ function Albums() {
     }
   };
 
-  const handleEditAlbum = async (values: UpdateAlbumRequest) => {
+  const handleEditAlbum = async (values: Omit<UpdateAlbumRequest, 'id'>) => { // Form values don't include id
     if (!currentAlbum) return;
     
     try {
-      const result = await updateAlbum({
+      const requestData: UpdateAlbumRequest = {
         ...values,
-        id: currentAlbum.id
-      });
+        id: currentAlbum.id,
+        // coverPictureId 来自表单 values.coverPictureId
+      };
+      const result = await updateAlbum(requestData);
       
       if (result.success && result.data) {
         message.success('相册更新成功');
@@ -101,7 +103,8 @@ function Albums() {
     setCurrentAlbum(album);
     editForm.setFieldsValue({
       name: album.name,
-      description: album.description
+      description: album.description,
+      coverPictureId: album.coverPictureId // 设置当前封面ID
     });
     setIsEditModalVisible(true);
   };
@@ -188,12 +191,16 @@ function Albums() {
                 bodyStyle={{ padding: '20px' }}
                 cover={
                   <Link to={`/albums/${album.id}`}>
-                    {album.coverImageUrl ? (
-                      <img alt={album.name} src={album.coverImageUrl} style={{ 
-                        height: 180, 
-                        width: '100%',
-                        objectFit: 'cover'
-                      }} />
+                    {album.coverPictureThumbnailPath || album.coverPicturePath ? (
+                      <img 
+                        alt={album.name} 
+                        src={album.coverPictureThumbnailPath || album.coverPicturePath} 
+                        style={{ 
+                          height: 180, 
+                          width: '100%',
+                          objectFit: 'cover'
+                        }} 
+                      />
                     ) : (
                       <div style={{ 
                         height: 180, 
@@ -271,6 +278,32 @@ function Albums() {
           >
             <TextArea placeholder="描述一下这个相册" rows={4} />
           </Form.Item>
+          <Form.Item
+            name="coverPictureId"
+            label="封面图片 (可选)"
+            tooltip="输入图片ID。实际应用中应为图片选择器。"
+          >
+            {/* 
+              实际应用中替换为图片选择器，例如:
+              <Select
+                showSearch
+                allowClear
+                placeholder="选择封面图片"
+                loading={loadingUserPictures}
+                filterOption={(input, option) => 
+                  option?.label.toLowerCase().includes(input.toLowerCase())
+                }
+                options={userPictures.map(p => ({ value: p.id, label: p.name || `图片 ${p.id}`, thumbnail: p.thumbnailPath }))}
+                // optionRender={(option) => (
+                //   <Space>
+                //     {option.data.thumbnail && <img src={option.data.thumbnail} alt={option.label} style={{width: 24, height: 24, objectFit: 'cover'}}/>}
+                //     <span>{option.label}</span>
+                //   </Space>
+                // )}
+              />
+            */}
+            <InputNumber placeholder="输入封面图片ID" style={{ width: '100%' }} />
+          </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Button style={{ marginRight: 8 }} onClick={() => {
               setIsCreateModalVisible(false);
@@ -313,6 +346,18 @@ function Albums() {
             label="相册描述"
           >
             <TextArea placeholder="相册描述" rows={4} />
+          </Form.Item>
+          <Form.Item
+            name="coverPictureId"
+            label="封面图片 (可选)"
+            tooltip="输入图片ID。实际应用中应为图片选择器，图片源为当前相册内图片或用户所有图片。"
+          >
+            {/* 
+              实际应用中替换为图片选择器。
+              如果从当前相册选择，需要获取相册内图片列表。
+              如果像管理员一样从所有图片选择，则使用类似创建时的逻辑。
+            */}
+            <InputNumber placeholder="输入封面图片ID" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Button style={{ marginRight: 8 }} onClick={() => {
