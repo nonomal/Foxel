@@ -9,7 +9,7 @@ using Foxel.Services.Configuration;
 namespace Foxel.Controllers;
 
 [Route("api/auth")]
-public class AuthController(IAuthService authService) : BaseApiController
+public class AuthController(IAuthService authService, IConfigService configuration) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult<BaseResult<AuthResponse>>> Register([FromBody] RegisterRequest request)
@@ -17,6 +17,13 @@ public class AuthController(IAuthService authService) : BaseApiController
         if (!ModelState.IsValid)
         {
             return Error<AuthResponse>("请求数据无效");
+        }
+
+        // 检查是否允许新用户注册
+        var enableRegistration = configuration["AppSettings:EnableRegistration"];
+        if (string.Equals(enableRegistration, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return Error<AuthResponse>("新用户注册功能已关闭");
         }
 
         var (success, message, user) = await authService.RegisterUserAsync(request);

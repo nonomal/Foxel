@@ -8,6 +8,7 @@ namespace Foxel.Models.DataBase
     {
         PictureProcessing = 0,
         VisualRecognition = 1,
+        FaceRecognition = 2,
     }
 
     public enum TaskExecutionStatus

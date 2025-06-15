@@ -1,5 +1,5 @@
 import React from 'react';
-import { Row, Col, Form, Input, Button, Space, Tooltip } from 'antd';
+import { Row, Col, Form, Input, Button, Space, Tooltip, Switch } from 'antd';
 import { LockOutlined, QuestionCircleOutlined, SaveOutlined } from '@ant-design/icons';
 
 interface ConfigFormItemProps {
@@ -23,6 +23,9 @@ const ConfigFormItem: React.FC<ConfigFormItemProps> = ({
   isMobile,
   onSave,
 }) => {
+  const booleanAppSettings = ['EnableRegistration', 'EnableAnonymousImageHosting'];
+  const isBooleanAppSetting = groupName === 'AppSettings' && booleanAppSettings.includes(itemKey);
+
   return (
     <Row key={itemKey} gutter={isMobile ? [8, 8] : [16, 16]} align="top" style={{ marginBottom: isMobile ? 8 : 16 }}>
       <Col xs={24} sm={isMobile ? 24 : 16} md={isMobile ? 24 : 17} lg={isMobile ? 24 : 18}>
@@ -31,7 +34,7 @@ const ConfigFormItem: React.FC<ConfigFormItemProps> = ({
           label={
             <Space align="center">
               <span style={{ fontWeight: 500 }}>{itemKey}</span>
-              {isSecret && <LockOutlined style={{ color: '#faad14' }} />}
+              {isSecret && !isBooleanAppSetting && <LockOutlined style={{ color: '#faad14' }} />}
               {description && (
                 <Tooltip title={description}>
                   <QuestionCircleOutlined style={{ cursor: 'help', color: '#aaa' }} />
@@ -39,14 +42,29 @@ const ConfigFormItem: React.FC<ConfigFormItemProps> = ({
               )}
             </Space>
           }
-          initialValue={isSecret ? '' : currentValue}
-          rules={isSecret ? [] : []}
+          initialValue={
+            isBooleanAppSetting
+              ? currentValue === 'true'
+              : isSecret
+              ? ''
+              : currentValue
+          }
+          valuePropName={isBooleanAppSetting ? 'checked' : undefined}
+          rules={isSecret || isBooleanAppSetting ? [] : []}
           style={{ marginBottom: isMobile ? 8 : 16 }}
-          help={isSecret && currentValue ?
-            <span style={{ fontSize: '12px', color: '#999' }}>当前已设置值。如需修改，请输入新值。</span> :
-            (isSecret ? <span style={{ fontSize: '12px', color: '#999' }}>此为私密字段。</span> : null)}
+          help={
+            isBooleanAppSetting
+              ? null
+              : isSecret && currentValue
+              ? <span style={{ fontSize: '12px', color: '#999' }}>当前已设置值。如需修改，请输入新值。</span>
+              : isSecret
+              ? <span style={{ fontSize: '12px', color: '#999' }}>此为私密字段。</span>
+              : null
+          }
         >
-          {isSecret ? (
+          {isBooleanAppSetting ? (
+            <Switch />
+          ) : isSecret ? (
             <Input.Password
               placeholder={currentValue ? '******（输入新值以更新）' : '请输入新值'}
               style={{ maxWidth: 400 }}

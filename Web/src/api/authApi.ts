@@ -4,6 +4,7 @@ import { type UserRole } from './userManagementApi';
 // 认证数据本地存储键
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
+const COOKIE_TOKEN_KEY = 'token';
 
 // 登录请求参数
 export interface LoginRequest {
@@ -52,6 +53,28 @@ export interface BindAccountRequest {
   bindType: BindType;
   thirdPartyUserId: string;
 }
+
+// Cookie操作辅助函数
+const setCookie = (name: string, value: string, days: number = 7): void => {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+};
+
+const getCookie = (name: string): string | null => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+};
+
+const deleteCookie = (name: string): void => {
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;SameSite=Lax`;
+};
 
 // 用户注册
 export async function register(data: RegisterRequest): Promise<BaseResult<AuthResponse>> {
@@ -156,6 +179,7 @@ export async function bindAccount(data: BindAccountRequest): Promise<BaseResult<
 // 保存认证数据到本地存储
 export const saveAuthData = (authData: AuthResponse): void => {
     localStorage.setItem(TOKEN_KEY, authData.token);
+    setCookie(COOKIE_TOKEN_KEY, authData.token, 7); // 保存7天
     if (authData.user) {
         localStorage.setItem(USER_KEY, JSON.stringify(authData.user));
     }
@@ -165,6 +189,7 @@ export const saveAuthData = (authData: AuthResponse): void => {
 export const clearAuthData = (): void => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    deleteCookie(COOKIE_TOKEN_KEY);
 };
 
 // 检查是否已认证
@@ -186,7 +211,12 @@ export const getStoredUser = (): UserProfile | null => {
 
 // 获取存储的令牌
 export const getToken = (): string | null => {
-    return localStorage.getItem(TOKEN_KEY);
+    // 优先从localStorage获取
+    const localToken = localStorage.getItem(TOKEN_KEY);
+    if (localToken) return localToken;
+    
+    // 备用从cookies获取
+    return getCookie(COOKIE_TOKEN_KEY);
 };
 
 // 处理GitHub OAuth回调，接收token并保存

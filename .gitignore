@@ -26,3 +26,5 @@ dist-ssr
 /appsettings.Development.json
 /Foxel.sln.DotSettings.user
 /Folder.DotSettings.user
+/Docs/.vitepress/cache
+/Docs/.vitepress/node_modules

@@ -16,7 +16,7 @@
 ---
 
 > 🖥️ **在线演示：**  
-> 访问 [https://foxel.cc](https://foxel.cc) 体验 Foxel 部分功能。  
+> 访问 [https://demo.foxel.cc](https://foxel.cc) 体验 Foxel 部分功能。  
 > 管理员账号：`demo@foxel.cc` 密码: `foxel_demo`  
 > ⚠️ **注意：演示环境数据可能不定期清理，请勿存放重要信息。**
 
@@ -157,13 +157,3 @@ Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
 |   **功能扩展**   | - 欢迎参与以下重点功能开发：<br>• 更智能的图像检索算法<br>• 增强社交互动<br>• 云存储/网盘集成<br>• 更多智能图像处理方法（如自动标注、风格迁移、图像增强等） |
 
 如有任何疑问或建议，欢迎通过 Issue 与我们联系。感谢您的贡献！
-
----
-
-![Star History Chart](https://api.star-history.com/svg?repos=DrizzleTime/Foxel&type=Date)
-
-<p align="center">
-    <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=for-the-badge" alt="MIT License" style="display:inline-block; vertical-align:middle;">
-    <span style="display:inline-block; width:20px;"></span>
-    <img src="https://img.shields.io/badge/感谢您的支持-Thanks-yellow?style=for-the-badge" alt="感谢" style="display:inline-block; vertical-align:middle;">
-</p>

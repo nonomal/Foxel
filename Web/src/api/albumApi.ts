@@ -5,18 +5,21 @@ export interface AlbumResponse {
   id: number;
   name: string;
   description: string;
-  coverImageUrl?: string;
   pictureCount: number;
   userId: number;
   username?: string;
   createdAt: Date;
   updatedAt: Date;
+  coverPictureId?: number | null; 
+  coverPicturePath?: string; 
+  coverPictureThumbnailPath?: string; 
 }
 
 // 创建相册请求
 export interface CreateAlbumRequest {
   name: string;
   description: string;
+  coverPictureId?: number | null; // 新增：封面图片ID
 }
 
 // 更新相册请求
@@ -24,6 +27,7 @@ export interface UpdateAlbumRequest {
   id: number;
   name: string;
   description: string;
+  coverPictureId?: number | null; // 新增：封面图片ID
 }
 
 // 相册图片操作请求

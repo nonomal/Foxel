@@ -73,6 +73,7 @@ export const ImageFormat = {
 export interface UploadPictureParams {
   permission?: number;
   albumId?: number;
+  storageModeId?: number; // 新增：存储模式ID
   convertToFormat?: ImageFormat;
   quality?: number;
   onProgress?: (percent: number) => void;
@@ -88,6 +89,7 @@ export interface UpdatePictureRequest {
   name?: string;
   description?: string;
   tags?: string[];
+  permission?: number;
 }
 
 // 获取图片列表
@@ -207,6 +209,7 @@ export async function uploadPicture(
   data: {
     permission?: number;
     albumId?: number;
+    storageModeId?: number; // 新增
     onProgress?: (percent: number) => void
   } = {}
 ): Promise<BaseResult<PictureResponse>> {
@@ -219,6 +222,10 @@ export async function uploadPicture(
 
   if (data.albumId !== undefined) {
     formData.append('albumId', data.albumId.toString());
+  }
+
+  if (data.storageModeId !== undefined) { // 新增：添加 storageModeId 到 FormData
+    formData.append('storageModeId', data.storageModeId.toString());
   }
 
   try {

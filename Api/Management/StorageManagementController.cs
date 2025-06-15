@@ -13,6 +13,31 @@ namespace Foxel.Api.Management;
 [Route("api/management/storage")]
 public class StorageManagementController(IStorageManagementService storageManagementService) : BaseApiController
 {
+    [AllowAnonymous]
+    [HttpGet("get_available_modes")]
+    public async Task<ActionResult<BaseResult<List<StorageModeResponse>>>> GetAvailableStorageModes()
+    {
+        try
+        {
+            var result = await storageManagementService.GetStorageModesAsync();
+            var filteredModes = result.Data!
+                .Where(mode => mode.IsEnabled)
+                .Select(mode => new StorageModeResponse
+                {
+                    Id = mode.Id,
+                    Name = mode.Name,
+                    StorageType = mode.StorageType,
+                    IsEnabled = mode.IsEnabled
+                })
+                .ToList();
+            return Success(filteredModes, "Available storage modes retrieved successfully.");
+        }
+        catch (Exception ex)
+        {
+            return Error<List<StorageModeResponse>>($"Failed to get available storage modes: {ex.Message}", 500);
+        }
+    }
+
     [HttpGet("get_modes")]
     public async Task<ActionResult<PaginatedResult<StorageModeResponse>>> GetStorageModes(
         [FromQuery] int page = 1,

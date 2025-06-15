@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Foxel.Models.DataBase;
 
@@ -13,6 +14,10 @@ public class Album : BaseModel
     public int UserId { get; set; }
     [Required]
     public User User { get; set; }
+
+    public int? CoverPictureId { get; set; }
+    [ForeignKey("CoverPictureId")]
+    public Picture? CoverPicture { get; set; }
 
     public ICollection<Picture>? Pictures { get; set; }
 }
