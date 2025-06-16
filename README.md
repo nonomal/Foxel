@@ -3,10 +3,10 @@
     <strong>Foxel - 智能图像检索与管理系统</strong>
 </p>
 <p align="center">
-    <a href="#-核心功能"><img src="https://img.shields.io/badge/核心功能-Features-blue?style=for-the-badge" alt="核心功能"></a>
+    <a href="#-核心功能"><img src="https://img.shields.io/badge/功能-Features-blue?style=for-the-badge" alt="核心功能"></a>
     <a href="#-部署指南"><img src="https://img.shields.io/badge/部署-Deploy-orange?style=for-the-badge" alt="部署"></a>
-    <a href="#-适配存储"><img src="https://img.shields.io/badge/存储-Storage-green?style=for-the-badge" alt="适配存储"></a>
     <a href="#-贡献指南"><img src="https://img.shields.io/badge/贡献-Contribute-brightgreen?style=for-the-badge" alt="贡献"></a>
+    
 </p>
 
 <p>
@@ -38,111 +38,70 @@
 
 ## ✨ 核心功能
 
-| 功能模块      | 主要特性                                |
-|:----------|:------------------------------------|
-| 🤖 智能图像检索 | - 基于 AI 的图像内容检索与相似度匹配<br>- 快速定位目标图片 |
-| 🗂️ 图像管理  | - 支持图片分类、标签管理、批量操作<br>- 多分辨率与格式化处理  |
-| 🖼️ 图床功能  | - 图片上传、存储与分享<br>- 支持多种链接格式，访问权限灵活控制 |
-| 👥 多用户支持  | - 用户注册、登录、权限与分组管理                   |
-| 💬 轻社交功能  | - 点赞、评论、分享                          |
-| 🔗 第三方登录  | - 支持 GitHub、LinuxDo 等第三方账号快捷登录      |
+### 🔍 智能图像检索
+- [x] 自然语言搜索 - 基于 AI 的图像内容理解与检索
+- [x] 相似图像查找 - 快速定位相似内容的图片
+- [x] 条件筛选 - 按时间、大小、格式等条件精确筛选
+- [x] 高级搜索 - 多维度组合搜索条件
+
+### 🗂️ 图像管理
+- [x] 图片上传 - 支持拖拽上传、批量上传
+- [x] 匿名图床 - 无需注册即可上传分享图片
+- [x] 分类标签 - 灵活的图片分类与标签管理
+- [x] 批量操作 - 批量删除、移动、标记图片
+- [x] 缩略图生成 - 自动生成多尺寸缩略图
+- [x] WebP 转换 - 智能格式转换，优化存储空间
+
+### 🤖 AI 智能功能
+- [x] 人脸识别 - 自动检测与识别图片中的人脸
+- [x] AI 图片描述 - 智能生成图片内容描述
+- [x] AI 自动分类 - 基于内容的智能图片分类
+- [ ] 物体检测 - 识别图片中的各类物体
+- [ ] 场景识别 - 自动识别图片拍摄场景
+
+### 💾 存储功能
+- [x] 本地存储 - 服务器本地文件存储
+- [x] Telegram Channel - 基于 Telegram 的云端存储
+- [x] Amazon S3 - 兼容 S3 协议的对象存储
+- [x] 腾讯云 COS - 腾讯云对象存储服务
+- [x] 多存储配置 - 支持多个存储后端同时使用
+- [x] WebDAV - 标准 WebDAV 协议存储
+
+### 👥 用户功能
+- [x] 用户注册登录 - 完整的用户账号体系
+- [x] GitHub 第三方登录 - 支持 GitHub 账号快捷登录
+- [x] LinuxDo 第三方登录 - 支持 LinuxDo 社区账号登录
+- [x] 权限管理 - 多角色权限控制
+- [ ] 用户分组 - 用户群组管理功能
+- [x] 个人资料 - 完善的用户资料管理
+
+### 💬 社交功能
+- [x] 图片点赞 - 为喜欢的图片点赞
+- [x] 图片收藏 - 收藏感兴趣的图片内容
+- [ ] 评论系统 - 图片评论与互动
+- [ ] 分享功能 - 多平台图片分享
+- [ ] 关注系统 - 关注其他用户
+
+### 🔗 图床功能
+- [x] 多种链接格式 - Markdown、HTML、BBCode 等
+- [x] 访问权限控制 - 公开、私有、密码保护
+- [x] 外链防盗 - 防止恶意外链盗用
+- [x] 批量获取链接 - 快速获取多张图片链接
 
 ---
 
 ## 🚀 部署指南
 
-### 📋 前提条件
-
-- 已安装 [Docker](https://www.docker.com/)。
-
-### ⚙️ 部署方案
-
 > ⚠️ **重要提示：**  
-> Foxel 目前处于早期开发阶段，适合**尝鲜体验**和功能测试。当前版本在升级过程中可能包含**破坏性变更**，暂不提供数据迁移流程，升级时需要
-**重新安装**。如需**长期稳定使用**，建议等待 **Preview 版本** 发布后再部署，届时将提供完善的自动化版本升级流程。
+> Foxel 目前处于早期开发阶段，适合**尝鲜体验**和功能测试。当前版本在升级过程中可能包含**破坏性变更**，暂不提供数据迁移流程，升级时需要**重新安装**。如需**长期稳定使用**，建议等待 **Preview 版本** 发布后再部署，届时将提供完善的自动化版本升级流程。
 
-#### 🐳 Docker Compose 一键部署
+Foxel 提供多种部署方式以满足不同场景需求：
 
-**1. 下载 compose.yaml 文件**
+- 🐳 **Docker Compose 一键部署** - 推荐新手使用
+- 🐋 **Docker 单容器部署** - 适合自定义数据库
+- 🔧 **源码编译部署** - 开发者专用
 
-```bash
-wget https://raw.githubusercontent.com/DrizzleTime/Foxel/master/compose.yaml
-```
-
-**2. 创建必要目录并启动服务**
-
-```bash
-# 创建数据目录
-mkdir -p ./uploads ./db
-
-# 设置目录权限
-chmod 755 ./uploads
-chmod 700 ./db
-
-# 启动服务
-docker compose up -d
-```
-
-**3. 访问服务**
-
-- 打开浏览器访问 `http://你的服务器地址:8088`
-- **第一个注册的用户将自动获得管理员权限**
-
-**4. 常用命令**
-
-```bash
-# 查看服务状态
-docker compose ps
-
-# 查看日志
-docker compose logs -f
-
-# 停止服务
-docker compose down
-
-# 更新服务
-docker compose pull && docker compose up -d
-```
-
-#### 🐋 Docker 单容器部署
-
-**1. 准备 PostgreSQL 数据库**
-
-需要您自己提供 PostgreSQL 数据库服务。
-
-**2. 运行 Foxel 容器**
-
-```bash
-docker run -d -p 8088:80 --name foxel \
-    -v /path/to/data:/app/data \
-    -v /path/to/logs:/app/logs \
-    -v /path/to/uploads:/app/Uploads \
-    -e DEFAULT_CONNECTION="Host=your_host;Username=your_user;Password=your_password;Database=your_db" \
-    -e TZ=Asia/Shanghai \
-    --pull always \
-    ghcr.io/drizzletime/foxel:dev
-```
-
-**参数说明：**
-
-- `-p 8088:80`：端口映射（可修改为其他端口）
-- `-v`：数据目录挂载
-- `DEFAULT_CONNECTION`：PostgreSQL 数据库连接字符串
-- `TZ`：时区设置
-
----
-
-## 📖 适配存储
-
-Foxel 提供多种存储后端选择，满足不同场景下的部署需求：
-
-- 📁 本地存储
-- 📡 Telegram Channel
-- ☁️ Amazon S3
-- 🔐 Tencent Cloud COS
-- 🌐 WebDAV
-
-未来将持续适配更多主流云存储平台，欢迎社区贡献新的存储适配器！
+📖 **详细部署教程请访问：[https://foxel.cc/guide/getting-started.html](https://foxel.cc/guide/getting-started.html)**
 
 ---
 
