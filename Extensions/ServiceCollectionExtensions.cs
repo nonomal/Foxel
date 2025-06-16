@@ -12,7 +12,6 @@ using Foxel.Services.Initializer;
 using Foxel.Services.Management;
 using Foxel.Services.Media;
 using Foxel.Services.Storage;
-using Foxel.Services.Storage.Providers;
 using Foxel.Services.VectorDB;
 using Foxel.Services.Background.Processors;
 using Foxel.Services.Mapping;
@@ -42,6 +41,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<VisualRecognitionTaskProcessor>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
         services.AddSingleton<IMappingService, MappingService>();
+        services.AddSingleton<IFaceManagementService, FaceManagementService>();
+        services.AddSingleton<IFaceClusteringService, FaceClusteringService>();
+
     }
 
     public static void AddApplicationDbContext(this IServiceCollection services, IConfiguration configuration)

@@ -157,16 +157,17 @@ public class PictureService(
         // 构建基础查询
         IQueryable<Picture> query = dbContext.Pictures
             .Include(p => p.Tags)
-            .Include(p => p.Faces)
-            .Include(p => p.User);
+            .Include(p => p.User)
+            .Include(p => p.Faces!)
+            .ThenInclude(f => f.Cluster);
 
         // 应用文本搜索条件
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
             var searchTerm = searchQuery.ToLower();
             query = query.Where(p =>
-                (p.Name.ToLower().Contains(searchTerm)) ||
-                (p.Description.ToLower().Contains(searchTerm)));
+                p.Name.ToLower().Contains(searchTerm) ||
+                p.Description.ToLower().Contains(searchTerm));
         }
 
         // 应用共通的查询条件
@@ -617,7 +618,7 @@ public class PictureService(
                     UserIdForPicture = picture.UserId
                 };
                 await backgroundTaskQueue.QueueVisualRecognitionTaskAsync(visualRecognitionPayload);
-                
+
                 // 添加人脸识别任务
                 var faceRecognitionPayload = new Background.Processors.FaceRecognitionPayload
                 {

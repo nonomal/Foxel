@@ -27,6 +27,7 @@ import UserDetail from '../pages/admin/users/UserDetail';
 import AdminLogManagement from '../pages/admin/log/Index';
 import StorageManagementPage from '../pages/admin/storage/StorageManagement';
 import AlbumManagement from '../pages/admin/album/Index';
+import FaceManagement from '../pages/admin/face/Index';
 
 export interface RouteConfig {
   path: string;
@@ -186,6 +187,18 @@ const routes: RouteConfig[] = [
     groupLabel: '内容管理',
     breadcrumb: {
       title: '相册管理'
+    }
+  },
+    {
+    path: 'faces-admin',
+    key: 'admin-face',
+    icon: <FolderOutlined />,
+    label: '人脸管理',
+    element: <FaceManagement />,
+    area: 'admin',
+    groupLabel: '内容管理',
+    breadcrumb: {
+      title: '人脸管理'
     }
   },
   {

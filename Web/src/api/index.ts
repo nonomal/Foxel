@@ -3,6 +3,7 @@ export * from './albumApi';
 export * from './albumManagementApi';
 export * from './backgroundTaskApi';
 export * from './configApi';
+export * from './faceManagementApi';
 export * from './fetchClient';
 export * from './logManagementApi';
 export * from './pictureApi';

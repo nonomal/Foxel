@@ -71,7 +71,7 @@ namespace Foxel.Services.Mapping
                     W = face.W,
                     H = face.H,
                     FaceConfidence = face.FaceConfidence,
-                    PersonName = face.PersonName
+                    PersonName = face.Cluster?.Name
                 }).ToList(),
             };
         }
