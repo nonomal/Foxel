@@ -24,7 +24,11 @@ public class FaceController(
     {
         try
         {
-            var result = await faceManagementService.GetUserFaceClustersAsync(GetCurrentUserId(), page, pageSize);
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Error<PaginatedResult<FaceClusterResponse>>("用户未认证", 401);
+
+            var result = await faceManagementService.GetUserFaceClustersAsync(userId.Value, page, pageSize);
             return Success(result, "获取人脸聚类列表成功");
         }
         catch (Exception ex)
@@ -43,8 +47,12 @@ public class FaceController(
     {
         try
         {
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Error<PaginatedResult<PictureResponse>>("用户未认证", 401);
+
             var result = await faceManagementService.GetUserPicturesByClusterAsync(
-                GetCurrentUserId(), clusterId, page, pageSize);
+                userId.Value, clusterId, page, pageSize);
             return Success(result, "获取聚类图片成功");
         }
         catch (KeyNotFoundException)
@@ -68,8 +76,12 @@ public class FaceController(
     {
         try
         {
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Error<FaceClusterResponse>("用户未认证", 401);
+
             var result = await faceManagementService.UpdateUserClusterAsync(
-                GetCurrentUserId(), clusterId, request.PersonName, request.Description);
+                userId.Value, clusterId, request.PersonName, request.Description);
             return Success(result, "更新聚类信息成功");
         }
         catch (KeyNotFoundException)
@@ -92,7 +104,11 @@ public class FaceController(
     {
         try
         {
-            await faceClusteringService.ClusterUserFacesAsync(GetCurrentUserId());
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Error<bool>("用户未认证", 401);
+
+            await faceClusteringService.ClusterUserFacesAsync(userId.Value);
             return Success(true, "人脸聚类任务已开始");
         }
         catch (Exception ex)
@@ -111,8 +127,12 @@ public class FaceController(
     {
         try
         {
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Error<bool>("用户未认证", 401);
+
             var result = await faceManagementService.MergeUserClustersAsync(
-                GetCurrentUserId(), request.SourceClusterId, targetClusterId);
+                userId.Value, request.SourceClusterId, targetClusterId);
             return Success(result, "合并聚类成功");
         }
         catch (KeyNotFoundException ex)
@@ -134,7 +154,11 @@ public class FaceController(
     {
         try
         {
-            var result = await faceManagementService.RemoveUserFaceFromClusterAsync(GetCurrentUserId(), faceId);
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+                return Error<bool>("用户未认证", 401);
+
+            var result = await faceManagementService.RemoveUserFaceFromClusterAsync(userId.Value, faceId);
             return Success(result, "移除人脸成功");
         }
         catch (KeyNotFoundException)
@@ -149,12 +173,6 @@ public class FaceController(
         }
     }
 
-    private int GetCurrentUserId()
-    {
-        // 从JWT或Claims中获取当前用户ID
-        var userIdClaim = User.FindFirst("id") ?? User.FindFirst("sub");
-        return int.Parse(userIdClaim?.Value ?? "0");
-    }
 }
 
 public record UpdateClusterRequest

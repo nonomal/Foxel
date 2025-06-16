@@ -28,6 +28,7 @@ import AdminLogManagement from '../pages/admin/log/Index';
 import StorageManagementPage from '../pages/admin/storage/StorageManagement';
 import AlbumManagement from '../pages/admin/album/Index';
 import FaceManagement from '../pages/admin/face/Index';
+import FaceExplore from '../pages/explore/Index';
 
 export interface RouteConfig {
   path: string;
@@ -57,6 +58,17 @@ const routes: RouteConfig[] = [
     area: 'main',
     breadcrumb: {
       title: '所有图片'
+    }
+  },
+  {
+    path: 'explore',
+    key: 'explore',
+    icon: <CompassOutlined />,
+    label: '探索',
+    element: <FaceExplore />,
+    area: 'main',
+    breadcrumb: {
+      title: '探索',
     }
   },
   {
@@ -189,7 +201,7 @@ const routes: RouteConfig[] = [
       title: '相册管理'
     }
   },
-    {
+  {
     path: 'faces-admin',
     key: 'admin-face',
     icon: <FolderOutlined />,
