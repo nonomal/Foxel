@@ -157,6 +157,7 @@ public class PictureService(
         // 构建基础查询
         IQueryable<Picture> query = dbContext.Pictures
             .Include(p => p.Tags)
+            .Include(p => p.Faces)
             .Include(p => p.User);
 
         // 应用文本搜索条件

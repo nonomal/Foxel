@@ -1,4 +1,5 @@
 using Foxel.Models.DataBase;
+using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -16,10 +17,10 @@ namespace Foxel.Services.Background.Processors
     {
         [JsonPropertyName("detector_backend")]
         public string DetectorBackend { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("recognition_model")]
         public string RecognitionModel { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("result")]
         public List<FaceResult> Result { get; set; } = new();
     }
@@ -28,10 +29,10 @@ namespace Foxel.Services.Background.Processors
     {
         [JsonPropertyName("embedding")]
         public float[] Embedding { get; set; } = Array.Empty<float>();
-        
+
         [JsonPropertyName("facial_area")]
         public FacialAreaResponse FacialArea { get; set; } = new();
-        
+
         [JsonPropertyName("face_confidence")]
         public double FaceConfidence { get; set; }
     }
@@ -40,13 +41,13 @@ namespace Foxel.Services.Background.Processors
     {
         [JsonPropertyName("x")]
         public int X { get; set; }
-        
+
         [JsonPropertyName("y")]
         public int Y { get; set; }
-        
+
         [JsonPropertyName("w")]
         public int W { get; set; }
-        
+
         [JsonPropertyName("h")]
         public int H { get; set; }
     }
@@ -55,14 +56,15 @@ namespace Foxel.Services.Background.Processors
     {
         private readonly IDbContextFactory<MyDbContext> _contextFactory;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IConfigService _configService;
         private readonly ILogger<FaceRecognitionTaskProcessor> _logger;
         private readonly HttpClient _httpClient;
-        private const string FaceApiUrl = "http://103.143.81.28:8066/represent";
-        private const string ApiKey = "";
+
 
         public FaceRecognitionTaskProcessor(
             IDbContextFactory<MyDbContext> contextFactory,
             IServiceProvider serviceProvider,
+            IConfigService configService,
             ILogger<FaceRecognitionTaskProcessor> logger,
             HttpClient httpClient)
         {
@@ -70,6 +72,7 @@ namespace Foxel.Services.Background.Processors
             _serviceProvider = serviceProvider;
             _logger = logger;
             _httpClient = httpClient;
+            _configService = configService;
         }
 
         public async Task ProcessAsync(BackgroundTask backgroundTask)
@@ -188,7 +191,7 @@ namespace Foxel.Services.Background.Processors
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "人脸识别任务失败: TaskId={TaskId}, PictureId={PictureId}", 
+                _logger.LogError(ex, "人脸识别任务失败: TaskId={TaskId}, PictureId={PictureId}",
                     currentBackgroundTaskState.Id, pictureId);
                 await UpdateTaskStatusInDb(currentBackgroundTaskState.Id, TaskExecutionStatus.Failed,
                     currentBackgroundTaskState.Progress, ex.Message,
@@ -212,10 +215,12 @@ namespace Foxel.Services.Background.Processors
 
         private async Task<FaceRecognitionResponse?> CallFaceRecognitionApiAsync(string imagePath)
         {
+            string FaceApiUrl = _configService["FaceRecognition:ApiEndpoint"];
+            string ApiKey = _configService["FaceRecognition:ApiKey"];
             using var form = new MultipartFormDataContent();
             using var fileStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read);
             using var fileContent = new StreamContent(fileStream);
-            
+
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
             form.Add(fileContent, "file", Path.GetFileName(imagePath));
 
@@ -224,7 +229,7 @@ namespace Foxel.Services.Background.Processors
             request.Content = form;
 
             var response = await _httpClient.SendAsync(request);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();

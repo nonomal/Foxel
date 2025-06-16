@@ -24,6 +24,7 @@ export interface FilteredPicturesRequest {
 
 // 图片响应数据
 export interface PictureResponse {
+  faces: any;
   id: number;
   name: string;
   path: string;

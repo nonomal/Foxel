@@ -17,12 +17,12 @@ namespace Foxel.Services.Mapping
             {
                 coverPath = storageService.ExecuteAsync(album.CoverPicture.StorageModeId,
                         provider => Task.FromResult(provider.GetUrl(album.CoverPicture.Id, album.CoverPicture.Path)))
-                    .Result; 
+                    .Result;
                 if (!string.IsNullOrEmpty(album.CoverPicture.ThumbnailPath))
                 {
                     coverThumbnailPath = storageService.ExecuteAsync(album.CoverPicture.StorageModeId,
                         provider => Task.FromResult(provider.GetUrl(album.CoverPicture.Id,
-                            album.CoverPicture.ThumbnailPath))).Result; 
+                            album.CoverPicture.ThumbnailPath))).Result;
                 }
             }
 
@@ -63,7 +63,16 @@ namespace Foxel.Services.Mapping
                 AlbumName = picture.Album?.Name,
                 Permission = picture.Permission,
                 FavoriteCount = picture.Favorites?.Count ?? 0,
-                StorageModeName = picture.StorageMode?.Name
+                StorageModeName = picture.StorageMode?.Name,
+                Faces = picture.Faces?.Select(face => new FaceResponse
+                {
+                    X = face.X,
+                    Y = face.Y,
+                    W = face.W,
+                    H = face.H,
+                    FaceConfidence = face.FaceConfidence,
+                    PersonName = face.PersonName
+                }).ToList(),
             };
         }
     }

@@ -27,5 +27,5 @@ public record PictureResponse
     public string? AlbumName { get; set; }
     public PermissionType Permission { get; set; } = PermissionType.Public;
     public string? StorageModeName { get; set; }
-    
+        public List<FaceResponse>? Faces { get; set; }
 }
