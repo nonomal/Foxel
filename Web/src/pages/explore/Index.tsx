@@ -190,20 +190,22 @@ const FaceExplore: React.FC = () => {
       className="cluster-card"
       cover={
         <div style={{ 
-          height: 200, 
+          height: 180, 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          backgroundColor: '#f8f9fa'
+          backgroundColor: '#f8f9fa',
+          overflow: 'hidden'
         }}>
           {cluster.thumbnailPath ? (
             <Image
               src={cluster.thumbnailPath}
               alt={cluster.name}
+              width="100%"
+              height={180}
               style={{ 
-                maxWidth: '100%', 
-                maxHeight: '100%', 
-                objectFit: 'cover' 
+                objectFit: 'cover',
+                display: 'block'
               }}
               preview={false}
             />
@@ -446,10 +448,11 @@ const FaceExplore: React.FC = () => {
           {clusterPictures.length > 0 ? (
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', 
-              gap: 16,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+              gap: 12,
               maxHeight: 500,
-              overflowY: 'auto'
+              overflowY: 'auto',
+              padding: '8px'
             }}>
               {clusterPictures.map(picture => (
                 <div key={picture.id} style={{ textAlign: 'center' }}>
@@ -459,17 +462,21 @@ const FaceExplore: React.FC = () => {
                     src={picture.thumbnailPath || picture.path}
                     style={{ 
                       objectFit: 'cover', 
-                      borderRadius: 8,
+                      borderRadius: 6,
                       border: '1px solid #f0f0f0'
+                    }}
+                    preview={{
+                      src: picture.path
                     }}
                   />
                   <div style={{ 
-                    fontSize: '12px', 
+                    fontSize: '11px', 
                     color: '#666', 
                     marginTop: 4,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    maxWidth: '100px'
                   }}>
                     {picture.name || `图片${picture.id}`}
                   </div>
