@@ -15,6 +15,8 @@ public class Face : BaseModel
     [Range(0.0, 1.0)]
     public double FaceConfidence { get; set; }
 
+    public string? CroppedImagePath { get; set; }
+
     public int PictureId { get; set; }
 
     [ForeignKey("PictureId")]

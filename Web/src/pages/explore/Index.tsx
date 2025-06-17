@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card, Button, Space, Modal, message, Typography,
-  Row, Col, Image, Form, Input, Avatar, 
+  Row, Col, Image, Form, Input, Avatar,
   Tag, Tooltip, Spin, Empty, Statistic,
   Select, Grid
 } from 'antd';
@@ -40,7 +40,7 @@ const FaceExplore: React.FC = () => {
   const [targetCluster, setTargetCluster] = useState<FaceClusterResponse | null>(null);
   const [clusterPictures, setClusterPictures] = useState<PictureResponse[]>([]);
   const [picturesLoading, setPicturesLoading] = useState(false);
-  
+
   const [editForm] = Form.useForm<UpdateClusterRequest>();
   const [mergeForm] = Form.useForm();
 
@@ -118,12 +118,12 @@ const FaceExplore: React.FC = () => {
 
   const handleEditOk = async () => {
     if (!editingCluster) return;
-    
+
     try {
       const values = await editForm.validateFields();
       setLoading(true);
       const response = await updateMyCluster(editingCluster.id, values);
-      
+
       if (response.success) {
         message.success('更新聚类信息成功');
         setIsEditModalVisible(false);
@@ -140,12 +140,12 @@ const FaceExplore: React.FC = () => {
 
   const handleMergeOk = async () => {
     if (!targetCluster) return;
-    
+
     try {
       const values = await mergeForm.validateFields();
       setLoading(true);
       const response = await mergeMyUserClusters(targetCluster.id, values.sourceClusterId);
-      
+
       if (response.success) {
         message.success('合并聚类成功');
         setIsMergeModalVisible(false);
@@ -189,31 +189,33 @@ const FaceExplore: React.FC = () => {
       hoverable
       className="cluster-card"
       cover={
-        <div style={{ 
-          height: 180, 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          height: 180,
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: '#f8f9fa',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          padding: 20
         }}>
           {cluster.thumbnailPath ? (
-            <Image
+            <Avatar
+              size={120}
               src={cluster.thumbnailPath}
-              alt={cluster.name}
-              width="100%"
-              height={180}
-              style={{ 
-                objectFit: 'cover',
-                display: 'block'
+              style={{
+                border: '3px solid #fff',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}
-              preview={false}
             />
           ) : (
-            <Avatar 
-              size={80} 
-              icon={<UserOutlined />} 
-              style={{ backgroundColor: '#e6f7ff' }}
+            <Avatar
+              size={120}
+              icon={<UserOutlined />}
+              style={{
+                backgroundColor: '#e6f7ff',
+                border: '3px solid #fff',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
             />
           )}
         </div>
@@ -247,8 +249,8 @@ const FaceExplore: React.FC = () => {
               </Paragraph>
             )}
             {cluster.description && (
-              <Paragraph 
-                style={{ margin: '8px 0 0 0' }} 
+              <Paragraph
+                style={{ margin: '8px 0 0 0' }}
                 ellipsis={{ rows: 2, tooltip: cluster.description }}
               >
                 {cluster.description}
@@ -281,16 +283,16 @@ const FaceExplore: React.FC = () => {
           </Col>
           <Col>
             <Space>
-              <Button 
-                type="primary" 
-                icon={<PlayCircleOutlined />} 
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
                 onClick={handleStartClustering}
                 loading={clusteringLoading}
               >
                 开始聚类分析
               </Button>
-              <Button 
-                icon={<ReloadOutlined />} 
+              <Button
+                icon={<ReloadOutlined />}
                 onClick={() => fetchClusters()}
                 loading={loading}
               >
@@ -305,9 +307,9 @@ const FaceExplore: React.FC = () => {
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={8} md={6}>
           <Card>
-            <Statistic 
-              title="人脸聚类" 
-              value={total} 
+            <Statistic
+              title="人脸聚类"
+              value={total}
               prefix={<TeamOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -315,9 +317,9 @@ const FaceExplore: React.FC = () => {
         </Col>
         <Col xs={12} sm={8} md={6}>
           <Card>
-            <Statistic 
-              title="已命名聚类" 
-              value={clusters.filter(c => c.personName).length} 
+            <Statistic
+              title="已命名聚类"
+              value={clusters.filter(c => c.personName).length}
               prefix={<HeartOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -325,9 +327,9 @@ const FaceExplore: React.FC = () => {
         </Col>
         <Col xs={12} sm={8} md={6}>
           <Card>
-            <Statistic 
-              title="总人脸数" 
-              value={clusters.reduce((sum, c) => sum + c.faceCount, 0)} 
+            <Statistic
+              title="总人脸数"
+              value={clusters.reduce((sum, c) => sum + c.faceCount, 0)}
               prefix={<UserOutlined />}
               valueStyle={{ color: '#722ed1' }}
             />
@@ -346,7 +348,7 @@ const FaceExplore: React.FC = () => {
                 </Col>
               ))}
             </Row>
-            
+
             {/* 加载更多按钮 */}
             {clusters.length < total && (
               <div style={{ textAlign: 'center', marginTop: 24 }}>
@@ -357,7 +359,7 @@ const FaceExplore: React.FC = () => {
             )}
           </>
         ) : (
-          <Empty 
+          <Empty
             description={
               <div>
                 <Paragraph>还没有发现人脸聚类</Paragraph>
@@ -368,9 +370,9 @@ const FaceExplore: React.FC = () => {
             }
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
-            <Button 
-              type="primary" 
-              icon={<PlayCircleOutlined />} 
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
               onClick={handleStartClustering}
               loading={clusteringLoading}
             >
@@ -409,8 +411,8 @@ const FaceExplore: React.FC = () => {
         destroyOnClose
       >
         <Form form={mergeForm} layout="vertical">
-          <Form.Item 
-            name="sourceClusterId" 
+          <Form.Item
+            name="sourceClusterId"
             label="选择要合并的聚类"
             rules={[{ required: true, message: '请选择要合并的聚类' }]}
           >
@@ -446,39 +448,58 @@ const FaceExplore: React.FC = () => {
       >
         <Spin spinning={picturesLoading}>
           {clusterPictures.length > 0 ? (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
-              gap: 12,
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+              gap: 16,
               maxHeight: 500,
               overflowY: 'auto',
               padding: '8px'
             }}>
               {clusterPictures.map(picture => (
                 <div key={picture.id} style={{ textAlign: 'center' }}>
-                  <Image
-                    width={100}
-                    height={100}
+                  <Avatar
+                    size={100}
                     src={picture.thumbnailPath || picture.path}
-                    style={{ 
-                      objectFit: 'cover', 
-                      borderRadius: 6,
-                      border: '1px solid #f0f0f0'
-                    }}
-                    preview={{
-                      src: picture.path
+                    style={{
+                      border: '2px solid #f0f0f0',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      marginBottom: 8
                     }}
                   />
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: '#666', 
-                    marginTop: 4,
+                  <div style={{
+                    fontSize: '11px',
+                    color: '#666',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    maxWidth: '100px'
+                    maxWidth: '120px'
                   }}>
                     {picture.name || `图片${picture.id}`}
+                  </div>
+                  <div style={{ marginTop: 4 }}>
+                    <Image
+                      width={0}
+                      height={0}
+                      src={picture.path}
+                      style={{ display: 'none' }}
+                      preview={{
+                        src: picture.path,
+                        mask: (
+                          <div style={{
+                            fontSize: '10px',
+                            color: '#fff',
+                            background: 'rgba(0,0,0,0.6)',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            cursor: 'pointer'
+                          }}>
+                            查看大图
+                          </div>
+                        )
+                      }}
+                    />
                   </div>
                 </div>
               ))}

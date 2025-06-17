@@ -4,12 +4,14 @@ using Foxel.Models.Response.Picture;
 using Foxel.Services.Mapping;
 using Foxel.Api.Management;
 using Microsoft.EntityFrameworkCore;
+using Foxel.Services.Configuration;
 
 namespace Foxel.Services.Management;
 
 public class FaceManagementService(
     IDbContextFactory<MyDbContext> contextFactory,
     IMappingService mappingService,
+    IConfigService configService,
     ILogger<FaceManagementService> logger) : IFaceManagementService
 {
     public async Task<PaginatedResult<FaceClusterResponse>> GetFaceClustersAsync(int page = 1, int pageSize = 20)
@@ -22,7 +24,7 @@ public class FaceManagementService(
             {
                 Cluster = c,
                 FaceCount = dbContext.Faces.Count(f => f.ClusterId == c.Id),
-                ThumbnailPath = dbContext.Faces
+                ThumbnailPath = configService["AppSettings:ServerUrl"] + dbContext.Faces
                     .Where(f => f.ClusterId == c.Id)
                     .Include(f => f.Picture)
                     .OrderByDescending(f => f.CreatedAt)
@@ -195,11 +197,10 @@ public class FaceManagementService(
             {
                 Cluster = c,
                 FaceCount = dbContext.Faces.Count(f => f.ClusterId == c.Id && f.Picture.UserId == userId),
-                ThumbnailPath = dbContext.Faces
-                    .Where(f => f.ClusterId == c.Id && f.Picture.UserId == userId)
-                    .Include(f => f.Picture)
+                ThumbnailPath = configService["AppSettings:ServerUrl"]+  dbContext.Faces
+                    .Where(f => f.ClusterId == c.Id && f.Picture.UserId == userId && !string.IsNullOrEmpty(f.CroppedImagePath))
                     .OrderByDescending(f => f.CreatedAt)
-                    .Select(f => f.Picture.ThumbnailPath)
+                    .Select(f => f.CroppedImagePath)
                     .FirstOrDefault()
             })
             .Where(x => x.FaceCount > 0)

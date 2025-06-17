@@ -4,6 +4,9 @@ using Foxel.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace Foxel.Services.Background.Processors
 {
@@ -162,8 +165,15 @@ namespace Foxel.Services.Background.Processors
                 // 保存人脸数据到数据库
                 if (faceRecognitionResult?.Result != null && faceRecognitionResult.Result.Any())
                 {
+                    // 确保人脸保存目录存在
+                    var faceImagesDir = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", "faces");
+                    Directory.CreateDirectory(faceImagesDir);
+
                     foreach (var faceResult in faceRecognitionResult.Result)
                     {
+                        // 裁剪人脸图片
+                        var croppedImagePath = await CropAndSaveFaceImageAsync(tempImagePath, faceResult.FacialArea, faceImagesDir);
+
                         var face = new Face
                         {
                             PictureId = pictureId,
@@ -172,7 +182,8 @@ namespace Foxel.Services.Background.Processors
                             Y = faceResult.FacialArea.Y,
                             W = faceResult.FacialArea.W,
                             H = faceResult.FacialArea.H,
-                            FaceConfidence = faceResult.FaceConfidence
+                            FaceConfidence = faceResult.FaceConfidence,
+                            CroppedImagePath = croppedImagePath
                         };
 
                         dbContext.Faces.Add(face);
@@ -280,6 +291,42 @@ namespace Foxel.Services.Background.Processors
             else
             {
                 _logger.LogWarning("尝试在 FaceRecognitionProcessor 中更新不存在的任务状态: TaskId={TaskId}", taskId);
+            }
+        }
+
+        private async Task<string> CropAndSaveFaceImageAsync(string originalImagePath, FacialAreaResponse facialArea, string saveDirectory)
+        {
+            try
+            {
+                using var originalImage = await Image.LoadAsync(originalImagePath);
+                
+                // 确保裁剪区域在图片范围内
+                var cropX = Math.Max(0, facialArea.X);
+                var cropY = Math.Max(0, facialArea.Y);
+                var cropWidth = Math.Min(facialArea.W, originalImage.Width - cropX);
+                var cropHeight = Math.Min(facialArea.H, originalImage.Height - cropY);
+
+                if (cropWidth <= 0 || cropHeight <= 0)
+                {
+                    throw new Exception("无效的人脸区域坐标");
+                }
+
+                var cropRect = new Rectangle(cropX, cropY, cropWidth, cropHeight);
+                
+                // 生成唯一文件名
+                var fileName = $"face_{Guid.NewGuid()}.jpg";
+                var filePath = Path.Combine(saveDirectory, fileName);
+                
+                // 使用 ImageSharp 裁剪并保存
+                using var croppedImage = originalImage.Clone(ctx => ctx.Crop(cropRect));
+                await croppedImage.SaveAsJpegAsync(filePath, new JpegEncoder { Quality = 90 });
+                
+                return Path.Combine("Uploads", "faces", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "裁剪人脸图片失败");
+                return string.Empty;
             }
         }
     }
