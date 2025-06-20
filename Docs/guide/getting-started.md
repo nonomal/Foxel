@@ -46,7 +46,7 @@ curl -O https://raw.githubusercontent.com/DrizzleTime/Foxel/master/compose.yaml
 mkdir -p ./uploads ./db
 
 # 设置正确的目录权限
-chmod 755 ./uploads
+chmod 777 ./uploads
 chmod 700 ./db
 ```
 
