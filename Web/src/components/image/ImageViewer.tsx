@@ -4,7 +4,7 @@ import {
   ZoomInOutlined, ZoomOutOutlined, ExpandOutlined, InfoCircleOutlined,
   CloseOutlined, LeftOutlined, RightOutlined, RotateLeftOutlined,
   RotateRightOutlined, HeartOutlined, HeartFilled, DownloadOutlined,
-  ShareAltOutlined, FolderAddOutlined
+  ShareAltOutlined, FolderAddOutlined, UserOutlined
 } from '@ant-design/icons';
 import type { PictureResponse, AlbumResponse } from '../../api';
 import { getAlbums, addPicturesToAlbum, favoritePicture, unfavoritePicture } from '../../api';
@@ -42,6 +42,15 @@ interface ZoomPanState {
   lastPositionY: number;
 }
 
+interface Face {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  faceConfidence: number;
+  personName?: string | null;
+}
+
 const ImageViewer: React.FC<ImageViewerProps> = ({
   visible,
   onClose,
@@ -65,7 +74,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   const [currentLoading, setCurrentLoading] = useState(false);
   const [fadeTransition, setFadeTransition] = useState(false);
   const [, setActiveImage] = useState<string | null>(null);
-  
+  const [faceDetectionMode, setFaceDetectionMode] = useState(false);
+
   const [zoomPanState, setZoomPanState] = useState<ZoomPanState>({
     scale: 1,
     positionX: 0,
@@ -76,18 +86,18 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     lastPositionX: 0,
     lastPositionY: 0,
   });
-  
+
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const imageCache = useRef<ImageCache>({});
   const sessionKey = useRef<string>(Date.now().toString());
   const currentLoadingUrl = useRef<string | null>(null);
-  const preloadedImagesRef = useRef<{[key: string]: HTMLImageElement}>({});
+  const preloadedImagesRef = useRef<{ [key: string]: HTMLImageElement }>({});
   const favoriteOperationsInProgress = useRef<Map<number, boolean>>(new Map());
-  
+
   const currentImage = localImages[currentIndex];
   const preloadRange = 2;
-  
+
   const MIN_SCALE = 0.1;
   const MAX_SCALE = 8;
   const ZOOM_FACTOR = 0.2;
@@ -96,6 +106,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     setRotation(0);
     setIsInfoDrawerOpen(false);
     setImageLoaded(false);
+    setFaceDetectionMode(false);
     setZoomPanState({
       scale: 1,
       positionX: 0,
@@ -124,15 +135,15 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
           loaded: true,
           img
         };
-        
+
         preloadedImagesRef.current[imageUrl] = img;
-        
+
         if (imageUrl === currentLoadingUrl.current) {
           setImageLoaded(true);
           setCurrentLoading(false);
           setActiveImage(imageUrl);
         }
-        
+
         resolve(img);
       };
       img.onerror = () => {
@@ -141,7 +152,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         }
         reject(new Error(`Failed to load image: ${imageUrl}`));
       };
-      
+
       img.src = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}_s=${sessionKey.current}`;
     });
   }, [currentImage]);
@@ -150,15 +161,15 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     setImageLoaded(false);
     setCurrentLoading(true);
     setFadeTransition(true);
-    
+
     if (currentImage && imageCache.current[currentImage.path]?.loaded) {
       setActiveImage(currentImage.path);
       setImageLoaded(true);
       setCurrentLoading(false);
-      
+
       setTimeout(() => setFadeTransition(false), 100);
     }
-    
+
     setZoomPanState(prev => ({
       ...prev,
       scale: 1,
@@ -177,7 +188,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     }
     wasVisible.current = visible;
   }, [visible, resetViewerState]);
-  
+
   useEffect(() => {
     if (visible && initialIndex >= 0 && initialIndex < images.length) {
       setCurrentIndex(initialIndex);
@@ -189,14 +200,14 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
     currentLoadingUrl.current = currentImage.path;
     setCurrentLoading(true);
-    
+
     loadImage(currentImage.path)
       .then(() => {
         if (currentLoadingUrl.current === currentImage.path) {
           setImageLoaded(true);
           setCurrentLoading(false);
           setActiveImage(currentImage.path);
-          
+
           setTimeout(() => setFadeTransition(false), 100);
         }
       })
@@ -205,18 +216,18 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         message.error('图片加载失败，请重试');
         setCurrentLoading(false);
       });
-    
+
     if (localImages.length > 1) {
       setTimeout(() => {
         for (let i = 1; i <= preloadRange; i++) {
           const nextIndex = currentIndex + i;
           if (nextIndex < localImages.length) {
-            loadImage(localImages[nextIndex].path).catch(() => {});
+            loadImage(localImages[nextIndex].path).catch(() => { });
           }
-          
+
           const prevIndex = currentIndex - i;
           if (prevIndex >= 0) {
-            loadImage(localImages[prevIndex].path).catch(() => {});
+            loadImage(localImages[prevIndex].path).catch(() => { });
           }
         }
       }, 300);
@@ -259,28 +270,28 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const handleFavoriteClick = useCallback(async () => {
     if (!currentImage) return;
-    
+
     if (favoriteOperationsInProgress.current.get(currentImage.id)) {
       return;
     }
-    
+
     try {
       favoriteOperationsInProgress.current.set(currentImage.id, true);
-      
+
       if (onFavorite) {
         onFavorite(currentImage);
         return;
       }
-      
+
       const isFavorited = currentImage.isFavorited;
-      
-      const result = isFavorited 
+
+      const result = isFavorited
         ? await unfavoritePicture(currentImage.id)
         : await favoritePicture(currentImage.id);
-      
+
       if (result.success) {
         message.success(isFavorited ? '已取消收藏' : '已添加到收藏');
-        
+
         const updatedImage = {
           ...currentImage,
           isFavorited: !isFavorited,
@@ -288,7 +299,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             ? Math.max(0, (currentImage.favoriteCount || 0) - 1)
             : (currentImage.favoriteCount || 0) + 1
         };
-        
+
         setLocalImages(prevImages =>
           prevImages.map(img =>
             img.id === currentImage.id ? updatedImage : img
@@ -350,6 +361,10 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     onShare ? onShare(currentImage) : setShareDialogVisible(true);
   }, [currentImage, onShare]);
 
+  const handleFaceDetectionToggle = useCallback(() => {
+    setFaceDetectionMode(prev => !prev);
+  }, []);
+
   const zoomIn = useCallback((factor = ZOOM_FACTOR) => {
     setZoomPanState(prev => ({
       ...prev,
@@ -384,17 +399,17 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
     setZoomPanState(prev => {
       const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, prev.scale * scaleFactor));
-      
+
       const rect = imageContainerRef.current?.getBoundingClientRect();
       if (!rect) return { ...prev, scale: newScale };
-      
+
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       const containerCenterX = rect.width / 2;
       const containerCenterY = rect.height / 2;
       const dx = (mouseX - containerCenterX - prev.positionX) * (scaleFactor - 1);
       const dy = (mouseY - containerCenterY - prev.positionY) * (scaleFactor - 1);
-      
+
       return {
         ...prev,
         scale: newScale,
@@ -434,7 +449,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     if (zoomPanState.isDragging) {
       const dx = e.clientX - zoomPanState.dragStartX;
       const dy = e.clientY - zoomPanState.dragStartY;
-      
+
       setZoomPanState(prev => ({
         ...prev,
         positionX: prev.lastPositionX + dx,
@@ -448,7 +463,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       const touch = e.touches[0];
       const dx = touch.clientX - zoomPanState.dragStartX;
       const dy = touch.clientY - zoomPanState.dragStartY;
-      
+
       setZoomPanState(prev => ({
         ...prev,
         positionX: prev.lastPositionX + dx,
@@ -469,13 +484,72 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     resetTransform();
   }, [resetTransform]);
 
+  const renderFaceOverlay = useCallback(() => {
+    if (!faceDetectionMode || !currentImage || !currentImage.faces || !imageRef.current) {
+      return null;
+    }
+
+    const img = imageRef.current;
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = imageContainerRef.current?.getBoundingClientRect();
+
+    if (!containerRect) return null;
+
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+
+    if (!naturalWidth || !naturalHeight) return null;
+
+    // 计算图片在容器中的实际显示尺寸和位置
+    const displayWidth = imgRect.width;
+    const displayHeight = imgRect.height;
+    const scaleX = displayWidth / naturalWidth;
+    const scaleY = displayHeight / naturalHeight;
+
+    // 图片相对于容器的偏移
+    const offsetX = imgRect.left - containerRect.left;
+    const offsetY = imgRect.top - containerRect.top;
+
+    return (
+      <div className="face-detection-overlay">
+        <div className="face-mask" />
+        {currentImage.faces.map((face: Face, index: number) => {
+          const faceX = offsetX + (face.x * scaleX);
+          const faceY = offsetY + (face.y * scaleY);
+          const faceWidth = face.w * scaleX;
+          const faceHeight = face.h * scaleY;
+
+          return (
+            <div
+              key={index}
+              className="face-highlight"
+              style={{
+                left: faceX,
+                top: faceY,
+                width: faceWidth,
+                height: faceHeight,
+              }}
+            >
+              <div className="face-label">
+                {face.personName || '未知人物'}
+                <div className="face-confidence">
+                  置信度: {(face.faceConfidence * 100).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }, [faceDetectionMode, currentImage, zoomPanState.scale, zoomPanState.positionX, zoomPanState.positionY, rotation]);
+
   useEffect(() => {
     if (visible) {
       window.addEventListener('mouseup', handleMouseUp);
       window.addEventListener('mouseleave', handleMouseUp);
       window.addEventListener('touchend', handleTouchEnd);
       window.addEventListener('touchcancel', handleTouchEnd);
-      
+
       return () => {
         window.removeEventListener('mouseup', handleMouseUp);
         window.removeEventListener('mouseleave', handleMouseUp);
@@ -501,8 +575,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       <div className="viewer-overlay" onClick={onClose}></div>
 
       <div className="viewer-content">
-        <div 
-          className="image-container" 
+        <div
+          className="image-container"
           ref={imageContainerRef}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -520,9 +594,9 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
                 style={{
                   transform: `translate(${zoomPanState.positionX}px, ${zoomPanState.positionY}px) rotate(${rotation}deg) scale(${zoomPanState.scale})`,
                   opacity: imageLoaded ? 1 : 0.3,
-                  transition: zoomPanState.isDragging ? 'none' : 
-                             fadeTransition ? 'opacity 0.15s ease, transform 0.1s ease-out' :
-                             'transform 0.1s ease-out',
+                  transition: zoomPanState.isDragging ? 'none' :
+                    fadeTransition ? 'opacity 0.15s ease, transform 0.1s ease-out' :
+                      'transform 0.1s ease-out',
                   cursor: zoomPanState.scale > 1 ? 'grab' : 'auto',
                   transformOrigin: 'center center',
                   willChange: 'opacity, transform'
@@ -533,12 +607,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             )}
           </div>
 
+          {renderFaceOverlay()}
+
           {(!imageLoaded || currentLoading) && (
             <div className="image-loading-spinner">
               <Spin size="large" tip={<span className="loading-text">图片加载中...</span>} />
             </div>
           )}
-
           <div className="zoom-controls">
             <Space>
               <Button icon={<ExpandOutlined />} onClick={resetTransform} />
@@ -546,6 +621,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button icon={<ZoomInOutlined />} onClick={() => zoomIn()} />
               <Button icon={<RotateLeftOutlined />} onClick={() => setRotation(prev => prev - 90)} />
               <Button icon={<RotateRightOutlined />} onClick={() => setRotation(prev => prev + 90)} />
+              {currentImage && currentImage.faces && currentImage.faces.length > 0 && (
+                <Button
+                  icon={<UserOutlined />}
+                  onClick={handleFaceDetectionToggle}
+                  type={faceDetectionMode ? 'primary' : 'default'}
+                />
+              )}
             </Space>
           </div>
         </div>
@@ -608,7 +690,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <span>{currentImage.favoriteCount}</span>
             )}
           </Button>
-          
+
           <Dropdown menu={{ items: albumItems }} disabled={loadingAlbums || albums.length === 0}>
             <Button
               type="text"

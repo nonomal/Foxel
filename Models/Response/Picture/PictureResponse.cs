@@ -15,12 +15,17 @@ public record PictureResponse
     public DateTime? TakenAt { get; set; }
     public ExifInfo? ExifInfo { get; set; }
     public int? UserId { get; set; }
-    public string? Username { get; set; }
+    private string? _username;
+    public string? Username
+    {
+        get => string.IsNullOrEmpty(_username) ? "匿名" : _username;
+        set => _username = value;
+    }
     public bool IsFavorited { get; set; }
     public int FavoriteCount { get; set; }
     public int? AlbumId { get; set; }
     public string? AlbumName { get; set; }
     public PermissionType Permission { get; set; } = PermissionType.Public;
     public string? StorageModeName { get; set; }
-    
+    public List<FaceResponse>? Faces { get; set; }
 }

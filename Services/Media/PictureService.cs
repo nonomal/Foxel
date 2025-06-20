@@ -7,7 +7,8 @@ using Foxel.Services.AI;
 using Foxel.Services.Background;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
-using Foxel.Services.VectorDB;
+using Foxel.Services.Mapping;
+using Foxel.Services.VectorDb;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,50 +21,10 @@ public class PictureService(
     IBackgroundTaskQueue backgroundTaskQueue,
     IVectorDbService vectorDbService,
     IStorageService storageService,
+    IMappingService mappingService, // 添加 IMappingService
     ILogger<PictureService> logger)
     : IPictureService
 {
-    private async Task<PictureResponse> MapPictureToResponseAsync(Picture picture)
-    {
-        string pathUrl = string.Empty;
-        if (!string.IsNullOrEmpty(picture.Path))
-        {
-            pathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.Path)));
-        }
-
-        string originalPathUrl = string.Empty;
-        if (!string.IsNullOrEmpty(picture.OriginalPath))
-        {
-            originalPathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.OriginalPath)));
-        }
-
-        string? thumbnailPathUrl = null;
-        if (!string.IsNullOrEmpty(picture.ThumbnailPath))
-        {
-            thumbnailPathUrl = await storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.ThumbnailPath)));
-        }
-        return new PictureResponse
-        {
-            Id = picture.Id,
-            Name = picture.Name,
-            Path = pathUrl,
-            OriginalPath = originalPathUrl,
-            ThumbnailPath = thumbnailPathUrl,
-            Description = picture.Description,
-            CreatedAt = picture.CreatedAt,
-            Tags = picture.Tags != null ? picture.Tags.Select(t => t.Name).ToList() : new List<string>(),
-            TakenAt = picture.TakenAt,
-            ExifInfo = picture.ExifInfo ?? new ExifInfo(),
-            UserId = picture.UserId,
-            Username = picture.User?.UserName,
-            AlbumId = picture.AlbumId,
-            Permission = picture.Permission,
-            StorageModeName = picture.StorageMode?.Name
-        };
-    }
 
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(
         int page = 1,
@@ -143,20 +104,19 @@ public class PictureService(
         var picturesData = await dbContext.Pictures
             .Include(p => p.Tags)
             .Include(p => p.User)
-            .Include(p=>p.StorageMode)
+            .Include(p => p.StorageMode)
             .Where(p => ids.Contains((ulong)p.Id))
             .ToListAsync();
         var picturesOrdered = ids
             .Select(id => picturesData.FirstOrDefault(p => p.Id == (int)id))
             .Where(p => p != null)
             .ToList();
-        var paginatedResultsTasks = picturesOrdered
+        var paginatedResults = picturesOrdered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(async p => await MapPictureToResponseAsync(p!))
+            .Select(p => mappingService.MapPictureToResponse(p!))
             .ToList();
 
-        var paginatedResults = (await Task.WhenAll(paginatedResultsTasks)).ToList();
 
         var totalCount = picturesOrdered.Count;
 
@@ -197,15 +157,17 @@ public class PictureService(
         // 构建基础查询
         IQueryable<Picture> query = dbContext.Pictures
             .Include(p => p.Tags)
-            .Include(p => p.User);
+            .Include(p => p.User)
+            .Include(p => p.Faces!)
+            .ThenInclude(f => f.Cluster);
 
         // 应用文本搜索条件
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
             var searchTerm = searchQuery.ToLower();
             query = query.Where(p =>
-                (p.Name.ToLower().Contains(searchTerm)) ||
-                (p.Description.ToLower().Contains(searchTerm)));
+                p.Name.ToLower().Contains(searchTerm) ||
+                p.Description.ToLower().Contains(searchTerm));
         }
 
         // 应用共通的查询条件
@@ -220,16 +182,15 @@ public class PictureService(
 
         // 获取分页数据
         var picturesData = await query
-            .Include(x=>x.StorageMode)
+            .Include(x => x.StorageMode)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
         // 转换为响应格式
-        var picturesTasks = picturesData
-            .Select(async p => await MapPictureToResponseAsync(p))
+        var pictures = picturesData
+            .Select(p => mappingService.MapPictureToResponse(p))
             .ToList();
-        var pictures = (await Task.WhenAll(picturesTasks)).ToList();
 
         // 处理收藏信息
         await PopulateFavoriteInfo(dbContext, pictures, userId);
@@ -561,51 +522,47 @@ public class PictureService(
             var storedHdPath = await storageService.ExecuteAsync(storageModeId.Value,
                 provider => provider.SaveAsync(convertedHdStream, hdStorageFileName!, hdContentType!));
 
-            bool shouldGenerateThumbnailNow = userId.HasValue;
-            if (shouldGenerateThumbnailNow)
+            try
             {
-                try
+                // 缩略图最大宽度
+                int thumbnailMaxWidth = 500; // 默认值
+                string thumbnailMaxWidthConfigKey = "Upload:ThumbnailMaxWidth";
+                string? thumbnailMaxWidthConfig = configuration[thumbnailMaxWidthConfigKey];
+                if (!string.IsNullOrEmpty(thumbnailMaxWidthConfig) && int.TryParse(thumbnailMaxWidthConfig, out int parsedMaxWidth))
                 {
-                    // 缩略图最大宽度
-                    int thumbnailMaxWidth = 500; // 默认值
-                    string thumbnailMaxWidthConfigKey = "Upload:ThumbnailMaxWidth";
-                    string? thumbnailMaxWidthConfig = configuration[thumbnailMaxWidthConfigKey];
-                    if (!string.IsNullOrEmpty(thumbnailMaxWidthConfig) && int.TryParse(thumbnailMaxWidthConfig, out int parsedMaxWidth))
-                    {
-                        thumbnailMaxWidth = Math.Max(100, parsedMaxWidth); // 最小宽度 100
-                    }
-                    else
-                    {
-                        logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图最大宽度: {DefaultMaxWidth}", thumbnailMaxWidthConfigKey, thumbnailMaxWidth);
-                    }
-
-                    // 缩略图压缩质量
-                    int thumbnailQuality = 75; // 默认值
-                    string thumbnailQualityConfigKey = "Upload:ThumbnailCompressionQuality";
-                    string? thumbnailQualityConfig = configuration[thumbnailQualityConfigKey];
-                    if (!string.IsNullOrEmpty(thumbnailQualityConfig) && int.TryParse(thumbnailQualityConfig, out int parsedThumbQuality))
-                    {
-                        thumbnailQuality = Math.Clamp(parsedThumbQuality, 30, 90); // 限制在 30-90 之间
-                    }
-                    else
-                    {
-                        logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图压缩质量: {DefaultThumbQuality}", thumbnailQualityConfigKey, thumbnailQuality);
-                    }
-
-                    tempThumbnailLocalPath = Path.GetTempFileName() + ".webp";
-                    File.Move(Path.GetTempFileName(), tempThumbnailLocalPath);
-                    await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, thumbnailMaxWidth, thumbnailQuality);
-
-                    string thumbnailUploadFileName = $"{baseName}-thumbnail.webp";
-                    await using var thumbnailFileStream =
-                        new FileStream(tempThumbnailLocalPath!, FileMode.Open, FileAccess.Read);
-                    storedThumbnailPath = await storageService.ExecuteAsync(storageModeId.Value,
-                        provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName!, "image/webp"));
+                    thumbnailMaxWidth = Math.Max(100, parsedMaxWidth); // 最小宽度 100
                 }
-                catch (Exception ex)
+                else
                 {
-                    logger.LogError(ex, "生成和上传缩略图失败 during initial upload");
+                    logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图最大宽度: {DefaultMaxWidth}", thumbnailMaxWidthConfigKey, thumbnailMaxWidth);
                 }
+
+                // 缩略图压缩质量
+                int thumbnailQuality = 75; // 默认值
+                string thumbnailQualityConfigKey = "Upload:ThumbnailCompressionQuality";
+                string? thumbnailQualityConfig = configuration[thumbnailQualityConfigKey];
+                if (!string.IsNullOrEmpty(thumbnailQualityConfig) && int.TryParse(thumbnailQualityConfig, out int parsedThumbQuality))
+                {
+                    thumbnailQuality = Math.Clamp(parsedThumbQuality, 30, 90); // 限制在 30-90 之间
+                }
+                else
+                {
+                    logger.LogWarning("配置项 '{ConfigKey}' 未找到或无效，使用默认缩略图压缩质量: {DefaultThumbQuality}", thumbnailQualityConfigKey, thumbnailQuality);
+                }
+
+                tempThumbnailLocalPath = Path.GetTempFileName() + ".webp";
+                File.Move(Path.GetTempFileName(), tempThumbnailLocalPath);
+                await ImageHelper.CreateThumbnailAsync(tempOriginalLocalPath, tempThumbnailLocalPath, thumbnailMaxWidth, thumbnailQuality);
+
+                string thumbnailUploadFileName = $"{baseName}-thumbnail.webp";
+                await using var thumbnailFileStream =
+                    new FileStream(tempThumbnailLocalPath!, FileMode.Open, FileAccess.Read);
+                storedThumbnailPath = await storageService.ExecuteAsync(storageModeId.Value,
+                    provider => provider.SaveAsync(thumbnailFileStream, thumbnailUploadFileName!, "image/webp"));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "生成和上传缩略图失败 during initial upload");
             }
 
             string initialTitle = Path.GetFileNameWithoutExtension(fileName);
@@ -661,9 +618,17 @@ public class PictureService(
                     UserIdForPicture = picture.UserId
                 };
                 await backgroundTaskQueue.QueueVisualRecognitionTaskAsync(visualRecognitionPayload);
+
+                // 添加人脸识别任务
+                var faceRecognitionPayload = new Background.Processors.FaceRecognitionPayload
+                {
+                    PictureId = picture.Id,
+                    UserIdForPicture = picture.UserId
+                };
+                await backgroundTaskQueue.QueueFaceRecognitionTaskAsync(faceRecognitionPayload);
             }
 
-            var pictureResponse = await MapPictureToResponseAsync(picture);
+            var pictureResponse = mappingService.MapPictureToResponse(picture);
             return (pictureResponse, picture.Id);
         }
         finally
@@ -833,7 +798,8 @@ public class PictureService(
         int pictureId,
         string? name = null,
         string? description = null,
-        List<string>? tags = null)
+        List<string>? tags = null,
+        PermissionType? permission = null)
     {
         await using var dbContext = await contextFactory.CreateDbContextAsync();
 
@@ -856,6 +822,11 @@ public class PictureService(
         if (!string.IsNullOrWhiteSpace(description))
         {
             picture.Description = description.Trim();
+        }
+
+        if (permission.HasValue)
+        {
+            picture.Permission = permission.Value;
         }
 
         // 只有当名称或描述发生变化时才更新嵌入向量
@@ -906,7 +877,7 @@ public class PictureService(
         picture.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync();
-        var pictureResponse = await MapPictureToResponseAsync(picture);
+        var pictureResponse = mappingService.MapPictureToResponse(picture);
         return (pictureResponse, userId);
     }
 
@@ -986,7 +957,7 @@ public class PictureService(
             return null;
         }
 
-        var pictureResponse = await MapPictureToResponseAsync(picture);
+        var pictureResponse = mappingService.MapPictureToResponse(picture);
 
         return picture;
     }

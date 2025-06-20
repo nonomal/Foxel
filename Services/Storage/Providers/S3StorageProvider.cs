@@ -1,9 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
-using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace Foxel.Services.Storage.Providers;
 

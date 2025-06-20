@@ -375,3 +375,63 @@
 .image-loading-spinner .ant-spin-dot-item {
   background-color: white;
 }
+
+.face-detection-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1004;
+}
+
+.face-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1;
+}
+
+.face-highlight {
+  position: absolute;
+  border: 2px solid #1890ff;
+  border-radius: 4px;
+  background-color: transparent;
+  box-shadow: 0 0 10px rgba(24, 144, 255, 0.5);
+  z-index: 2;
+  animation: faceHighlight 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes faceHighlight {
+  0% {
+    border-color: #1890ff;
+    box-shadow: 0 0 10px rgba(24, 144, 255, 0.5);
+  }
+  100% {
+    border-color: #52c41a;
+    box-shadow: 0 0 15px rgba(82, 196, 26, 0.7);
+  }
+}
+
+.face-label {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(24, 144, 255, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.face-confidence {
+  opacity: 0.8;
+  font-size: 10px;
+}

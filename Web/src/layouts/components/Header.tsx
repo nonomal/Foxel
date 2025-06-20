@@ -10,7 +10,7 @@ import {
     SearchOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getMainRoutes, getAdminRoutes, type RouteConfig } from '../../routes';
 import UserAvatar from '../../components/UserAvatar';
 import { UserRole } from '../../api';

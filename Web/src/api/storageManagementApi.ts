@@ -139,6 +139,14 @@ export const getStorageTypes = async (): Promise<BaseResult<StorageTypeResponse[
     );
 };
 
+// 获取可用的存储模式 (通常是启用的模式，用于选择)
+export const getAvailableStorageModes = async (): Promise<BaseResult<StorageModeResponse[]>> => {
+    return fetchApi<StorageModeResponse[]>(
+        '/management/storage/get_available_modes',
+        { method: 'GET' }
+    );
+};
+
 // 获取默认存储模式ID
 export const getDefaultStorageModeId = async (): Promise<BaseResult<number | null>> => {
     return fetchApi<number | null>(

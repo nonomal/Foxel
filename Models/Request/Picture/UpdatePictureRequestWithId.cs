@@ -1,6 +1,11 @@
-namespace Foxel.Models.Request.Picture;
-
-public record UpdatePictureRequestWithId : UpdatePictureRequest
+namespace Foxel.Models.Request.Picture
 {
-    public int Id { get; set; }
+    public class UpdatePictureRequestWithId
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public List<string>? Tags { get; set; }
+        public int? Permission { get; set; } // Added Permission property
+    }
 }

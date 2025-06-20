@@ -8,7 +8,8 @@ import {
   CompassOutlined,
   DashboardOutlined,
   UserOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons';
 
 import AllImages from '../pages/allImages/Index';
@@ -25,6 +26,9 @@ import PictureManagement from '../pages/admin/pictures/Index';
 import UserDetail from '../pages/admin/users/UserDetail';
 import AdminLogManagement from '../pages/admin/log/Index';
 import StorageManagementPage from '../pages/admin/storage/StorageManagement';
+import AlbumManagement from '../pages/admin/album/Index';
+import FaceManagement from '../pages/admin/face/Index';
+import FaceExplore from '../pages/explore/Index';
 
 export interface RouteConfig {
   path: string;
@@ -54,6 +58,17 @@ const routes: RouteConfig[] = [
     area: 'main',
     breadcrumb: {
       title: '所有图片'
+    }
+  },
+  {
+    path: 'explore',
+    key: 'explore',
+    icon: <CompassOutlined />,
+    label: '探索',
+    element: <FaceExplore />,
+    area: 'main',
+    breadcrumb: {
+      title: '探索',
     }
   },
   {
@@ -145,6 +160,7 @@ const routes: RouteConfig[] = [
     label: '用户管理',
     element: <UserManagement />,
     area: 'admin',
+    groupLabel: '用户中心',
     breadcrumb: {
       title: '用户管理'
     }
@@ -165,13 +181,37 @@ const routes: RouteConfig[] = [
     path: 'pictures',
     key: 'admin-picture',
     icon: <PictureOutlined />,
-    label: '图片',
+    label: '图片管理',
     element: <PictureManagement />,
     area: 'admin',
-    groupLabel: '资源管理',
+    groupLabel: '内容管理',
     breadcrumb: {
-      title: '图片'
-    }    
+      title: '图片管理'
+    }
+  },
+  {
+    path: 'albums-admin',
+    key: 'admin-album',
+    icon: <FolderOutlined />,
+    label: '相册管理',
+    element: <AlbumManagement />,
+    area: 'admin',
+    groupLabel: '内容管理',
+    breadcrumb: {
+      title: '相册管理'
+    }
+  },
+  {
+    path: 'faces-admin',
+    key: 'admin-face',
+    icon: <FolderOutlined />,
+    label: '人脸管理',
+    element: <FaceManagement />,
+    area: 'admin',
+    groupLabel: '内容管理',
+    breadcrumb: {
+      title: '人脸管理'
+    }
   },
   {
     path: 'log',
@@ -180,17 +220,19 @@ const routes: RouteConfig[] = [
     label: '日志中心',
     element: <AdminLogManagement />,
     area: 'admin',
+    groupLabel: '系统运维',
     breadcrumb: {
       title: '日志中心'
     }
   },
-    {
+  {
     path: 'storage',
     key: 'admin-storage',
-    icon: <FileTextOutlined />,
+    icon: <DatabaseOutlined />,
     label: '存储配置',
     element: <StorageManagementPage />,
     area: 'admin',
+    groupLabel: '系统运维',
     breadcrumb: {
       title: '存储配置'
     }
@@ -202,6 +244,7 @@ const routes: RouteConfig[] = [
     label: '系统设置',
     element: <System />,
     area: 'admin',
+    groupLabel: '系统运维',
     breadcrumb: {
       title: '系统设置'
     }

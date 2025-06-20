@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, matchPath, Navigate } from 'react-rou
 import { Layout, theme, message } from 'antd';
 import { clearAuthData, isAuthenticated } from '../api';
 import useIsMobile from '../hooks/useIsMobile';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';

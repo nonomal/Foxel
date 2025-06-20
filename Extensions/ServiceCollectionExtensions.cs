@@ -12,9 +12,9 @@ using Foxel.Services.Initializer;
 using Foxel.Services.Management;
 using Foxel.Services.Media;
 using Foxel.Services.Storage;
-using Foxel.Services.Storage.Providers;
-using Foxel.Services.VectorDB;
 using Foxel.Services.Background.Processors;
+using Foxel.Services.Mapping;
+using Foxel.Services.VectorDb;
 
 namespace Foxel.Extensions;
 
@@ -23,21 +23,26 @@ public static class ServiceCollectionExtensions
     public static void AddCoreServices(this IServiceCollection services)
     {
         services.AddSingleton<IConfigService, ConfigService>();
-        services.AddSingleton<IAiService, AiService>();
-        services.AddSingleton<IPictureService, PictureService>();
-        services.AddSingleton<IAuthService, AuthService>();
-        services.AddSingleton<ITagService, TagService>();
-        services.AddSingleton<IAlbumService, AlbumService>();
-        services.AddSingleton<IUserManagementService, UserManagementService>();
-        services.AddSingleton<IPictureManagementService, PictureManagementService>();
-        services.AddSingleton<ILogManagementService, LogManagementService>();
-        services.AddSingleton<IStorageManagementService, StorageManagementService>();
+        services.AddScoped<IAiService, AiService>();
+        services.AddScoped<IPictureService, PictureService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITagService, TagService>();
+        services.AddScoped<IAlbumService, AlbumService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IPictureManagementService, PictureManagementService>();
+        services.AddScoped<IAlbumManagementService, AlbumManagementService>();
+        services.AddScoped<ILogManagementService, LogManagementService>();
+        services.AddScoped<IStorageManagementService, StorageManagementService>();
+        services.AddScoped<IFaceManagementService, FaceManagementService>();
         services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
         services.AddHostedService<QueuedHostedService>();
         services.AddSingleton<IStorageService, StorageService>();
         services.AddSingleton<PictureTaskProcessor>();
+        services.AddSingleton<FaceRecognitionTaskProcessor>();
         services.AddSingleton<VisualRecognitionTaskProcessor>();
-        services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
+        services.AddTransient<IDatabaseInitializer, DatabaseInitializer>();
+        services.AddScoped<IMappingService, MappingService>();
+        services.AddScoped<IFaceClusteringService, FaceClusteringService>();
     }
 
     public static void AddApplicationDbContext(this IServiceCollection services, IConfiguration configuration)

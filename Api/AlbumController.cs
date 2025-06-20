@@ -1,11 +1,11 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.Request.Album;
 using Foxel.Models.Response.Album;
 using Foxel.Services.Media;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Foxel.Controllers;
+namespace Foxel.Api;
 
 [Authorize]
 [Route("api/album")]
@@ -55,7 +55,7 @@ public class AlbumController(IAlbumService albumService) : BaseApiController
             if (userId == null)
                 return Error<AlbumResponse>("无法识别用户信息", 401);
 
-            var album = await albumService.CreateAlbumAsync(request.Name, request.Description, userId.Value);
+            var album = await albumService.CreateAlbumAsync(request.Name, request.Description, userId.Value, request.CoverPictureId);
             return Success(album, "相册创建成功");
         }
         catch (Exception ex)
@@ -74,8 +74,7 @@ public class AlbumController(IAlbumService albumService) : BaseApiController
             if (currentUserId == null)
                 return Error<AlbumResponse>("无法识别用户信息", 401);
 
-            var album = await albumService.UpdateAlbumAsync(request.Id, request.Name, request.Description,
-                currentUserId);
+            var album = await albumService.UpdateAlbumAsync(request.Id, request.Name, request.Description, currentUserId, request.CoverPictureId);
             return Success(album, "相册更新成功");
         }
         catch (UnauthorizedAccessException)
@@ -192,4 +191,5 @@ public class AlbumController(IAlbumService albumService) : BaseApiController
             return Error<bool>($"从相册移除图片失败: {ex.Message}", 500);
         }
     }
+
 }

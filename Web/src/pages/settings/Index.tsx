@@ -1,5 +1,5 @@
 import { Tabs, Layout, Menu, Space } from 'antd';
-import { useAuth } from '../../auth/AuthContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useState, type SetStateAction } from 'react';
 import UserProfile from './UserProfile.tsx';
 import useIsMobile from '../../hooks/useIsMobile';

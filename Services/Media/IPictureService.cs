@@ -44,7 +44,7 @@ public interface IPictureService
     /// <returns>每个图片ID对应的删除结果、可能的错误信息和所有者ID</returns>
     Task<Dictionary<int, (bool Success, string? ErrorMessage, int? UserId)>> DeleteMultiplePicturesAsync(
         List<int> pictureIds);
-    
+
     /// <summary>
     /// 更新图片信息
     /// </summary>
@@ -52,12 +52,14 @@ public interface IPictureService
     /// <param name="name">新标题（可选）</param>
     /// <param name="description">新描述（可选）</param>
     /// <param name="tags">新标签（可选）</param>
+    /// <param name="permission">权限</param>
     /// <returns>更新后的图片视图模型和所有者ID</returns>
     Task<(PictureResponse Picture, int? UserId)> UpdatePictureAsync(
         int pictureId, 
         string? name = null, 
         string? description = null,
-        List<string>? tags = null);
+        List<string>? tags = null,
+        PermissionType? permission = null);
         
     /// <summary>
     /// 收藏图片

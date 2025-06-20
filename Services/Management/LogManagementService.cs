@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Foxel.Models;
-using Foxel.Models.DataBase;
 using Foxel.Models.Response.Log;
 
 namespace Foxel.Services.Management;
