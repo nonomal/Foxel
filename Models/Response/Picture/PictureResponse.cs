@@ -1,5 +1,4 @@
 using Foxel.Models.DataBase;
-using Foxel.Models.Response.Face;
 
 namespace Foxel.Models.Response.Picture;
 

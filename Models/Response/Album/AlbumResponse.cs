@@ -1,5 +1,3 @@
-using Foxel.Models.Response.Picture;
-
 namespace Foxel.Models.Response.Album;
 
 public record AlbumResponse

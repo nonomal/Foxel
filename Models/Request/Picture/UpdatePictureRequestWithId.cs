@@ -1,5 +1,3 @@
-using System.Collections.Generic; // Required for List<string>
-
 namespace Foxel.Models.Request.Picture
 {
     public class UpdatePictureRequestWithId

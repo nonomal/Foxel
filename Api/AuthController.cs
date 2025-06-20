@@ -1,12 +1,12 @@
 using Foxel.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Foxel.Models.Request.Auth;
 using Foxel.Models.Response.Auth;
 using Foxel.Services.Auth;
 using Foxel.Services.Configuration;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Foxel.Controllers;
+namespace Foxel.Api;
 
 [Route("api/auth")]
 public class AuthController(IAuthService authService, IConfigService configuration) : BaseApiController
