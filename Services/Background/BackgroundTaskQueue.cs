@@ -21,7 +21,7 @@ public sealed class BackgroundTaskQueue : IBackgroundTaskQueue, IDisposable
     public BackgroundTaskQueue(
         IServiceProvider serviceProvider,
         IDbContextFactory<MyDbContext> contextFactory,
-        IConfigService configuration,
+        ConfigService configuration,
         ILogger<BackgroundTaskQueue> logger)
     {
         _serviceProvider = serviceProvider; 

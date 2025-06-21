@@ -5,10 +5,10 @@ namespace Foxel.Services.VectorDb;
 public class VectorDbInitializer : IHostedService
 {
     private readonly IVectorDbService _vectorDbService;
-    private readonly IConfigService _configService;
+    private readonly ConfigService _configService;
     private const string VectorDbTypeConfigKey = "VectorDb:Type";
 
-    public VectorDbInitializer(IVectorDbService vectorDbService, IConfigService configService)
+    public VectorDbInitializer(IVectorDbService vectorDbService, ConfigService configService)
     {
         _vectorDbService = vectorDbService;
         _configService = configService;

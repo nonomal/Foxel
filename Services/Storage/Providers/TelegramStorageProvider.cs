@@ -17,7 +17,7 @@ public class TelegramStorageConfig
 }
 
 [StorageProvider(StorageType.Telegram)]
-public class TelegramStorageProvider(TelegramStorageConfig _telegramConfig, IConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
+public class TelegramStorageProvider(TelegramStorageConfig _telegramConfig, ConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
 {
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {

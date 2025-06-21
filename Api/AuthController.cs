@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Foxel.Api;
 
 [Route("api/auth")]
-public class AuthController(IAuthService authService, IConfigService configuration) : BaseApiController
+public class AuthController(AuthService authService, ConfigService configuration) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult<BaseResult<AuthResponse>>> Register([FromBody] RegisterRequest request)

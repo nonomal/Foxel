@@ -9,19 +9,24 @@ using Foxel.Services.Configuration;
 using Foxel.Services.Storage;
 using Foxel.Services.Mapping;
 using Foxel.Services.VectorDb;
+using Foxel.Repositories;
 using Foxel.Utils;
-using Microsoft.EntityFrameworkCore;
 
 namespace Foxel.Services.Media;
 
 public class PictureService(
-    IDbContextFactory<MyDbContext> contextFactory,
-    IAiService embeddingService,
-    IConfigService configuration,
+    PictureRepository pictureRepository,
+    FavoriteRepository favoriteRepository,
+    AlbumRepository albumRepository,
+    UserRepository userRepository,
+    TagRepository tagRepository,
+    StorageModeRepository storageModeRepository,
+    AiService embeddingService,
+    ConfigService configuration,
     IBackgroundTaskQueue backgroundTaskQueue,
     IVectorDbService vectorDbService,
     IStorageService storageService,
-    IMappingService mappingService, // 添加 IMappingService
+    MappingService mappingService,
     ILogger<PictureService> logger)
     : IPictureService
 {
@@ -48,24 +53,16 @@ public class PictureService(
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 8;
 
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        // 决定是使用向量搜索还是普通搜索
         if (useVectorSearch && !string.IsNullOrWhiteSpace(searchQuery))
         {
             try
             {
                 return await PerformVectorSearchAsync(
-                    dbContext, page, pageSize, searchQuery, tags,
-                    startDate, endDate, userId, onlyWithGps, similarityThreshold,
-                    excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
+                    page, pageSize, searchQuery, userId);
             }
             catch (Exception ex)
             {
-                // 如果向量搜索失败，记录错误并回退到标准搜索
                 logger.LogWarning("向量搜索失败，回退到标准搜索: {Message}", ex.Message);
-
-                // 如果是明确的配置错误，则向上抛出异常
                 if (ex.Message.Contains("请检查嵌入模型配置"))
                 {
                     throw;
@@ -74,57 +71,41 @@ public class PictureService(
         }
 
         return await PerformStandardSearchAsync(
-            dbContext, page, pageSize, searchQuery, tags,
+            page, pageSize, searchQuery, tags,
             startDate, endDate, userId, sortBy, onlyWithGps,
             excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
     }
 
-    // 执行向量搜索
     private async Task<PaginatedResult<PictureResponse>> PerformVectorSearchAsync(
-        MyDbContext dbContext,
         int page,
         int pageSize,
         string searchQuery,
-        List<string>? tags,
-        DateTime? startDate,
-        DateTime? endDate,
-        int? userId,
-        bool? onlyWithGps,
-        double similarityThreshold,
-        int? excludeAlbumId,
-        int? albumId,
-        bool onlyFavorites,
-        int? ownerId,
-        bool includeAllPublic)
+        int? userId)
     {
         var queryEmbedding = await embeddingService.GetEmbeddingAsync(searchQuery);
         var res = await vectorDbService.SearchAsync(queryEmbedding, userId);
 
         var ids = res.Select(r => r.Id).ToList();
-        var picturesData = await dbContext.Pictures
-            .Include(p => p.Tags)
-            .Include(p => p.User)
-            .Include(p => p.StorageMode)
-            .Where(p => ids.Contains((ulong)p.Id))
-            .ToListAsync();
+        var picturesData = await pictureRepository.GetPicturesByIdsAsync(ids.Select(id => (int)id));
+
         var picturesOrdered = ids
             .Select(id => picturesData.FirstOrDefault(p => p.Id == (int)id))
             .Where(p => p != null)
             .ToList();
+
         var paginatedResults = picturesOrdered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(p => mappingService.MapPictureToResponse(p!))
             .ToList();
 
-
         var totalCount = picturesOrdered.Count;
 
-        await PopulateFavoriteInfo(dbContext, paginatedResults, userId);
+        await PopulateFavoriteInfo(paginatedResults, userId);
 
         if (userId.HasValue)
         {
-            await PopulateAlbumInfo(dbContext, paginatedResults, userId.Value);
+            await PopulateAlbumInfo(paginatedResults, userId.Value);
         }
 
         return new PaginatedResult<PictureResponse>
@@ -138,7 +119,6 @@ public class PictureService(
 
     // 执行标准搜索
     private async Task<PaginatedResult<PictureResponse>> PerformStandardSearchAsync(
-        MyDbContext dbContext,
         int page,
         int pageSize,
         string? searchQuery,
@@ -154,52 +134,17 @@ public class PictureService(
         int? ownerId,
         bool includeAllPublic)
     {
-        // 构建基础查询
-        IQueryable<Picture> query = dbContext.Pictures
-            .Include(p => p.Tags)
-            .Include(p => p.User)
-            .Include(p => p.Faces!)
-            .ThenInclude(f => f.Cluster);
-
-        // 应用文本搜索条件
-        if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            var searchTerm = searchQuery.ToLower();
-            query = query.Where(p =>
-                p.Name.ToLower().Contains(searchTerm) ||
-                p.Description.ToLower().Contains(searchTerm));
-        }
-
-        // 应用共通的查询条件
-        query = ApplyCommonFilters(query, tags, startDate, endDate, userId, onlyWithGps,
-            excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
-
-        // 应用排序
-        query = ApplySorting(query, sortBy);
-
-        // 获取总记录数
-        var totalCount = await query.CountAsync();
-
-        // 获取分页数据
-        var picturesData = await query
-            .Include(x => x.StorageMode)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        var (picturesData, totalCount) = await pictureRepository.GetPicturesWithFiltersAsync(
+            page, pageSize, searchQuery, tags, startDate, endDate, userId, sortBy,
+            onlyWithGps, excludeAlbumId, albumId, onlyFavorites, ownerId, includeAllPublic);
 
         // 转换为响应格式
         var pictures = picturesData
             .Select(p => mappingService.MapPictureToResponse(p))
             .ToList();
 
-        // 处理收藏信息
-        await PopulateFavoriteInfo(dbContext, pictures, userId);
-
-        // 为当前用户的图片添加相册信息
-        if (userId.HasValue)
-        {
-            await PopulateAlbumInfo(dbContext, pictures, userId.Value);
-        }
+        // 处理收藏信息和相册信息
+        await PopulateAdditionalInfo(pictures, userId);
 
         return new PaginatedResult<PictureResponse>
         {
@@ -210,181 +155,53 @@ public class PictureService(
         };
     }
 
-    // 应用共通的过滤条件
-    private IQueryable<Picture> ApplyCommonFilters(
-        IQueryable<Picture> query,
-        List<string>? tags,
-        DateTime? startDate,
-        DateTime? endDate,
-        int? userId,
-        bool? onlyWithGps,
-        int? excludeAlbumId,
-        int? albumId,
-        bool onlyFavorites,
-        int? ownerId,
-        bool includeAllPublic)
+    // 统一处理附加信息（收藏和相册）
+    private async Task PopulateAdditionalInfo(List<PictureResponse> pictures, int? userId)
     {
-        // 应用标签筛选
-        if (tags != null && tags.Any())
+        await PopulateFavoriteInfo(pictures, userId);
+
+        if (userId.HasValue)
         {
-            foreach (var tag in tags)
-            {
-                var tagName = tag.Trim();
-                if (!string.IsNullOrEmpty(tagName))
-                {
-                    var normalizedTagName = tagName.ToLower();
-                    query = query.Where(p => p.Tags!.Any(t => t.Name.ToLower().Equals(normalizedTagName)));
-                }
-            }
+            await PopulateAlbumInfo(pictures, userId.Value);
         }
-
-        // 应用日期范围筛选
-        if (startDate.HasValue)
-        {
-            DateTime utcStartDate = startDate.Value.ToUniversalTime();
-            query = query.Where(p =>
-                (p.TakenAt.HasValue && p.TakenAt >= utcStartDate) ||
-                (!p.TakenAt.HasValue && p.CreatedAt >= utcStartDate));
-        }
-
-        if (endDate.HasValue)
-        {
-            DateTime utcEndDate = endDate.Value.ToUniversalTime().AddDays(1).AddMilliseconds(-1);
-            query = query.Where(p =>
-                (p.TakenAt.HasValue && p.TakenAt <= utcEndDate) ||
-                (!p.TakenAt.HasValue && p.CreatedAt <= utcEndDate));
-        }
-
-        // 应用用户筛选和权限过滤逻辑
-        if (ownerId.HasValue)
-        {
-            if (userId.HasValue && userId.Value == ownerId.Value)
-            {
-                query = query.Where(p => p.User != null && p.User.Id == ownerId.Value);
-            }
-            else
-            {
-                query = query.Where(p =>
-                    p.User != null && p.User.Id == ownerId.Value && p.Permission == PermissionType.Public);
-            }
-        }
-        else if (userId.HasValue)
-        {
-            if (includeAllPublic)
-            {
-                query = query.Where(p =>
-                    (p.User != null && p.User.Id == userId.Value) ||
-                    (p.User != null && p.User.Id != userId.Value &&
-                     p.Permission == PermissionType.Public)
-                );
-            }
-            else
-            {
-                query = query.Where(p => p.User != null && p.User.Id == userId.Value);
-            }
-        }
-        else
-        {
-            query = query.Where(p => p.Permission == PermissionType.Public);
-        }
-
-        // 筛选有GPS信息的图片
-        if (onlyWithGps == true)
-        {
-            query = query.Where(p =>
-                p.ExifInfo != null &&
-                !string.IsNullOrEmpty(p.ExifInfo.GpsLatitude) &&
-                !string.IsNullOrEmpty(p.ExifInfo.GpsLongitude));
-        }
-
-        // 排除指定相册的图片
-        if (excludeAlbumId.HasValue)
-        {
-            query = query.Where(p => p.AlbumId != excludeAlbumId.Value || p.AlbumId == null);
-        }
-
-        // 筛选指定相册的图片
-        if (albumId.HasValue)
-        {
-            query = query.Where(p => p.AlbumId == albumId.Value);
-        }
-
-        // 筛选收藏的图片
-        if (onlyFavorites && userId.HasValue)
-        {
-            query = query.Where(p => p.Favorites!.Any(f => f.User.Id == userId.Value));
-        }
-
-        return query;
-    }
-
-    // 应用排序
-    private IQueryable<Picture> ApplySorting(IQueryable<Picture> query, string? sortBy)
-    {
-        return sortBy?.ToLower() switch
-        {
-            // 拍摄时间排序
-            "takenat_desc" or "newest" => query.OrderByDescending(p => p.TakenAt ?? p.CreatedAt),
-            "takenat_asc" or "oldest" => query.OrderBy(p => p.TakenAt ?? p.CreatedAt),
-
-            // 上传时间排序
-            "uploaddate_desc" => query.OrderByDescending(p => p.CreatedAt),
-            "uploaddate_asc" => query.OrderBy(p => p.CreatedAt),
-
-            // 名称排序
-            "name_asc" or "name" => query.OrderBy(p => p.Name),
-            "name_desc" => query.OrderByDescending(p => p.Name),
-
-            // 默认排序
-            _ => query.OrderByDescending(p => p.TakenAt ?? p.CreatedAt)
-        };
     }
 
     // 填充收藏信息
-    private async Task PopulateFavoriteInfo(MyDbContext dbContext, List<PictureResponse> pictures, int? userId)
+    private async Task PopulateFavoriteInfo(List<PictureResponse> pictures, int? userId)
     {
-        if (userId.HasValue && pictures.Any())
+        if (!pictures.Any())
+            return;
+
+        var pictureIds = pictures.Select(p => p.Id).ToList();
+
+        if (userId.HasValue)
         {
-            var pictureIds = pictures.Select(p => p.Id).ToList();
-
             // 获取用户收藏的图片ID
-            var favoritedPictureIds = await dbContext.Favorites
-                .Where(f => f.User.Id == userId.Value && pictureIds.Contains(f.PictureId))
-                .Select(f => f.PictureId)
-                .ToHashSetAsync(); // 使用 ToHashSetAsync 提高查找效率
-
-            // 一次性获取所有相关图片的收藏总数
-            var favoriteCounts = await dbContext.Favorites
-                .Where(f => pictureIds.Contains(f.PictureId))
-                .GroupBy(f => f.PictureId)
-                .Select(g => new { PictureId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.PictureId, x => x.Count);
+            var favoritedPictureIds = await favoriteRepository.GetUserFavoritedPictureIdsAsync(userId.Value, pictureIds);
 
             foreach (var picture in pictures)
             {
                 picture.IsFavorited = favoritedPictureIds.Contains(picture.Id);
-                picture.FavoriteCount = favoriteCounts.GetValueOrDefault(picture.Id, 0);
             }
         }
-        else if (pictures.Any()) // 如果用户未登录，仍然需要获取收藏总数
+        else
         {
-            var pictureIds = pictures.Select(p => p.Id).ToList();
-            var favoriteCounts = await dbContext.Favorites
-                .Where(f => pictureIds.Contains(f.PictureId))
-                .GroupBy(f => f.PictureId)
-                .Select(g => new { PictureId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.PictureId, x => x.Count);
-
             foreach (var picture in pictures)
             {
                 picture.IsFavorited = false; // 用户未登录，不可能收藏
-                picture.FavoriteCount = favoriteCounts.GetValueOrDefault(picture.Id, 0);
             }
+        }
+
+        // 获取所有图片的收藏总数
+        var favoriteCounts = await favoriteRepository.GetFavoriteCountsAsync(pictureIds);
+        foreach (var picture in pictures)
+        {
+            picture.FavoriteCount = favoriteCounts.GetValueOrDefault(picture.Id, 0);
         }
     }
 
     // 填充相册信息
-    private async Task PopulateAlbumInfo(MyDbContext dbContext, List<PictureResponse> pictures, int userId)
+    private async Task PopulateAlbumInfo(List<PictureResponse> pictures, int userId)
     {
         if (!pictures.Any())
             return;
@@ -399,10 +216,7 @@ public class PictureService(
             return;
 
         // 获取相册信息
-        var pictureAlbums = await dbContext.Pictures
-            .Where(p => userPictureIds.Contains(p.Id) && p.AlbumId.HasValue)
-            .Select(p => new { p.Id, p.AlbumId, AlbumName = p.Album!.Name })
-            .ToDictionaryAsync(p => p.Id, p => new { p.AlbumId, p.AlbumName });
+        var pictureAlbums = await pictureRepository.GetPictureAlbumInfoAsync(userId, userPictureIds);
 
         // 填充相册信息到图片响应中
         foreach (var picture in pictures)
@@ -424,7 +238,6 @@ public class PictureService(
         int? albumId = null,
         int? storageModeId = null)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
         if (!storageModeId.HasValue)
         {
             string configKey = userId == null
@@ -438,11 +251,10 @@ public class PictureService(
                 throw new InvalidOperationException($"未配置默认存储模式: {configKey}");
             }
 
-            var defaultStorageMode = await dbContext.Set<StorageMode>()
-                .FirstOrDefaultAsync(sm => sm.Id == int.Parse(defaultMode) && sm.IsEnabled);
+            var defaultStorageMode = await storageModeRepository.GetEnabledByIdAsync(int.Parse(defaultMode));
             if (defaultStorageMode == null)
             {
-                logger.LogError("根据名称 '{DefaultModeName}' 找不到已启用的默认存储模式。", defaultMode);
+                logger.LogError("根据ID '{DefaultModeId}' 找不到已启用的默认存储模式。", defaultMode);
                 throw new InvalidOperationException($"找不到默认存储模式 '{defaultMode}'。");
             }
 
@@ -450,16 +262,10 @@ public class PictureService(
         }
         else
         {
-            var specifiedMode =
-                await dbContext.Set<StorageMode>().FirstOrDefaultAsync(sm => sm.Id == storageModeId.Value);
+            var specifiedMode = await storageModeRepository.GetEnabledByIdAsync(storageModeId.Value);
             if (specifiedMode == null)
             {
-                throw new ArgumentException($"找不到 ID 为 {storageModeId.Value} 的存储模式。");
-            }
-
-            if (!specifiedMode.IsEnabled)
-            {
-                throw new InvalidOperationException($"存储模式 '{specifiedMode.Name}' (ID: {storageModeId.Value}) 未启用。");
+                throw new ArgumentException($"找不到或未启用 ID 为 {storageModeId.Value} 的存储模式。");
             }
         }
 
@@ -568,25 +374,23 @@ public class PictureService(
             string initialTitle = Path.GetFileNameWithoutExtension(fileName);
             string initialDescription = $"Uploaded on {DateTime.UtcNow}";
 
-            await using var dbContextAsync = await contextFactory.CreateDbContextAsync();
             User? user = null;
             if (userId is not null)
             {
-                user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                user = await userRepository.GetByIdAsync(userId.Value);
                 if (user == null) throw new Exception("找不到指定的用户");
             }
 
             if (albumId.HasValue)
             {
-                var album = await dbContext.Albums.Include(a => a.User)
-                    .FirstOrDefaultAsync(a => a.Id == albumId.Value);
+                var album = await albumRepository.GetByIdWithIncludesAsync(albumId.Value);
 
                 if (album == null)
                 {
                     throw new KeyNotFoundException($"找不到ID为{albumId.Value}的相册");
                 }
 
-                if (album.User.Id != userId)
+                if (album.User?.Id != userId)
                 {
                     throw new Exception("您无权将图片添加到此相册");
                 }
@@ -606,8 +410,8 @@ public class PictureService(
                 StorageModeId = storageModeId.Value,
             };
 
-            dbContext.Pictures.Add(picture);
-            await dbContext.SaveChangesAsync();
+            await pictureRepository.AddAsync(picture);
+            await pictureRepository.SaveChangesAsync();
 
             if (userId != null)
             {
@@ -678,8 +482,7 @@ public class PictureService(
 
     public async Task<ExifInfo> GetPictureExifInfoAsync(int pictureId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-        var picture = await dbContext.Pictures.FindAsync(pictureId);
+        var picture = await pictureRepository.GetByIdAsync(pictureId);
 
         if (picture == null)
             throw new KeyNotFoundException($"找不到ID为{pictureId}的图片");
@@ -708,48 +511,38 @@ public class PictureService(
         if (pictureIds.Count == 0)
             return results;
 
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
+        // 获取要删除的图片信息
+        var picturesToDelete = await pictureRepository.GetPicturesByIdsAsync(pictureIds);
+        var pictureInfos = picturesToDelete.Select(p => new
+        {
+            p.Id,
+            p.Path,
+            p.ThumbnailPath,
+            p.OriginalPath,
+            UserId = p.User?.Id,
+            p.StorageModeId
+        }).ToList();
 
-        // 在查询时包含 StorageModeId
-        var picturesToDelete = await dbContext.Pictures
-            .Include(p => p.User)
-            .Where(p => pictureIds.Contains(p.Id))
-            .Select(p => new
-            {
-                p.Id,
-                p.Path,
-                p.ThumbnailPath,
-                p.OriginalPath,
-                UserId = p.User != null ? (int?)p.User.Id : null,
-                p.StorageModeId // 获取 StorageModeId
-            })
-            .ToListAsync();
-
-        var foundPictureIds = picturesToDelete.Select(p => p.Id).ToHashSet();
+        var foundPictureIds = pictureInfos.Select(p => p.Id).ToHashSet();
         foreach (var id in pictureIds.Where(id => !foundPictureIds.Contains(id)))
         {
             results[id] = (false, "找不到此图片", null);
         }
 
         // 从数据库中删除记录
-        if (picturesToDelete.Any())
+        if (pictureInfos.Any())
         {
-            var idsToRemove = picturesToDelete.Select(p => p.Id).ToList();
-            // EF Core 7+ 可以使用 ExecuteDeleteAsync
-            await dbContext.Pictures.Where(p => idsToRemove.Contains(p.Id)).ExecuteDeleteAsync();
-            // 对于旧版本 EF Core:
-            // var entitiesToRemove = await dbContext.Pictures.Where(p => idsToRemove.Contains(p.Id)).ToListAsync();
-            // dbContext.Pictures.RemoveRange(entitiesToRemove);
-            // await dbContext.SaveChangesAsync();
+            var idsToRemove = pictureInfos.Select(p => p.Id).ToList();
+            await pictureRepository.DeletePicturesByIdsAsync(idsToRemove);
         }
 
         // 从存储中删除文件
-        foreach (var picInfo in picturesToDelete)
+        foreach (var picInfo in pictureInfos)
         {
             try
             {
                 string? errorMsg = null;
-                if (picInfo.StorageModeId < 0)
+                if (picInfo.StorageModeId <= 0)
                 {
                     results[picInfo.Id] = (false, "图片记录缺少有效的StorageModeId，无法删除文件。", picInfo.UserId);
                     logger.LogWarning("图片 {PictureId} 缺少 StorageModeId，跳过文件删除。", picInfo.Id);
@@ -801,13 +594,7 @@ public class PictureService(
         List<string>? tags = null,
         PermissionType? permission = null)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        var picture = await dbContext.Pictures
-            .Include(p => p.User)
-            .Include(p => p.Tags)
-            .Include(p => p.StorageMode)
-            .FirstOrDefaultAsync(p => p.Id == pictureId);
+        var picture = await pictureRepository.GetPictureWithIncludesAsync(pictureId);
 
         if (picture == null)
             throw new KeyNotFoundException($"找不到ID为{pictureId}的图片");
@@ -862,102 +649,65 @@ public class PictureService(
 
             foreach (var tagName in tags.Where(t => !string.IsNullOrWhiteSpace(t)))
             {
-                var tag = await dbContext.Tags.FirstOrDefaultAsync(t => t.Name.ToLower() == tagName.ToLower().Trim());
-
-                if (tag == null)
-                {
-                    tag = new Tag { Name = tagName.Trim() };
-                    dbContext.Tags.Add(tag);
-                }
-
+                var tag = await tagRepository.GetOrCreateTagAsync(tagName.Trim());
                 picture.Tags?.Add(tag);
             }
         }
 
         picture.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync();
+        await pictureRepository.UpdateAsync(picture);
+        await pictureRepository.SaveChangesAsync();
+
         var pictureResponse = mappingService.MapPictureToResponse(picture);
         return (pictureResponse, userId);
     }
 
     public async Task<bool> FavoritePictureAsync(int pictureId, int userId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
         // 检查图片是否存在
-        var picture = await dbContext.Pictures.FindAsync(pictureId);
+        var picture = await pictureRepository.GetByIdAsync(pictureId);
         if (picture == null)
             throw new KeyNotFoundException($"找不到ID为{pictureId}的图片");
 
         // 检查用户是否存在
-        var user = await dbContext.Users.FindAsync(userId);
+        var user = await userRepository.GetByIdAsync(userId);
         if (user == null)
             throw new KeyNotFoundException($"找不到ID为{userId}的用户");
 
-        // 检查是否已经收藏
-        var existingFavorite = await dbContext.Favorites
-            .FirstOrDefaultAsync(f => f.PictureId == pictureId && f.User.Id == userId);
-
-        if (existingFavorite != null)
+        // 尝试添加收藏
+        var success = await favoriteRepository.AddFavoriteAsync(pictureId, userId);
+        if (!success)
             throw new InvalidOperationException("您已经收藏过此图片");
 
-        // 创建新收藏
-        var favorite = new Favorite
-        {
-            PictureId = pictureId,
-            User = user,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        dbContext.Favorites.Add(favorite);
-        await dbContext.SaveChangesAsync();
-
+        await favoriteRepository.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> UnfavoritePictureAsync(int pictureId, int userId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        // 查找收藏记录
-        var favorite = await dbContext.Favorites
-            .FirstOrDefaultAsync(f => f.PictureId == pictureId && f.User.Id == userId);
-
-        if (favorite == null)
+        var success = await favoriteRepository.RemoveFavoriteAsync(pictureId, userId);
+        if (!success)
             throw new KeyNotFoundException($"未找到该图片的收藏记录");
 
-        // 移除收藏
-        dbContext.Favorites.Remove(favorite);
-        await dbContext.SaveChangesAsync();
-
+        await favoriteRepository.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> IsPictureFavoritedByUserAsync(int pictureId, int userId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-        return await dbContext.Favorites
-            .AnyAsync(f => f.PictureId == pictureId && f.User.Id == userId);
+        return await favoriteRepository.IsFavoritedByUserAsync(pictureId, userId);
     }
 
     public async Task<Picture?> GetPictureByIdAsync(int pictureId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-        var picture = await dbContext.Pictures
-            .Include(p => p.User)
-            .Include(p => p.Tags)
-            .Include(p => p.StorageMode) // 确保加载 StorageMode 以便 MapPictureToResponseAsync 正确工作
-            .AsNoTracking() // 如果只是读取数据，使用 AsNoTracking 可以提高性能
-            .FirstOrDefaultAsync(p => p.Id == pictureId);
+        var picture = await pictureRepository.GetPictureWithIncludesAsync(pictureId);
 
         if (picture == null)
         {
             logger.LogWarning("GetPictureByIdAsync: Picture with ID {PictureId} not found.", pictureId);
             return null;
         }
-
-        var pictureResponse = mappingService.MapPictureToResponse(picture);
 
         return picture;
     }

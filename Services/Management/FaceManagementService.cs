@@ -10,9 +10,9 @@ namespace Foxel.Services.Management;
 
 public class FaceManagementService(
     IDbContextFactory<MyDbContext> contextFactory,
-    IMappingService mappingService,
-    IConfigService configService,
-    ILogger<FaceManagementService> logger) : IFaceManagementService
+    MappingService mappingService,
+    ConfigService configService,
+    ILogger<FaceManagementService> logger)
 {
     public async Task<PaginatedResult<FaceClusterResponse>> GetFaceClustersAsync(int page = 1, int pageSize = 20)
     {

@@ -10,7 +10,7 @@ namespace Foxel.Api.Management;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/management/storage")]
-public class StorageManagementController(IStorageManagementService storageManagementService) : BaseApiController
+public class StorageManagementController(StorageManagementService storageManagementService) : BaseApiController
 {
     [AllowAnonymous]
     [HttpGet("get_available_modes")]

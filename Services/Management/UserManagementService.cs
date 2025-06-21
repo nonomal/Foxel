@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Foxel.Api.Management;
 using Foxel.Models;
 using Foxel.Models.Response.User;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Foxel.Services.Management;
 
 public class UserManagementService(
-    IDbContextFactory<MyDbContext> contextFactory) : IUserManagementService
+    IDbContextFactory<MyDbContext> contextFactory)
 {
     public async Task<PaginatedResult<UserResponse>> GetUsersAsync(int page = 1, int pageSize = 10, string? searchQuery = null, string? role = null, DateTime? startDate = null, DateTime? endDate = null)
     {

@@ -3,6 +3,7 @@ using Foxel.Models.Response.Face;
 using Foxel.Models.Response.Picture;
 using Foxel.Services.AI;
 using Foxel.Services.Management;
+using Foxel.Services.Media;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,8 +12,8 @@ namespace Foxel.Api.Management;
 [Authorize(Roles = "Administrator")]
 [Route("api/management/face")]
 public class FaceManagementController(
-    IFaceManagementService faceManagementService,
-    IFaceClusteringService faceClusteringService,
+    FaceManagementService faceManagementService,
+    FaceClusteringService faceClusteringService,
     ILogger<FaceManagementController> logger) : BaseApiController
 {
     /// <summary>

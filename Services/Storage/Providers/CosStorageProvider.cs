@@ -57,10 +57,10 @@ public class CustomQCloudCredentialProvider : DefaultSessionQCloudCredentialProv
 public class CosStorageProvider : IStorageProvider
 {
     private readonly CosStorageConfig _cosConfig;
-    private readonly IConfigService _configService; // 保留用于可能的应用级配置
+    private readonly ConfigService _configService; // 保留用于可能的应用级配置
     private readonly ILogger<CosStorageProvider> _logger;
 
-    public CosStorageProvider(CosStorageConfig cosConfig, IConfigService configService, ILogger<CosStorageProvider> logger)
+    public CosStorageProvider(CosStorageConfig cosConfig, ConfigService configService, ILogger<CosStorageProvider> logger)
     {
         _cosConfig = cosConfig;
         _configService = configService; // 存储起来以备后用

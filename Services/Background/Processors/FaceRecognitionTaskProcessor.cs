@@ -59,7 +59,7 @@ namespace Foxel.Services.Background.Processors
     {
         private readonly IDbContextFactory<MyDbContext> _contextFactory;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IConfigService _configService;
+        private readonly ConfigService _configService;
         private readonly ILogger<FaceRecognitionTaskProcessor> _logger;
         private readonly HttpClient _httpClient;
 
@@ -67,7 +67,7 @@ namespace Foxel.Services.Background.Processors
         public FaceRecognitionTaskProcessor(
             IDbContextFactory<MyDbContext> contextFactory,
             IServiceProvider serviceProvider,
-            IConfigService configService,
+            ConfigService configService,
             ILogger<FaceRecognitionTaskProcessor> logger,
             HttpClient httpClient)
         {

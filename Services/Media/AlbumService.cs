@@ -2,15 +2,16 @@ using System.Security.Claims;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Response.Album;
-using Microsoft.EntityFrameworkCore;
-using Foxel.Services.Mapping; // 添加 using
+using Foxel.Services.Mapping;
+using Foxel.Repositories;
 
 namespace Foxel.Services.Media;
 
 public class AlbumService(
-    IDbContextFactory<MyDbContext> contextFactory,
+    AlbumRepository albumRepository,
+    PictureRepository pictureRepository,
     IHttpContextAccessor httpContextAccessor,
-    IMappingService mappingService) // 注入新的映射服务
+    MappingService mappingService)
     : IAlbumService
 {
     public async Task<PaginatedResult<AlbumResponse>> GetAlbumsAsync(int page = 1, int pageSize = 10, int? userId = null)
@@ -18,50 +19,10 @@ public class AlbumService(
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
 
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        // 构建查询
-        IQueryable<Album> query = dbContext.Albums
-            .Include(a => a.User)
-            .Include(a => a.CoverPicture) // 确保包含封面图片
-            .Include(a => a.Pictures) // 确保包含图片集合以计算 PictureCount
-            .OrderByDescending(a => a.CreatedAt);
-
-        // 如果指定了用户ID，则只获取该用户的相册
-        if (userId.HasValue)
-        {
-            query = query.Where(a => a.UserId == userId.Value);
-        }
-
-        // 获取总数和分页数据
-        var totalCount = await query.CountAsync();
-        var albums = await query
-            // .Include(a => a.CoverPicture) // 已在上面包含
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        // 获取每个相册中的图片数量 - 不再需要，MapAlbumToResponse 会处理
-        // var albumIds = albums.Select(a => a.Id).ToList();
-        // var albumPictureCounts = await dbContext.Pictures
-        //     .Where(p => p.AlbumId != null && albumIds.Contains(p.AlbumId.Value))
-        //     .GroupBy(p => p.AlbumId)
-        //     .Select(g => new { AlbumId = g.Key, Count = g.Count() })
-        //     .ToDictionaryAsync(x => x.AlbumId!.Value, x => x.Count);
+        var (albums, totalCount) = await albumRepository.GetPaginatedAsync(page, pageSize, userId);
 
         // 转换为响应模型
         var albumResponses = albums.Select(mappingService.MapAlbumToResponse).ToList();
-        // var albumResponses = albums.Select(a => new AlbumResponse
-        // {
-        //     Id = a.Id,
-        //     Name = a.Name,
-        //     Description = a.Description,
-        //     PictureCount = albumPictureCounts.GetValueOrDefault(a.Id, 0), // 使用 MapAlbumToResponse 后不再需要
-        //     UserId = a.UserId,
-        //     Username = a.User.UserName,
-        //     CreatedAt = a.CreatedAt,
-        //     UpdatedAt = a.UpdatedAt
-        // }).ToList();
 
         return new PaginatedResult<AlbumResponse>
         {
@@ -74,37 +35,10 @@ public class AlbumService(
 
     public async Task<AlbumResponse> GetAlbumByIdAsync(int id)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        var album = await dbContext.Albums
-            .Include(a => a.User)
-            .Include(a => a.CoverPicture) // 确保包含封面图片
-            .Include(a => a.Pictures) // 确保包含图片集合以计算 PictureCount
-            .FirstOrDefaultAsync(a => a.Id == id);
-
+        var album = await albumRepository.GetByIdWithIncludesAsync(id);
         if (album == null)
             throw new KeyNotFoundException($"找不到ID为{id}的相册");
-
-        // 获取相册中图片的数量 - 不再需要
-        // var pictureCount = await dbContext.Pictures
-        //     .Where(p => p.AlbumId == id)
-        //     .CountAsync();
-
-        // 转换为响应模型
         return mappingService.MapAlbumToResponse(album);
-        // var response = new AlbumResponse
-        // {
-        //     Id = album.Id,
-        //     Name = album.Name,
-        //     Description = album.Description,
-        //     PictureCount = pictureCount, // 使用 MapAlbumToResponse 后不再需要
-        //     UserId = album.UserId,
-        //     Username = album.User.UserName,
-        //     CreatedAt = album.CreatedAt,
-        //     UpdatedAt = album.UpdatedAt
-        // };
-        //
-        // return response;
     }
 
     public async Task<AlbumResponse> CreateAlbumAsync(string name, string? description, int userId, int? coverPictureId)
@@ -112,48 +46,23 @@ public class AlbumService(
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("相册名称不能为空", nameof(name));
 
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        // 检查用户是否存在
-        var user = await dbContext.Users.FindAsync(userId);
-        if (user == null)
-            throw new KeyNotFoundException($"找不到ID为{userId}的用户");
-
         // 创建新相册
         var album = new Album
         {
             Name = name.Trim(),
             Description = description?.Trim() ?? string.Empty,
             UserId = userId,
-            // User = user, // EF Core 会自动关联
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             CoverPictureId = coverPictureId
         };
 
-        dbContext.Albums.Add(album);
-        await dbContext.SaveChangesAsync();
+        var createdAlbum = await albumRepository.AddAsync(album);
+        await albumRepository.SaveChangesAsync();
 
-        // 重新加载创建的相册以包含导航属性，用于 MapAlbumToResponse
-        var createdAlbum = await dbContext.Albums
-            .Include(a => a.User)
-            .Include(a => a.CoverPicture)
-            .Include(a => a.Pictures)
-            .FirstAsync(a => a.Id == album.Id);
-
-        // 转换为响应模型
-        return mappingService.MapAlbumToResponse(createdAlbum);
-        // return new AlbumResponse
-        // {
-        //     Id = album.Id,
-        //     Name = album.Name,
-        //     Description = album.Description,
-        //     PictureCount = 0, // MapAlbumToResponse 会处理
-        //     UserId = album.UserId,
-        //     Username = user.UserName, // MapAlbumToResponse 会处理
-        //     CreatedAt = album.CreatedAt,
-        //     UpdatedAt = album.UpdatedAt
-        // };
+        // 重新获取创建的相册以包含导航属性
+        var albumWithIncludes = await albumRepository.GetByIdWithIncludesAsync(createdAlbum.Id);
+        return mappingService.MapAlbumToResponse(albumWithIncludes!);
     }
 
     public async Task<AlbumResponse> UpdateAlbumAsync(int id, string name, string? description, int? userId = null, int? coverPictureId = null)
@@ -161,19 +70,15 @@ public class AlbumService(
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("相册名称不能为空", nameof(name));
 
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
         // 获取相册
-        var album = await dbContext.Albums
-            // .Include(a => a.User) // 将在更新后重新加载
-            // .Include(a => a.Pictures) // 将在更新后重新加载
-            .FirstOrDefaultAsync(a => a.Id == id);
-
+        var album = await albumRepository.GetByIdAsync(id);
         if (album == null)
             throw new KeyNotFoundException($"找不到ID为{id}的相册");
+
         if (!userId.HasValue) // userId 仍然需要用于权限检查
             throw new ArgumentException("无效的用户ID", nameof(userId));
-        if (album.UserId != userId.Value)
+
+        if (!await albumRepository.IsOwnerAsync(id, userId.Value))
         {
             throw new UnauthorizedAccessException("您没有权限更新此相册");
         }
@@ -184,108 +89,82 @@ public class AlbumService(
         album.UpdatedAt = DateTime.UtcNow;
         album.CoverPictureId = coverPictureId;
 
-        await dbContext.SaveChangesAsync();
+        await albumRepository.UpdateAsync(album);
+        await albumRepository.SaveChangesAsync();
 
-        // 重新加载更新后的相册以包含导航属性
-        var updatedAlbum = await dbContext.Albums
-            .Include(a => a.User)
-            .Include(a => a.CoverPicture)
-            .Include(a => a.Pictures)
-            .FirstAsync(a => a.Id == album.Id);
-            
-        // 转换为响应模型
-        return mappingService.MapAlbumToResponse(updatedAlbum);
-        // return new AlbumResponse
-        // {
-        //     Id = album.Id,
-        //     Name = album.Name,
-        //     Description = album.Description,
-        //     PictureCount = album.Pictures?.Count ?? 0, // MapAlbumToResponse 会处理
-        //     UserId = album.UserId,
-        //     Username = album.User.UserName, // MapAlbumToResponse 会处理
-        //     CreatedAt = album.CreatedAt,
-        //     UpdatedAt = album.UpdatedAt
-        // };
+        // 重新获取更新后的相册以包含导航属性
+        var updatedAlbum = await albumRepository.GetByIdWithIncludesAsync(album.Id);
+        return mappingService.MapAlbumToResponse(updatedAlbum!);
     }
 
     public async Task<bool> DeleteAlbumAsync(int id)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        var album = await dbContext.Albums.FindAsync(id);
+        var album = await albumRepository.GetByIdAsync(id);
         if (album == null)
             return false;
 
         // 先找出所有属于这个相册的图片
-        var pictures = await dbContext.Pictures
-            .Where(p => p.AlbumId == id)
-            .ToListAsync();
+        var pictures = await albumRepository.GetPicturesByAlbumIdAsync(id);
 
         // 将这些图片的AlbumId设置为null
         foreach (var picture in pictures)
         {
             picture.AlbumId = null;
-            picture.Album = null;
         }
 
         // 保存图片更改
-        await dbContext.SaveChangesAsync();
+        await pictureRepository.UpdateRangeAsync(pictures);
+        await pictureRepository.SaveChangesAsync();
 
         // 然后删除相册
-        dbContext.Albums.Remove(album);
-        await dbContext.SaveChangesAsync();
+        await albumRepository.DeleteAsync(album);
+        await albumRepository.SaveChangesAsync();
 
         return true;
     }
 
     public async Task<bool> AddPictureToAlbumAsync(int albumId, int pictureId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
         // 获取相册和图片
-        var album = await dbContext.Albums.FindAsync(albumId);
+        var album = await albumRepository.GetByIdAsync(albumId);
         if (album == null)
             throw new KeyNotFoundException($"找不到ID为{albumId}的相册");
 
-        var picture = await dbContext.Pictures.FindAsync(pictureId);
+        var picture = await pictureRepository.GetByIdAsync(pictureId);
         if (picture == null)
             throw new KeyNotFoundException($"找不到ID为{pictureId}的图片");
 
         // 将图片添加到相册
         picture.AlbumId = albumId;
-        picture.Album = album;
 
-        await dbContext.SaveChangesAsync();
+        await pictureRepository.UpdateAsync(picture);
+        await pictureRepository.SaveChangesAsync();
 
         return true;
     }
 
     public async Task<bool> RemovePictureFromAlbumAsync(int albumId, int pictureId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
         // 获取图片
-        var picture = await dbContext.Pictures
-            .FirstOrDefaultAsync(p => p.Id == pictureId && p.AlbumId == albumId);
+        var picture = await pictureRepository.FirstOrDefaultAsync(p => p.Id == pictureId && p.AlbumId == albumId);
 
         if (picture == null)
             throw new KeyNotFoundException($"在相册中找不到ID为{pictureId}的图片");
 
         // 从相册中移除图片
         picture.AlbumId = null;
-        picture.Album = null;
 
-        await dbContext.SaveChangesAsync();
+        await pictureRepository.UpdateAsync(picture);
+        await pictureRepository.SaveChangesAsync();
 
         return true;
     }
 
     public async Task<bool> AddPicturesToAlbumAsync(int albumId, List<int> pictureIds)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        var album = await dbContext.Albums.FindAsync(albumId)
-            ?? throw new KeyNotFoundException("相册不存在");
+        var album = await albumRepository.GetByIdAsync(albumId);
+        if (album == null)
+            throw new KeyNotFoundException("相册不存在");
 
         // 检查是否有权限修改此相册
         var currentUser = httpContextAccessor.HttpContext?.User;
@@ -298,35 +177,19 @@ public class AlbumService(
             }
         }
 
-        var successCount = 0;
-
-        foreach (var pictureId in pictureIds)
+        // 使用仓储的批量更新方法
+        var success = await pictureRepository.AddMultipleToAlbumAsync(pictureIds, albumId);
+        if (success)
         {
-            var picture = await dbContext.Pictures.FindAsync(pictureId);
-            if (picture == null) continue; // 跳过不存在的图片
-
-            // 直接更新 Picture 的 AlbumId
-            if (picture.AlbumId != albumId)
-            {
-                picture.AlbumId = albumId;
-                successCount++;
-            }
+            await pictureRepository.SaveChangesAsync();
         }
 
-        if (successCount > 0)
-        {
-            await dbContext.SaveChangesAsync();
-            return true;
-        }
-
-        return false;
+        return success;
     }
 
     public async Task<bool> SetAlbumCoverAsync(int albumId, int pictureId, int userId)
     {
-        await using var dbContext = await contextFactory.CreateDbContextAsync();
-
-        var album = await dbContext.Albums.FirstOrDefaultAsync(a => a.Id == albumId);
+        var album = await albumRepository.GetByIdAsync(albumId);
         if (album == null)
             throw new KeyNotFoundException($"找不到ID为 {albumId} 的相册");
 
@@ -334,7 +197,7 @@ public class AlbumService(
         if (album.UserId != userId)
             throw new UnauthorizedAccessException("您没有权限修改此相册的封面");
 
-        var picture = await dbContext.Pictures.FirstOrDefaultAsync(p => p.Id == pictureId);
+        var picture = await pictureRepository.GetByIdAsync(pictureId);
         if (picture == null)
             throw new KeyNotFoundException($"找不到ID为 {pictureId} 的图片");
 
@@ -345,7 +208,8 @@ public class AlbumService(
         album.CoverPictureId = pictureId;
         album.UpdatedAt = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync();
+        await albumRepository.UpdateAsync(album);
+        await albumRepository.SaveChangesAsync();
         return true;
     }
 }

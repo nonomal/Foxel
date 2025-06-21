@@ -9,7 +9,7 @@ namespace Foxel.Api.Management;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/management/log")]
-public class LogManagementController(ILogManagementService logManagementService) : BaseApiController
+public class LogManagementController(LogManagementService logManagementService) : BaseApiController
 {
     [HttpGet("get_logs")]
     public async Task<ActionResult<PaginatedResult<LogResponse>>> GetLogs(

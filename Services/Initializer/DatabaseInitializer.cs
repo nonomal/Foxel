@@ -8,9 +8,8 @@ namespace Foxel.Services.Initializer;
 
 public class DatabaseInitializer(
     IDbContextFactory<MyDbContext> contextFactory,
-    IConfigService configService,
+    ConfigService configService,
     ILogger<DatabaseInitializer> logger)
-    : IDatabaseInitializer
 {
     private const string InitializationFlag = "System:InitializationCompleted";
 

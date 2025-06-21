@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Foxel.Services.VectorDb;
 
-public class VectorDbManager(IServiceProvider serviceProvider, IConfigService configService)
+public class VectorDbManager(IServiceProvider serviceProvider, ConfigService configService)
     : IVectorDbService
 {
     private IVectorDbService? _currentService;

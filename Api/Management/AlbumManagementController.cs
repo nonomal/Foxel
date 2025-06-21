@@ -10,7 +10,7 @@ namespace Foxel.Api.Management
 {
     [Authorize(Roles = "Administrator")]
     [Route("api/management/album")]
-    public class AlbumManagementController(IAlbumManagementService albumManagementService) : BaseApiController
+    public class AlbumManagementController(AlbumManagementService albumManagementService) : BaseApiController
     {
         [HttpGet("get_albums")]
         public async Task<ActionResult<PaginatedResult<AlbumResponse>>> GetAlbums(

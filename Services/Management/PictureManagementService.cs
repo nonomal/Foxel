@@ -1,3 +1,4 @@
+using Foxel.Api.Management;
 using Foxel.Models;
 using Foxel.Models.Response.Picture;
 using Foxel.Services.Mapping;
@@ -9,8 +10,8 @@ namespace Foxel.Services.Management;
 public class PictureManagementService(
     IDbContextFactory<MyDbContext> contextFactory,
     IStorageService storageService,
-    IMappingService mappingService,
-    ILogger<PictureManagementService> logger) : IPictureManagementService
+    MappingService mappingService,
+    ILogger<PictureManagementService> logger)
 {
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10, string? searchQuery = null, int? userId = null)
     {

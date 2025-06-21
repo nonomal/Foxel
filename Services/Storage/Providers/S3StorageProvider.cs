@@ -20,10 +20,10 @@ public class S3StorageConfig
 public class S3StorageProvider : IStorageProvider
 {
     private readonly S3StorageConfig _s3Config;
-    private readonly IConfigService _configService; // 保留用于可能的应用级配置
+    private readonly ConfigService _configService; // 保留用于可能的应用级配置
     private readonly ILogger<S3StorageProvider> _logger;
 
-    public S3StorageProvider(S3StorageConfig s3Config, IConfigService configService, ILogger<S3StorageProvider> logger)
+    public S3StorageProvider(S3StorageConfig s3Config, ConfigService configService, ILogger<S3StorageProvider> logger)
     {
         _s3Config = s3Config;
         _configService = configService;

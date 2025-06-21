@@ -12,7 +12,7 @@ namespace Foxel.Api;
 
 [Authorize]
 [Route("api/picture")]
-public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger, IConfigService configuration) : BaseApiController
+public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger, ConfigService configuration) : BaseApiController
 {
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(
@@ -20,15 +20,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
     {
         try
         {
-            List<string>? tagsList = null;
-            if (!string.IsNullOrWhiteSpace(request.Tags))
-            {
-                tagsList = request.Tags.Split(',')
-                    .Select(t => t.Trim())
-                    .Where(t => !string.IsNullOrWhiteSpace(t))
-                    .ToList();
-            }
-
+            var tagsList = ParseTags(request.Tags);
             var currentUserId = GetCurrentUserId();
 
             var result = await pictureService.GetPicturesAsync(
@@ -62,7 +54,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
     [HttpPost("upload_picture")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<BaseResult<PictureResponse>>> UploadPicture(
-        [FromForm] UploadPictureRequest request) // UploadPictureRequest 模型需要添加 StorageModeId 属性
+        [FromForm] UploadPictureRequest request)
     {
         if (request.File.Length == 0)
             return Error<PictureResponse>("没有上传文件");
@@ -71,13 +63,9 @@ public class PictureController(IPictureService pictureService, IStorageService s
         {
             var userId = GetCurrentUserId();
 
-            if (userId == null)
+            if (!ValidateUploadPermission(userId))
             {
-                var enableAnonymousUpload = configuration["AppSettings:EnableAnonymousImageHosting"];
-                if (string.Equals(enableAnonymousUpload, "false", StringComparison.OrdinalIgnoreCase))
-                {
-                    return Error<PictureResponse>("匿名上传功能已关闭，请登录后操作", 403);
-                }
+                return Error<PictureResponse>("匿名上传功能已关闭，请登录后操作", 403);
             }
 
             await using var stream = request.File.OpenReadStream();
@@ -86,14 +74,12 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 stream,
                 request.File.ContentType,
                 userId,
-                (PermissionType)request.Permission!, // 确保 PermissionType 的转换是安全的
+                (PermissionType)request.Permission!,
                 request.AlbumId,
-                request.StorageModeId // 传递 StorageModeId
+                request.StorageModeId
             );
 
-            var picture = result.Picture;
-
-            return Success(picture, "图片上传成功");
+            return Success(result.Picture, "图片上传成功");
         }
         catch (KeyNotFoundException ex)
         {
@@ -103,6 +89,25 @@ public class PictureController(IPictureService pictureService, IStorageService s
         {
             return Error<PictureResponse>($"上传图片失败: {ex.Message}", 500);
         }
+    }
+
+    private bool ValidateUploadPermission(int? userId)
+    {
+        if (userId.HasValue) return true;
+        
+        var enableAnonymousUpload = configuration["AppSettings:EnableAnonymousImageHosting"];
+        return !string.Equals(enableAnonymousUpload, "false", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private List<string>? ParseTags(string? tagsString)
+    {
+        if (string.IsNullOrWhiteSpace(tagsString))
+            return null;
+
+        return tagsString.Split(',')
+            .Select(t => t.Trim())
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .ToList();
     }
 
     [HttpPost("delete_pictures")]
@@ -118,13 +123,12 @@ public class PictureController(IPictureService pictureService, IStorageService s
             if (!request.PictureIds.Any())
                 return Error<object>("未提供要删除的图片ID");
 
-            // 获取删除结果
             var results = await pictureService.DeleteMultiplePicturesAsync(request.PictureIds);
-
+            
             // 权限验证和处理结果
+            var successIds = new List<int>();
             var unauthorizedIds = new List<int>();
             var notFoundIds = new List<int>();
-            var successIds = new List<int>();
             var errors = new Dictionary<int, string>();
 
             foreach (var (pictureId, (success, errorMessage, ownerId)) in results)
@@ -150,8 +154,9 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 }
             }
 
-            // 如果有未授权或其他错误，返回适当的响应
-            if (unauthorizedIds.Any() || notFoundIds.Any() || errors.Any())
+            var hasErrors = unauthorizedIds.Any() || notFoundIds.Any() || errors.Any();
+
+            if (hasErrors)
             {
                 var messages = new List<string>();
 

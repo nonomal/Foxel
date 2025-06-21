@@ -8,7 +8,7 @@ namespace Foxel.Api.Management;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/management/picture")]
-public class PictureManagementController(IPictureManagementService pictureManagementService) : BaseApiController
+public class PictureManagementController(PictureManagementService pictureManagementService) : BaseApiController
 {
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(

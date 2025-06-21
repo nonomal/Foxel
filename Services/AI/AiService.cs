@@ -5,8 +5,7 @@ using Foxel.Utils;
 
 namespace Foxel.Services.AI;
 
-public class AiService(IHttpClientFactory httpClientFactory, IConfigService configService, ILogger<AiService> logger)
-    : IAiService
+public class AiService(IHttpClientFactory httpClientFactory, ConfigService configService, ILogger<AiService> logger)
 {
     private HttpClient? _httpClient;
     private string? _currentApiKey;

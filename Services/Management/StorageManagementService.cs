@@ -4,22 +4,23 @@ using Foxel.Models.Response.Storage;
 using Foxel.Services.Storage.Providers; // Required for config types like LocalStorageConfig, etc.
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Foxel.Api.Management;
 using Foxel.Services.Configuration;
 using Foxel.Services.Storage; // Added for IConfigService
 
 namespace Foxel.Services.Management;
 
-public class StorageManagementService : IStorageManagementService
+public class StorageManagementService 
 {
     private readonly IDbContextFactory<MyDbContext> _contextFactory;
     private readonly ILogger<StorageManagementService> _logger;
-    private readonly IConfigService _configService; // Added IConfigService
+    private readonly ConfigService _configService; // Added IConfigService
     private const string DefaultStorageModeIdKey = "Storage:DefaultStorageModeId"; // Define key for config
 
     public StorageManagementService(
         IDbContextFactory<MyDbContext> contextFactory, 
         ILogger<StorageManagementService> logger,
-        IConfigService configService) // Added IConfigService to constructor
+        ConfigService configService) // Added IConfigService to constructor
     {
         _contextFactory = contextFactory;
         _logger = logger;

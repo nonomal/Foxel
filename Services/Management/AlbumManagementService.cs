@@ -1,3 +1,4 @@
+using Foxel.Api.Management;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Album;
@@ -11,9 +12,8 @@ namespace Foxel.Services.Management
 {
     public class AlbumManagementService(
         IDbContextFactory<MyDbContext> contextFactory,
-        IMappingService mappingService, 
+        MappingService mappingService, 
         ILogger<AlbumManagementService> logger)
-        : IAlbumManagementService
     {
         public async Task<PaginatedResult<AlbumResponse>> GetAlbumsAsync(int page = 1, int pageSize = 10,
             string? searchQuery = null, int? userId = null)
@@ -238,7 +238,6 @@ namespace Foxel.Services.Management
                 throw new KeyNotFoundException($"在相册 {albumId} 中找不到图片 {pictureId}");
 
             picture.AlbumId = null;
-            // picture.Album = null; // EF Core will update this
             await dbContext.SaveChangesAsync();
             return true;
         }

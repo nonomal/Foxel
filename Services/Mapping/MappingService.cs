@@ -6,7 +6,6 @@ using Foxel.Services.Storage;
 namespace Foxel.Services.Mapping
 {
     public class MappingService(IStorageService storageService)
-        : IMappingService
     {
         public AlbumResponse MapAlbumToResponse(Album album)
         {

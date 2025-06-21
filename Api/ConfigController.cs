@@ -9,7 +9,7 @@ namespace Foxel.Api;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/config")]
-public class ConfigController(IConfigService configService) : BaseApiController
+public class ConfigController(ConfigService configService) : BaseApiController
 {
     [HttpGet("get_configs")]
     public async Task<ActionResult<BaseResult<List<Config>>>> GetConfigs()
