@@ -3,14 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.Request.User;
 using Foxel.Models.Response.User;
-using Foxel.Controllers;
 using Foxel.Services.Management;
 
 namespace Foxel.Api.Management;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/management/user")]
-public class UserManagementController(IUserManagementService userManagementService) : BaseApiController
+public class UserManagementController(UserManagementService userManagementService) : BaseApiController
 {
     [HttpGet("get_users")]
     public async Task<ActionResult<PaginatedResult<UserResponse>>> GetUsers(
@@ -161,4 +160,11 @@ public class UserManagementController(IUserManagementService userManagementServi
             return Error<UserDetailResponse>($"获取用户详情失败: {ex.Message}", 500);
         }
     }
+}
+
+public class BatchDeleteResult
+{
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
+    public List<int> FailedIds { get; set; } = new();
 }

@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
-using Foxel.Services.Attributes;
 
 namespace Foxel.Models.DataBase;
 
@@ -48,6 +47,8 @@ public class Picture : BaseModel
     public Album? Album { get; set; }
 
     public ICollection<Favorite>? Favorites { get; set; }
+    
+    public ICollection<Face>? Faces { get; set; }
 
     public bool ContentWarning { get; set; } = false;
     public PermissionType Permission { get; set; } = PermissionType.Public;

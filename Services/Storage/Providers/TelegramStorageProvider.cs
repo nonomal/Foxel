@@ -1,7 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 using System.Net;
 
@@ -18,7 +17,7 @@ public class TelegramStorageConfig
 }
 
 [StorageProvider(StorageType.Telegram)]
-public class TelegramStorageProvider(TelegramStorageConfig _telegramConfig, IConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
+public class TelegramStorageProvider(TelegramStorageConfig _telegramConfig, ConfigService configService, ILogger<TelegramStorageProvider> logger) : IStorageProvider
 {
     public async Task<string> SaveAsync(Stream fileStream, string fileName, string contentType)
     {

@@ -28,6 +28,10 @@ const allDescriptions: Record<string, Record<string, string>> = {
     TagGenerationPrompt: '用于从图片内容生成标签的提示词。请确保提示词包含返回JSON格式的指示，并且要求返回tags数组字段。',
     TagMatchingPrompt: '用于将描述内容与已有标签进行匹配的提示词。请确保提示词包含{\'{tagsText}\'}和{\'{description}\'}占位符，系统将会用实际的标签列表和描述内容替换这些占位符。'
   },
+  FaceRecognition: {
+    ApiEndpoint: '人脸识别服务的API端点地址',
+    ApiKey: '人脸识别服务的API密钥'
+  },
   Jwt: {
     SecretKey: 'JWT 加密密钥',
     Issuer: 'JWT 签发者',
@@ -43,7 +47,9 @@ const allDescriptions: Record<string, Record<string, string>> = {
   },
   AppSettings: {
     ServerUrl: '服务器URL',
-    MaxConcurrentTasks: '后台任务最大并发处理数量 (例如: 图像分析、标签生成等)'
+    MaxConcurrentTasks: '后台任务最大并发处理数量 (例如: 图像分析、标签生成等)',
+    EnableRegistration: '是否允许新用户注册 (true/false)',
+    EnableAnonymousImageHosting: '是否允许匿名用户上传图片 (true/false)'
   },
   Upload: {
     HighQualityImageCompressionQuality: '高清图片的压缩质量，越高图片质量越好但文件越大。范围 50-100。',
@@ -52,6 +58,7 @@ const allDescriptions: Record<string, Record<string, string>> = {
   }
 };
 
+const booleanAppSettings = ['EnableRegistration', 'EnableAnonymousImageHosting'];
 
 const System: React.FC = () => {
   const isMobile = useIsMobile();
@@ -72,9 +79,11 @@ const System: React.FC = () => {
   const [authForm] = Form.useForm();
   const [appSettingsForm] = Form.useForm();
   const [uploadForm] = Form.useForm();
+  const [faceRecognitionForm] = Form.useForm();
 
   const formsMap: Record<string, any> = {
     AI: aiForm,
+    FaceRecognition: faceRecognitionForm,
     Jwt: jwtForm,
     Authentication: authForm,
     AppSettings: appSettingsForm,
@@ -115,9 +124,13 @@ const System: React.FC = () => {
           const formInstance = formsMap[formInstanceKey];
 
           if (formInstance) {
-            const initialGroupValues: Record<string, string> = {};
+            const initialGroupValues: Record<string, any> = {}; // Changed to any for boolean values
             Object.keys(configGroups[group]).forEach(key => {
-              if (!secretFieldsMap[group]?.includes(key)) {
+              if (group === 'AppSettings' && booleanAppSettings.includes(key)) {
+                initialGroupValues[key] = configGroups[group][key] === 'true';
+              } else if (group === 'Upload' && ['ThumbnailMaxWidth', 'ThumbnailCompressionQuality', 'HighQualityImageCompressionQuality'].includes(key)) {
+                initialGroupValues[key] = parseInt(configGroups[group][key] || (key === 'ThumbnailMaxWidth' ? '400' : (key === 'ThumbnailCompressionQuality' ? '75' : '95')), 10);
+              } else if (!secretFieldsMap[group]?.includes(key)) {
                 initialGroupValues[key] = configGroups[group][key];
               } else {
                 initialGroupValues[key] = ''; 
@@ -211,8 +224,12 @@ const System: React.FC = () => {
   const handleSaveSingleConfig = async (formInstance: any, groupName: string, key: string) => {
     try {
       await formInstance.validateFields([key]);
-      const value = formInstance.getFieldValue(key);
+      let value = formInstance.getFieldValue(key);
       const isSecret = secretFields[groupName]?.includes(key);
+
+      if (groupName === 'AppSettings' && booleanAppSettings.includes(key) && typeof value === 'boolean') {
+        value = String(value);
+      }
 
       if (isSecret && (value === '' || value === undefined)) {
         message.info(`未输入 ${key} 的新值，不作更改。`);
@@ -242,7 +259,12 @@ const System: React.FC = () => {
 
       // 计算需要保存的总数
       for (const key of itemKeys) {
-        const value = values[key];
+        let value = values[key];
+        if (groupName === 'AppSettings' && booleanAppSettings.includes(key) && typeof value === 'boolean') {
+          value = String(value);
+        } else if (groupName === 'Upload' && typeof value === 'number') { // Ensure numbers are converted to strings for saving
+          value = String(value);
+        }
         const isSecret = secretFields[groupName]?.includes(key);
         if (!(isSecret && (value === '' || value === undefined)) &&
           (isSecret || configs[groupName]?.[key] !== value)) {
@@ -265,8 +287,14 @@ const System: React.FC = () => {
       });
 
       for (const key of itemKeys) {
-        const value = values[key];
+        let value = values[key];
         const isSecret = secretFields[groupName]?.includes(key);
+
+        if (groupName === 'AppSettings' && booleanAppSettings.includes(key) && typeof value === 'boolean') {
+          value = String(value);
+        } else if (groupName === 'Upload' && typeof value === 'number') { // Ensure numbers are converted to strings for saving
+          value = String(value);
+        }
 
         if (isSecret && (value === '' || value === undefined)) {
           continue;

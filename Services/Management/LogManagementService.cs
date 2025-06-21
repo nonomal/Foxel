@@ -1,11 +1,11 @@
+using Foxel.Api.Management;
 using Microsoft.EntityFrameworkCore;
 using Foxel.Models;
-using Foxel.Models.DataBase;
 using Foxel.Models.Response.Log;
 
 namespace Foxel.Services.Management;
 
-public class LogManagementService(IDbContextFactory<MyDbContext> contextFactory) : ILogManagementService
+public class LogManagementService(IDbContextFactory<MyDbContext> contextFactory)
 {
     public async Task<PaginatedResult<LogResponse>> GetLogsAsync(int page, int pageSize, string? searchQuery = null, LogLevel? level = null, DateTime? startDate = null, DateTime? endDate = null)
     {

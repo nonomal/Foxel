@@ -1,5 +1,7 @@
+using Foxel.Api.Management;
 using Foxel.Models;
 using Foxel.Models.Response.Picture;
+using Foxel.Services.Mapping;
 using Foxel.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +10,8 @@ namespace Foxel.Services.Management;
 public class PictureManagementService(
     IDbContextFactory<MyDbContext> contextFactory,
     IStorageService storageService,
-    ILogger<PictureManagementService> logger) : IPictureManagementService
+    MappingService mappingService,
+    ILogger<PictureManagementService> logger)
 {
     public async Task<PaginatedResult<PictureResponse>> GetPicturesAsync(int page = 1, int pageSize = 10, string? searchQuery = null, int? userId = null)
     {
@@ -44,26 +47,7 @@ public class PictureManagementService(
             .ToListAsync();
 
         // 转换为响应模型
-        var pictureResponses = pictures.Select(picture => new PictureResponse
-        {
-            Id = picture.Id,
-            Name = picture.Name,
-            Path = storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.Path))).Result,
-            ThumbnailPath = storageService.ExecuteAsync(picture.StorageModeId, provider =>
-                Task.FromResult(provider.GetUrl(picture.Id,picture.ThumbnailPath ?? string.Empty))).Result,
-            Description = picture.Description,
-            CreatedAt = picture.CreatedAt,
-            TakenAt = picture.TakenAt,
-            ExifInfo = picture.ExifInfo,
-            UserId = picture.UserId,
-            Username = picture.User?.UserName,
-            Tags = picture.Tags?.Select(t => t.Name).ToList(),
-            AlbumId = picture.AlbumId,
-            AlbumName = picture.Album?.Name,
-            Permission = picture.Permission,
-            FavoriteCount = picture.Favorites?.Count ?? 0,
-        }).ToList();
+        var pictureResponses = pictures.Select(mappingService.MapPictureToResponse).ToList();
 
         return new PaginatedResult<PictureResponse>
         {

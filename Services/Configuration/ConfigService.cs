@@ -9,7 +9,6 @@ public class ConfigService(
     IDbContextFactory<MyDbContext> contextFactory,
     IMemoryCache memoryCache,
     ILogger<ConfigService> logger)
-    : IConfigService
 {
     // 用于存储需要标记为私密的配置键
     private static readonly HashSet<string> _secretKeys = new(StringComparer.OrdinalIgnoreCase)

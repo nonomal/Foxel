@@ -1,15 +1,15 @@
 using Foxel.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Foxel.Models.Request.Auth;
 using Foxel.Models.Response.Auth;
 using Foxel.Services.Auth;
 using Foxel.Services.Configuration;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Foxel.Controllers;
+namespace Foxel.Api;
 
 [Route("api/auth")]
-public class AuthController(IAuthService authService) : BaseApiController
+public class AuthController(AuthService authService, ConfigService configuration) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult<BaseResult<AuthResponse>>> Register([FromBody] RegisterRequest request)
@@ -17,6 +17,13 @@ public class AuthController(IAuthService authService) : BaseApiController
         if (!ModelState.IsValid)
         {
             return Error<AuthResponse>("请求数据无效");
+        }
+
+        // 检查是否允许新用户注册
+        var enableRegistration = configuration["AppSettings:EnableRegistration"];
+        if (string.Equals(enableRegistration, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return Error<AuthResponse>("新用户注册功能已关闭");
         }
 
         var (success, message, user) = await authService.RegisterUserAsync(request);

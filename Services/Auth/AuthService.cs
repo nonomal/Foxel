@@ -3,27 +3,28 @@ using System.Security.Claims;
 using System.Text;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Auth;
+using Foxel.Repositories;
 using Foxel.Services.Configuration;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using static Foxel.Utils.AuthHelper;
 
 namespace Foxel.Services.Auth;
 
-public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfigService configuration, ILogger<AuthService> logger)
-    : IAuthService
+public class AuthService(
+    UserRepository userRepository,
+    RoleRepository roleRepository,
+    ConfigService configuration, 
+    ILogger<AuthService> logger)
 {
     public async Task<(bool success, string message, User? user)> RegisterUserAsync(RegisterRequest request)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-        var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var existingUser = await userRepository.GetByEmailAsync(request.Email);
         if (existingUser != null)
         {
             return (false, "该邮箱已被注册", null);
         }
 
-        existingUser = await context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserName);
+        existingUser = await userRepository.GetByUsernameAsync(request.UserName);
         if (existingUser != null)
         {
             return (false, "该用户名已被使用", null);
@@ -39,23 +40,22 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
             RoleId = 2,
             Role = null,
         };
-        var userCount = await context.Users.CountAsync();
+        
+        var userCount = await userRepository.GetCountAsync();
         if (userCount == 0)
         {
-            var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Administrator");
+            var role = await roleRepository.GetByNameAsync("Administrator");
             user.RoleId = 1;
             user.Role = role;
         }
 
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
+        await userRepository.CreateAsync(user);
         return (true, "用户注册成功", user);
     }
 
     public async Task<(bool success, string message, User? user)> AuthenticateUserAsync(LoginRequest request)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-        var user = await context.Users.Include(x => x.Role).FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await userRepository.GetByEmailWithRoleAsync(request.Email);
 
         if (user == null)
         {
@@ -102,14 +102,12 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
 
     public async Task<User?> GetUserByIdAsync(int userId)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-        return await context.Users.Include(x => x.Role).FirstOrDefaultAsync(u => u.Id == userId);
+        return await userRepository.GetByIdWithRoleAsync(userId);
     }
 
     public async Task<(bool success, string message, User? user)> FindGitHubUserAsync(string githubId)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-        var user = await context.Users.Include(x => x.Role).FirstOrDefaultAsync(u => u.GithubId == githubId);
+        var user = await userRepository.GetByGitHubIdAsync(githubId);
 
         if (user == null)
         {
@@ -121,8 +119,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
 
     public async Task<(bool success, string message, User? user)> FindLinuxDoUserAsync(string linuxdoId)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-        var user = await context.Users.Include(x => x.Role).FirstOrDefaultAsync(u => u.LinuxDoId == linuxdoId);
+        var user = await userRepository.GetByLinuxDoIdAsync(linuxdoId);
 
         if (user == null)
         {
@@ -135,8 +132,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
     public async Task<(bool success, string message, User? user)> UpdateUserInfoAsync(int userId,
         UpdateUserRequest request)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-        var user = await context.Users.Include(x => x.Role).FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await userRepository.GetByIdWithRoleAsync(userId);
 
         if (user == null)
         {
@@ -146,8 +142,8 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         // 检查用户名是否已存在
         if (!string.IsNullOrEmpty(request.UserName) && request.UserName != user.UserName)
         {
-            var existingUserName = await context.Users.AnyAsync(u => u.UserName == request.UserName);
-            if (existingUserName)
+            var existingUser = await userRepository.GetByUsernameAsync(request.UserName);
+            if (existingUser != null)
             {
                 return (false, "该用户名已被使用", null);
             }
@@ -158,8 +154,8 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         // 检查邮箱是否已存在
         if (!string.IsNullOrEmpty(request.Email) && request.Email != user.Email)
         {
-            var existingEmail = await context.Users.AnyAsync(u => u.Email == request.Email);
-            if (existingEmail)
+            var existingUser = await userRepository.GetByEmailAsync(request.Email);
+            if (existingUser != null)
             {
                 return (false, "该邮箱已被注册", null);
             }
@@ -184,7 +180,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         }
 
         user.UpdatedAt = DateTime.UtcNow;
-        await context.SaveChangesAsync();
+        await userRepository.UpdateAsync(user);
 
         return (true, "用户信息更新成功", user);
     }
@@ -399,19 +395,15 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
 
     public async Task<(bool success, string message, User? user)> BindAccountAsync(BindAccountRequest request)
     {
-        await using var context = await dbContextFactory.CreateDbContextAsync();
-
         // 检查第三方ID是否已被绑定
         User? existingThirdPartyUser = null;
         if (request.BindType == BindType.GitHub)
         {
-            existingThirdPartyUser = await context.Users.Include(x => x.Role)
-                .FirstOrDefaultAsync(u => u.GithubId == request.ThirdPartyUserId);
+            existingThirdPartyUser = await userRepository.GetByGitHubIdAsync(request.ThirdPartyUserId);
         }
         else if (request.BindType == BindType.LinuxDo)
         {
-            existingThirdPartyUser = await context.Users.Include(x => x.Role)
-                .FirstOrDefaultAsync(u => u.LinuxDoId == request.ThirdPartyUserId);
+            existingThirdPartyUser = await userRepository.GetByLinuxDoIdAsync(request.ThirdPartyUserId);
         }
 
         if (existingThirdPartyUser != null)
@@ -420,8 +412,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
         }
 
         // 查找邮箱对应的用户
-        var existingUser = await context.Users.Include(x => x.Role)
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+        var existingUser = await userRepository.GetByEmailWithRoleAsync(request.Email);
 
         if (existingUser != null)
         {
@@ -453,7 +444,7 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
             }
 
             existingUser.UpdatedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
+            await userRepository.UpdateAsync(existingUser);
 
             return (true, $"{request.BindType}账户绑定成功", existingUser);
         }
@@ -482,16 +473,15 @@ public class AuthService(IDbContextFactory<MyDbContext> dbContextFactory, IConfi
             }
 
             // 如果是第一个用户，设置为管理员
-            var userCount = await context.Users.CountAsync();
+            var userCount = await userRepository.GetCountAsync();
             if (userCount == 0)
             {
-                var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Administrator");
+                var role = await roleRepository.GetByNameAsync("Administrator");
                 newUser.RoleId = 1;
                 newUser.Role = role;
             }
 
-            context.Users.Add(newUser);
-            await context.SaveChangesAsync();
+            await userRepository.CreateAsync(newUser);
 
             return (true, $"账户注册并绑定{request.BindType}成功", newUser);
         }

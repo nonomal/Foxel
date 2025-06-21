@@ -1,16 +1,15 @@
 using Foxel.Models.DataBase;
-using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 using Foxel.Services.Logging;
+using Foxel.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Foxel.Services.Initializer;
 
 public class DatabaseInitializer(
     IDbContextFactory<MyDbContext> contextFactory,
-    IConfigService configService,
+    ConfigService configService,
     ILogger<DatabaseInitializer> logger)
-    : IDatabaseInitializer
 {
     private const string InitializationFlag = "System:InitializationCompleted";
 
@@ -73,6 +72,8 @@ public class DatabaseInitializer(
             // 其他配置
             ["Storage:DefaultStorageModeId"] = "1",
             ["AppSettings:ServerUrl"] = "",
+            ["AppSettings:EnableRegistration"] = "true",
+            ["AppSettings:EnableAnonymousImageHosting"] = "true",
             ["VectorDb:Type"] = "InMemory"
         };
 

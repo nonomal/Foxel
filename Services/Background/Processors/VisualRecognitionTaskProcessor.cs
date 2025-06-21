@@ -1,14 +1,11 @@
 using Foxel.Models.DataBase;
-using Foxel.Services.AI;
 using Foxel.Services.Storage;
-using Foxel.Services.VectorDB;
 using Foxel.Utils;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-// using Foxel.Services.Attributes; // StorageType enum might not be directly needed here anymore
-using Microsoft.Extensions.DependencyInjection; // For CreateScope
-using Microsoft.AspNetCore.Hosting; // For IWebHostEnvironment
-using Microsoft.Extensions.Logging; // For ILogger
+using Foxel.Services.AI;
+using Foxel.Services.VectorDb;
+
 
 namespace Foxel.Services.Background.Processors
 {
@@ -18,32 +15,19 @@ namespace Foxel.Services.Background.Processors
         public int? UserIdForPicture { get; set; }
     }
 
-    public class VisualRecognitionTaskProcessor : ITaskProcessor
+    public class VisualRecognitionTaskProcessor(
+        IDbContextFactory<MyDbContext> contextFactory,
+        IServiceProvider serviceProvider,
+        ILogger<VisualRecognitionTaskProcessor> logger,
+        IWebHostEnvironment environment)
+        : ITaskProcessor
     {
-        private readonly IDbContextFactory<MyDbContext> _contextFactory;
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger<VisualRecognitionTaskProcessor> _logger;
-        private readonly IWebHostEnvironment _environment;
-
-        public VisualRecognitionTaskProcessor(
-            IDbContextFactory<MyDbContext> contextFactory,
-            IServiceProvider serviceProvider,
-            ILogger<VisualRecognitionTaskProcessor> logger,
-            IWebHostEnvironment environment)
-        {
-            _contextFactory = contextFactory;
-            _serviceProvider = serviceProvider;
-            _logger = logger;
-            _environment = environment;
-        }
-
         public async Task ProcessAsync(BackgroundTask backgroundTask)
         {
-            // ... (payload deserialization and validation logic remains the same) ...
             if (backgroundTask.Payload == null)
             {
                 await UpdateTaskStatusInDb(backgroundTask.Id, TaskExecutionStatus.Failed, 0, "任务 Payload 为空。");
-                _logger.LogError("视觉识别任务 Payload 为空: TaskId={TaskId}", backgroundTask.Id);
+                logger.LogError("视觉识别任务 Payload 为空: TaskId={TaskId}", backgroundTask.Id);
                 return;
             }
 
@@ -54,14 +38,14 @@ namespace Foxel.Services.Background.Processors
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "无法解析视觉识别任务的 Payload: TaskId={TaskId}", backgroundTask.Id);
+                logger.LogError(ex, "无法解析视觉识别任务的 Payload: TaskId={TaskId}", backgroundTask.Id);
                 await UpdateTaskStatusInDb(backgroundTask.Id, TaskExecutionStatus.Failed, 0, "Payload 解析失败。");
                 return;
             }
 
             if (payload == null || payload.PictureId == 0)
             {
-                _logger.LogError("视觉识别任务的 Payload 无效或缺少 PictureId: TaskId={TaskId}", backgroundTask.Id);
+                logger.LogError("视觉识别任务的 Payload 无效或缺少 PictureId: TaskId={TaskId}", backgroundTask.Id);
                 await UpdateTaskStatusInDb(backgroundTask.Id, TaskExecutionStatus.Failed, 0,
                     "Payload 无效或缺少 PictureId。");
                 return;
@@ -71,20 +55,20 @@ namespace Foxel.Services.Background.Processors
             string thumbnailForAiDownloadPath = string.Empty;
             bool isTempThumbnailFile = false;
 
-            await using var dbContext = await _contextFactory.CreateDbContextAsync();
+            await using var dbContext = await contextFactory.CreateDbContextAsync();
             var currentBackgroundTaskState = await dbContext.BackgroundTasks.FindAsync(backgroundTask.Id);
             if (currentBackgroundTaskState == null)
             {
-                _logger.LogError("在 VisualRecognitionTaskProcessor 中找不到后台任务: TaskId={TaskId}", backgroundTask.Id);
+                logger.LogError("在 VisualRecognitionTaskProcessor 中找不到后台任务: TaskId={TaskId}", backgroundTask.Id);
                 return;
             }
 
             var picture = await dbContext.Pictures
-                                        .Include(p => p.User)
-                                            .ThenInclude(u => u!.Tags) // Ensure Tags on User is loaded if needed
-                                        .Include(p => p.StorageMode) // Include StorageMode
-                                        .Include(p => p.Tags) // Include picture's own tags
-                                        .FirstOrDefaultAsync(p => p.Id == pictureId);
+                .Include(p => p.User)
+                .ThenInclude(u => u!.Tags) // Ensure Tags on User is loaded if needed
+                .Include(p => p.StorageMode) // Include StorageMode
+                .Include(p => p.Tags) // Include picture's own tags
+                .FirstOrDefaultAsync(p => p.Id == pictureId);
 
             try
             {
@@ -95,6 +79,7 @@ namespace Foxel.Services.Background.Processors
                 {
                     throw new Exception($"找不到ID为{pictureId}的图片。");
                 }
+
                 if (picture.StorageMode == null || picture.StorageModeId < 0)
                 {
                     throw new Exception($"图片ID {pictureId} 缺少有效的 StorageMode 配置。");
@@ -104,27 +89,28 @@ namespace Foxel.Services.Background.Processors
                 {
                     // It's possible the thumbnail is generated by PictureTaskProcessor but this task runs before it completes.
                     // Or thumbnail generation failed.
-                    _logger.LogWarning("图片ID {PictureId} 的缩略图路径为空。AI分析将无法进行或可能失败。", pictureId);
+                    logger.LogWarning("图片ID {PictureId} 的缩略图路径为空。AI分析将无法进行或可能失败。", pictureId);
                     // Depending on requirements, you might throw, or try to generate it here, or skip AI.
                     // For now, let's assume it should exist.
                     throw new Exception($"图片ID {pictureId} 的缩略图路径为空，无法进行AI分析。");
                 }
 
-                using var scope = _serviceProvider.CreateScope();
-                var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
+                using var scope = serviceProvider.CreateScope();
+                var aiService = scope.ServiceProvider.GetRequiredService<AiService>();
                 var storageService = scope.ServiceProvider.GetRequiredService<IStorageService>();
-                string contentRootPath = _environment.ContentRootPath;
                 string actualThumbnailPathForAI;
 
                 // Check the StorageType of the associated StorageMode
-                if (picture.StorageMode.StorageType == Attributes.StorageType.Local)
+                if (picture.StorageMode.StorageType == StorageType.Local)
                 {
-                    // As with PictureTaskProcessor, safer to use DownloadFileAsync for consistency
-                    _logger.LogInformation("Picture {PictureId} thumbnail is Local. Attempting to download via StorageService for AI.", pictureId);
+                    logger.LogInformation(
+                        "Picture {PictureId} thumbnail is Local. Attempting to download via StorageService for AI.",
+                        pictureId);
                     // Fall-through
                 }
+
                 // else // Remote storage or consistent handling for Local
-                // {
+                // { 
                 await UpdateTaskStatusInDb(currentBackgroundTaskState.Id, TaskExecutionStatus.Processing, 15,
                     currentBackgroundTaskState: currentBackgroundTaskState);
                 // Use picture.StorageModeId to download the thumbnail
@@ -136,7 +122,8 @@ namespace Foxel.Services.Background.Processors
 
                 if (string.IsNullOrEmpty(actualThumbnailPathForAI) || !File.Exists(actualThumbnailPathForAI))
                 {
-                    throw new Exception($"找不到用于AI分析的缩略图文件: {actualThumbnailPathForAI} (源存储路径: {picture.ThumbnailPath})");
+                    throw new Exception(
+                        $"找不到用于AI分析的缩略图文件: {actualThumbnailPathForAI} (源存储路径: {picture.ThumbnailPath})");
                 }
 
                 await UpdateTaskStatusInDb(currentBackgroundTaskState.Id, TaskExecutionStatus.Processing, 20,
@@ -215,7 +202,7 @@ namespace Foxel.Services.Background.Processors
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "视觉识别任务失败: TaskId={TaskId}, PictureId={PictureId}", currentBackgroundTaskState.Id,
+                logger.LogError(ex, "视觉识别任务失败: TaskId={TaskId}, PictureId={PictureId}", currentBackgroundTaskState.Id,
                     pictureId);
                 await UpdateTaskStatusInDb(currentBackgroundTaskState.Id, TaskExecutionStatus.Failed,
                     currentBackgroundTaskState.Progress, ex.Message,
@@ -231,7 +218,7 @@ namespace Foxel.Services.Background.Processors
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "删除临时AI缩略图文件失败: {FilePath}", thumbnailForAiDownloadPath);
+                        logger.LogWarning(ex, "删除临时AI缩略图文件失败: {FilePath}", thumbnailForAiDownloadPath);
                     }
                 }
             }
@@ -242,7 +229,7 @@ namespace Foxel.Services.Background.Processors
             string? error = null, DateTime? startedAt = null, DateTime? completedAt = null,
             BackgroundTask? currentBackgroundTaskState = null)
         {
-            await using var dbContext = await _contextFactory.CreateDbContextAsync();
+            await using var dbContext = await contextFactory.CreateDbContextAsync();
             var taskToUpdate = currentBackgroundTaskState ?? await dbContext.BackgroundTasks.FindAsync(taskId);
 
             if (taskToUpdate != null)
@@ -275,13 +262,13 @@ namespace Foxel.Services.Background.Processors
 
 
                 await dbContext.SaveChangesAsync();
-                _logger.LogInformation(
+                logger.LogInformation(
                     "任务状态更新 (VisualRecognitionProcessor): TaskId={TaskId}, Status={Status}, Progress={Progress}%",
                     taskId, status, progress);
             }
             else
             {
-                _logger.LogWarning("尝试在 VisualRecognitionProcessor 中更新不存在的任务状态: TaskId={TaskId}", taskId);
+                logger.LogWarning("尝试在 VisualRecognitionProcessor 中更新不存在的任务状态: TaskId={TaskId}", taskId);
             }
         }
     }

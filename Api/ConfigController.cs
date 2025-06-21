@@ -1,15 +1,15 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Config;
 using Foxel.Services.Configuration;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Foxel.Controllers;
+namespace Foxel.Api;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/config")]
-public class ConfigController(IConfigService configService) : BaseApiController
+public class ConfigController(ConfigService configService) : BaseApiController
 {
     [HttpGet("get_configs")]
     public async Task<ActionResult<BaseResult<List<Config>>>> GetConfigs()

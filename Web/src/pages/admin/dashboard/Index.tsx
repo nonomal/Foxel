@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Row, Col, Card, Statistic, Table, Button, Spin, Typography, Space, Tag, message } from 'antd';
+import { Row, Col, Card, Statistic, Table, Button, Spin, Typography, Space, message } from 'antd';
 import {
   UserOutlined,
   PictureOutlined,
   EyeOutlined,
   ClockCircleOutlined,
-  ArrowUpOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useOutletContext } from 'react-router';
 import { useNavigate } from 'react-router';
-import { getUsers, getManagementPictures } from '../../../api';
+import { getUsers, getManagementPictures, getManagementAlbums } from '../../../api';
 import type { UserResponse, PictureResponse } from '../../../api';
 
 const { Title, Text } = Typography;
@@ -21,8 +20,6 @@ interface DashboardStats {
   totalAlbums: number;
   totalPhotos: number;
   storageUsagePercentage: number;
-  newUsersToday: number;
-  newPhotosToday: number;
   softwareVersion: string; 
   systemVersion: string;  
   cpuArchitecture: string; 
@@ -37,8 +34,6 @@ const AdminDashboard: React.FC = () => {
     totalAlbums: 0,
     totalPhotos: 0,
     storageUsagePercentage: 0,
-    newUsersToday: 0,
-    newPhotosToday: 0,
     softwareVersion: 'N/A',
     systemVersion: 'N/A',
     cpuArchitecture: 'N/A'
@@ -85,40 +80,32 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 计算今日新增数据
-  const calculateTodayStats = (users: UserResponse[], photos: PictureResponse[]) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const newUsersToday = users.filter(user => {
-      const userDate = new Date(user.createdAt);
-      userDate.setHours(0, 0, 0, 0);
-      return userDate.getTime() === today.getTime();
-    }).length;
-
-    const newPhotosToday = photos.filter(photo => {
-      const photoDate = new Date(photo.createdAt);
-      photoDate.setHours(0, 0, 0, 0);
-      return photoDate.getTime() === today.getTime();
-    }).length;
-
-    setStats(prev => ({
-      ...prev,
-      newUsersToday,
-      newPhotosToday
-    }));
+  // 获取相册总数
+  const fetchTotalAlbums = async () => {
+    try {
+      // 我们只需要总数，所以 pageSize 可以设为 1
+      const response = await getManagementAlbums(1, 1);
+      if (response.success) {
+        setStats(prev => ({
+          ...prev,
+          totalAlbums: response.totalCount || 0
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching total albums:', error);
+      message.error('获取相册总数失败');
+    }
   };
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        await Promise.all([fetchRecentUsers(), fetchRecentPhotos()]);
+        await Promise.all([fetchRecentUsers(), fetchRecentPhotos(), fetchTotalAlbums()]);
         
         // 设置其他静态统计数据
         setStats(prev => ({
           ...prev,
-          totalAlbums: 348, // 相册功能暂未实现，使用模拟数据
           storageUsagePercentage: 68,
           softwareVersion: 'Foxel Dev 尝鲜版', 
           systemVersion: 'Fedora 42', 
@@ -133,13 +120,6 @@ const AdminDashboard: React.FC = () => {
 
     loadData();
   }, []);
-
-  // 当用户和图片数据都加载完成后计算今日统计
-  useEffect(() => {
-    if (recentUsers.length > 0 && recentPhotos.length > 0) {
-      calculateTodayStats(recentUsers, recentPhotos);
-    }
-  }, [recentUsers, recentPhotos]);
 
   const userColumns = useMemo<ColumnsType<UserResponse>>(() => [
     {
@@ -237,11 +217,6 @@ const AdminDashboard: React.FC = () => {
                   title="用户总数"
                   value={stats.totalUsers}
                   prefix={<UserOutlined />}
-                  suffix={
-                    <Tag color="green" style={{ marginLeft: 8 }}>
-                      <ArrowUpOutlined /> {stats.newUsersToday} 今日
-                    </Tag>
-                  }
                 />
               </Card>
             </Col>
@@ -260,11 +235,6 @@ const AdminDashboard: React.FC = () => {
                   title="照片总数"
                   value={stats.totalPhotos}
                   prefix={<PictureOutlined />}
-                  suffix={
-                    <Tag color="green" style={{ marginLeft: 8 }}>
-                      <ArrowUpOutlined /> {stats.newPhotosToday} 今日
-                    </Tag>
-                  }
                 />
               </Card>
             </Col>

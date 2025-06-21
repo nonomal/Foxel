@@ -1,9 +1,8 @@
-using Foxel.Controllers;
 using Foxel.Models;
 using Foxel.Models.Request.Storage;
 using Foxel.Models.Response.Storage;
-using Foxel.Services.Attributes;
 using Foxel.Services.Management;
+using Foxel.Services.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,8 +10,33 @@ namespace Foxel.Api.Management;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/management/storage")]
-public class StorageManagementController(IStorageManagementService storageManagementService) : BaseApiController
+public class StorageManagementController(StorageManagementService storageManagementService) : BaseApiController
 {
+    [AllowAnonymous]
+    [HttpGet("get_available_modes")]
+    public async Task<ActionResult<BaseResult<List<StorageModeResponse>>>> GetAvailableStorageModes()
+    {
+        try
+        {
+            var result = await storageManagementService.GetStorageModesAsync();
+            var filteredModes = result.Data!
+                .Where(mode => mode.IsEnabled)
+                .Select(mode => new StorageModeResponse
+                {
+                    Id = mode.Id,
+                    Name = mode.Name,
+                    StorageType = mode.StorageType,
+                    IsEnabled = mode.IsEnabled
+                })
+                .ToList();
+            return Success(filteredModes, "Available storage modes retrieved successfully.");
+        }
+        catch (Exception ex)
+        {
+            return Error<List<StorageModeResponse>>($"Failed to get available storage modes: {ex.Message}", 500);
+        }
+    }
+
     [HttpGet("get_modes")]
     public async Task<ActionResult<PaginatedResult<StorageModeResponse>>> GetStorageModes(
         [FromQuery] int page = 1,

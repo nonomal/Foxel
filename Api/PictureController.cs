@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-using Foxel.Controllers;
 using Foxel.Models;
 using Foxel.Models.DataBase;
 using Foxel.Models.Request.Picture;
@@ -8,31 +6,21 @@ using Foxel.Services.Media;
 using Foxel.Services.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json; // Added for JsonSerializer in GetTelegramFile if it were kept
+using Foxel.Services.Configuration;
 
 namespace Foxel.Api;
 
 [Authorize]
 [Route("api/picture")]
-public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger) : BaseApiController
+public class PictureController(IPictureService pictureService, IStorageService storageService, ILogger<PictureController> logger, ConfigService configuration) : BaseApiController
 {
-    private readonly ILogger<PictureController> _logger = logger;
-
     [HttpGet("get_pictures")]
     public async Task<ActionResult<PaginatedResult<PictureResponse>>> GetPictures(
         [FromQuery] FilteredPicturesRequest request)
     {
         try
         {
-            List<string>? tagsList = null;
-            if (!string.IsNullOrWhiteSpace(request.Tags))
-            {
-                tagsList = request.Tags.Split(',')
-                    .Select(t => t.Trim())
-                    .Where(t => !string.IsNullOrWhiteSpace(t))
-                    .ToList();
-            }
-
+            var tagsList = ParseTags(request.Tags);
             var currentUserId = GetCurrentUserId();
 
             var result = await pictureService.GetPicturesAsync(
@@ -74,6 +62,12 @@ public class PictureController(IPictureService pictureService, IStorageService s
         try
         {
             var userId = GetCurrentUserId();
+
+            if (!ValidateUploadPermission(userId))
+            {
+                return Error<PictureResponse>("匿名上传功能已关闭，请登录后操作", 403);
+            }
+
             await using var stream = request.File.OpenReadStream();
             var result = await pictureService.UploadPictureAsync(
                 request.File.FileName,
@@ -85,9 +79,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 request.StorageModeId
             );
 
-            var picture = result.Picture;
-
-            return Success(picture, "图片上传成功");
+            return Success(result.Picture, "图片上传成功");
         }
         catch (KeyNotFoundException ex)
         {
@@ -97,6 +89,25 @@ public class PictureController(IPictureService pictureService, IStorageService s
         {
             return Error<PictureResponse>($"上传图片失败: {ex.Message}", 500);
         }
+    }
+
+    private bool ValidateUploadPermission(int? userId)
+    {
+        if (userId.HasValue) return true;
+        
+        var enableAnonymousUpload = configuration["AppSettings:EnableAnonymousImageHosting"];
+        return !string.Equals(enableAnonymousUpload, "false", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private List<string>? ParseTags(string? tagsString)
+    {
+        if (string.IsNullOrWhiteSpace(tagsString))
+            return null;
+
+        return tagsString.Split(',')
+            .Select(t => t.Trim())
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .ToList();
     }
 
     [HttpPost("delete_pictures")]
@@ -112,13 +123,12 @@ public class PictureController(IPictureService pictureService, IStorageService s
             if (!request.PictureIds.Any())
                 return Error<object>("未提供要删除的图片ID");
 
-            // 获取删除结果
             var results = await pictureService.DeleteMultiplePicturesAsync(request.PictureIds);
-
+            
             // 权限验证和处理结果
+            var successIds = new List<int>();
             var unauthorizedIds = new List<int>();
             var notFoundIds = new List<int>();
-            var successIds = new List<int>();
             var errors = new Dictionary<int, string>();
 
             foreach (var (pictureId, (success, errorMessage, ownerId)) in results)
@@ -144,8 +154,9 @@ public class PictureController(IPictureService pictureService, IStorageService s
                 }
             }
 
-            // 如果有未授权或其他错误，返回适当的响应
-            if (unauthorizedIds.Any() || notFoundIds.Any() || errors.Any())
+            var hasErrors = unauthorizedIds.Any() || notFoundIds.Any() || errors.Any();
+
+            if (hasErrors)
             {
                 var messages = new List<string>();
 
@@ -192,8 +203,8 @@ public class PictureController(IPictureService pictureService, IStorageService s
             if (currentUserId == null)
                 return Error<PictureResponse>("无法识别用户信息");
 
-            var (picture, ownerId) = await pictureService.UpdatePictureAsync(
-                request.Id, request.Name, request.Description, request.Tags);
+            (PictureResponse picture, int? ownerId) = await pictureService.UpdatePictureAsync(
+                request.Id, request.Name, request.Description, request.Tags, (PermissionType?)request.Permission);
 
             // 权限验证
             if (ownerId.HasValue && ownerId.Value != currentUserId.Value)
@@ -270,15 +281,15 @@ public class PictureController(IPictureService pictureService, IStorageService s
             var picture = await pictureService.GetPictureByIdAsync(pictureId);
             if (picture == null)
             {
-                _logger.LogWarning("GetPictureFile: Picture with ID {PictureId} not found.", pictureId);
+                logger.LogWarning("GetPictureFile: Picture with ID {PictureId} not found.", pictureId);
                 return NotFound("Picture not found.");
             }
-            var currentUserId = GetCurrentUserId();
+            var currentUserId = GetUserIdFromCookie();
             if (picture.Permission != PermissionType.Public)
             {
                 if (currentUserId == null || picture.UserId != currentUserId.Value)
                 {
-                    _logger.LogWarning("GetPictureFile: User {UserId} forbidden to access picture {PictureId}.", currentUserId, pictureId);
+                    logger.LogWarning("GetPictureFile: User {UserId} forbidden to access picture {PictureId}.", currentUserId, pictureId);
                     return Forbid();
                 }
             }
@@ -291,7 +302,7 @@ public class PictureController(IPictureService pictureService, IStorageService s
 
             if (string.IsNullOrEmpty(tempFilePath) || !System.IO.File.Exists(tempFilePath))
             {
-                _logger.LogError("GetPictureFile: Failed to download file or file not found at temp path for picture ID {PictureId}. TempPath: {TempPath}", pictureId, tempFilePath);
+                logger.LogError("GetPictureFile: Failed to download file or file not found at temp path for picture ID {PictureId}. TempPath: {TempPath}", pictureId, tempFilePath);
                 return StatusCode(500, "Failed to retrieve file from storage.");
             }
             // 4. 确定内容类型
@@ -302,27 +313,27 @@ public class PictureController(IPictureService pictureService, IStorageService s
         }
         catch (KeyNotFoundException knfEx)
         {
-            _logger.LogWarning(knfEx, "GetPictureFile: Resource not found for picture ID {PictureId}.", pictureId);
+            logger.LogWarning(knfEx, "GetPictureFile: Resource not found for picture ID {PictureId}.", pictureId);
             return NotFound($"Resource related to picture ID {pictureId} not found.");
         }
         catch (FileNotFoundException fnfEx)
         {
-            _logger.LogWarning(fnfEx, "GetPictureFile: File not found in storage for picture ID {PictureId}.", pictureId);
+            logger.LogWarning(fnfEx, "GetPictureFile: File not found in storage for picture ID {PictureId}.", pictureId);
             return NotFound("File not found in storage.");
         }
         catch (NotImplementedException niEx)
         {
-            _logger.LogError(niEx, "GetPictureFile: DownloadFileAsync not implemented for the storage provider of picture ID {PictureId}.", pictureId);
+            logger.LogError(niEx, "GetPictureFile: DownloadFileAsync not implemented for the storage provider of picture ID {PictureId}.", pictureId);
             return StatusCode(501, "File download is not supported for this storage type.");
         }
         catch (InvalidOperationException ioEx)
         {
-            _logger.LogError(ioEx, "GetPictureFile: Invalid operation for picture ID {PictureId}.", pictureId);
+            logger.LogError(ioEx, "GetPictureFile: Invalid operation for picture ID {PictureId}.", pictureId);
             return StatusCode(500, $"Error processing file request: {ioEx.Message}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "GetPictureFile: Error getting file for picture ID {PictureId}", pictureId);
+            logger.LogError(ex, "GetPictureFile: Error getting file for picture ID {PictureId}", pictureId);
             return StatusCode(500, "An error occurred while retrieving the file.");
         }
     }

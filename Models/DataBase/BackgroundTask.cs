@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -8,6 +7,7 @@ namespace Foxel.Models.DataBase
     {
         PictureProcessing = 0,
         VisualRecognition = 1,
+        FaceRecognition = 2,
     }
 
     public enum TaskExecutionStatus

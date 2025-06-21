@@ -4,6 +4,7 @@ import { InboxOutlined } from '@ant-design/icons';
 import { v4 as uuidv4 } from 'uuid';
 import type { UploadFile, AlbumResponse } from '../../api';
 import { uploadPicture, getAlbums } from '../../api';
+import { getAvailableStorageModes, type StorageModeResponse } from '../../api/storageManagementApi'; // 新增导入
 
 const { Dragger } = Upload;
 const { Option } = Select;
@@ -19,11 +20,13 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
   const [uploading, setUploading] = useState(false);
   const [form] = Form.useForm();
   const [albums, setAlbums] = useState<AlbumResponse[]>([]);
+  const [availableStorageModes, setAvailableStorageModes] = useState<StorageModeResponse[]>([]); // 新增状态
   const [concurrentUploads, setConcurrentUploads] = useState<number>(3);
   
   useEffect(() => {
     if (visible) {
       fetchAlbums();
+      fetchStorageModes(); // 新增调用
     }
   }, [visible]);
   
@@ -35,6 +38,26 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
       }
     } catch (error) {
       console.error('获取相册列表失败:', error);
+    }
+  };
+
+  // 新增：获取可用存储模式
+  const fetchStorageModes = async () => {
+    try {
+      const result = await getAvailableStorageModes();
+      if (result.success && result.data) {
+        setAvailableStorageModes(result.data);
+        // 尝试设置默认存储模式ID（如果后端有此逻辑，或者选择第一个作为默认）
+        if (result.data.length > 0) {
+          // 这里可以根据业务逻辑设置一个默认选中的 storageModeId
+          // form.setFieldsValue({ storageModeId: result.data[0].id });
+        }
+      } else {
+        message.error('获取存储模式列表失败: ' + result.message);
+      }
+    } catch (error) {
+      console.error('获取存储模式列表失败:', error);
+      message.error('获取存储模式列表失败');
     }
   };
 
@@ -78,6 +101,7 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
       const params: {
         permission?: number;
         albumId?: number;
+        storageModeId?: number; // 新增
       } = {};
 
       if (values.permission !== undefined) {
@@ -85,6 +109,9 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
       }
       if (values.albumId) {
         params.albumId = values.albumId;
+      }
+      if (values.storageModeId) { // 新增
+        params.storageModeId = values.storageModeId;
       }
       
       let successCount = 0;
@@ -103,7 +130,7 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
         try {
           // 上传文件
           const result = await uploadPicture(item.file, {
-            ...params,
+            ...params, // 传递包含 storageModeId 的 params
             onProgress: (percent) => {
               setUploadQueue((prev) => 
                 prev.map(file => file.id === item.id ? { ...file, percent } : file)
@@ -319,6 +346,7 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
         initialValues={{
           permission: 2,
           concurrentUploads: 3
+          // storageModeId: undefined // 可以设置一个初始值或留空
         }}
       >
         <Form.Item
@@ -328,6 +356,19 @@ const ImageUploadDialog: React.FC<UploadDialogProps> = ({ visible, onClose, onUp
           <Select placeholder="选择要上传到的相册" allowClear>
             {albums.map(album => (
               <Option key={album.id} value={album.id}>{album.name}</Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        {/* 新增：存储模式选择 */}
+        <Form.Item
+          name="storageModeId"
+          label="选择存储模式"
+          rules={[{ required: true, message: '请选择存储模式!' }]}
+        >
+          <Select placeholder="选择图片存储模式">
+            {availableStorageModes.map(mode => (
+              <Option key={mode.id} value={mode.id}>{mode.name} ({mode.storageTypeName})</Option>
             ))}
           </Select>
         </Form.Item>

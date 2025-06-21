@@ -7,7 +7,7 @@ import { isAuthenticated } from './api';
 import type { JSX } from 'react';
 import { ConfigProvider } from 'antd';
 import { getMainRoutes, getAdminRoutes } from './routes';
-import { AuthProvider } from './auth/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import AnonymousPage from './pages/anonymous/Index';
 import AdminLayout from './layouts/AdminLayout';
 import Bind from './pages/bind/Index';
@@ -42,6 +42,17 @@ const customTheme = {
       itemSelectedBg: '#18181b',
       itemHoverColor: '#333333',
       itemBorderRadius: 8,
+    },
+    Table: {
+      rowSelectedBg: '#f8f9fa',
+      rowSelectedHoverBg: '#e9ecef',
+      rowHoverBg: '#fafbfc',
+      headerBg: '#ffffff',
+      headerColor: '#495057',
+      colorBgContainer: '#ffffff',
+      colorText: '#212529',
+      colorTextHeading: '#343a40',
+      borderColor: '#dee2e6',
     },
   }
 };

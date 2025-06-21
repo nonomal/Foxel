@@ -6,7 +6,7 @@ import ImageViewer from '../ImageViewer';
 import ShareImageDialog from '../ShareImageDialog';
 import EditImageDialog from '../EditImageDialog';
 import './ImageGrid.css';
-import { useAuth } from '../../../auth/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import ImageCard from './ImageCard';
 import ContextMenu, { type ContextMenuAction } from './ContextMenu';
 

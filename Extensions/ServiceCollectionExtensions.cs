@@ -1,111 +1,38 @@
-using Foxel.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Foxel.Services.AI;
-using Foxel.Services.Auth;
-using Foxel.Services.Background;
-using Foxel.Services.Configuration;
-using Foxel.Services.Initializer;
-using Foxel.Services.Management;
-using Foxel.Services.Media;
-using Foxel.Services.Storage;
-using Foxel.Services.Storage.Providers;
-using Foxel.Services.VectorDB;
-using Foxel.Services.Background.Processors;
-
 namespace Foxel.Extensions;
 
+/// <summary>
+/// 应用程序服务集合扩展方法的主入口
+/// </summary>
 public static class ServiceCollectionExtensions
 {
-    public static void AddCoreServices(this IServiceCollection services)
+    /// <summary>
+    /// 配置所有应用程序服务
+    /// </summary>
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<IConfigService, ConfigService>();
-        services.AddSingleton<IAiService, AiService>();
-        services.AddSingleton<IPictureService, PictureService>();
-        services.AddSingleton<IAuthService, AuthService>();
-        services.AddSingleton<ITagService, TagService>();
-        services.AddSingleton<IAlbumService, AlbumService>();
-        services.AddSingleton<IUserManagementService, UserManagementService>();
-        services.AddSingleton<IPictureManagementService, PictureManagementService>();
-        services.AddSingleton<ILogManagementService, LogManagementService>();
-        services.AddSingleton<IStorageManagementService, StorageManagementService>();
-        services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
-        services.AddHostedService<QueuedHostedService>();
-        services.AddSingleton<IStorageService, StorageService>();
-        services.AddSingleton<PictureTaskProcessor>();
-        services.AddSingleton<VisualRecognitionTaskProcessor>();
-        services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
-    }
-
-    public static void AddApplicationDbContext(this IServiceCollection services, IConfiguration configuration)
-    {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            connectionString = Environment.GetEnvironmentVariable("DEFAULT_CONNECTION");
-        }
-
-        Console.WriteLine($"数据库连接: {connectionString}");
-        services.AddDbContextFactory<MyDbContext>(options =>
-            options.UseNpgsql(connectionString));
-    }
-
-    public static void AddApplicationOpenApi(this IServiceCollection services)
-    {
-        services.AddOpenApi(opt => { opt.AddDocumentTransformer<BearerSecuritySchemeTransformer>(); });
-    }
-
-    public static void AddApplicationAuthentication(this IServiceCollection services)
-    {
-        IConfigService configuration = services.BuildServiceProvider().GetRequiredService<IConfigService>();
-        services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = configuration["Jwt:Issuer"],
-                    ValidAudience = configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(configuration["Jwt:SecretKey"]))
-                };
-            });
-    }
-
-    public static void AddApplicationAuthorization(this IServiceCollection services)
-    {
-        services.AddAuthorization(options =>
-        {
-            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build();
-        });
-    }
-
-    public static void AddApplicationCors(this IServiceCollection services)
-    {
-        services.AddCors(options =>
-        {
-            options.AddPolicy(name: "MyAllowSpecificOrigins",
-                policy => { policy.WithOrigins().AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod(); });
-        });
-    }
-
-    public static void AddVectorDbServices(this IServiceCollection services)
-    {
-        services.AddSingleton<VectorDbManager>();
-        services.AddSingleton<IVectorDbService>(provider =>
-            provider.GetRequiredService<VectorDbManager>());
+        // 基础服务
+        services.AddApplicationServices();
+        
+        // 数据库相关
+        services.AddApplicationDbContext(configuration);
+        
+        // API相关
+        services.AddApplicationOpenApi();
+        services.AddApplicationCors();
+        
+        // 业务服务
+        services.AddCoreServices();
+        
+        // 身份验证和授权
+        services.AddApplicationAuthentication();
+        services.AddApplicationAuthorization();
+        
+        // 矢量数据库
+        services.AddVectorDbServices();
+        
+        // 转发头配置
+        services.AddForwardedHeaders();
+        
+        return services;
     }
 }

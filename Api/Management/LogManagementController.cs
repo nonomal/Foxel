@@ -3,14 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using Foxel.Models;
 using Foxel.Models.Response.Log;
 using Foxel.Models.Request.Log;
-using Foxel.Controllers;
 using Foxel.Services.Management;
 
 namespace Foxel.Api.Management;
 
 [Authorize(Roles = "Administrator")]
 [Route("api/management/log")]
-public class LogManagementController(ILogManagementService logManagementService) : BaseApiController
+public class LogManagementController(LogManagementService logManagementService) : BaseApiController
 {
     [HttpGet("get_logs")]
     public async Task<ActionResult<PaginatedResult<LogResponse>>> GetLogs(

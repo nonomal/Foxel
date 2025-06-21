@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Text;
-using Foxel.Services.Attributes;
 using Foxel.Services.Configuration;
 
 namespace Foxel.Services.Storage.Providers;
@@ -18,10 +17,10 @@ public class WebDavStorageConfig
 public class WebDavStorageProvider : IStorageProvider
 {
     private readonly WebDavStorageConfig _webDavConfig;
-    private readonly IConfigService _configService;
+    private readonly ConfigService _configService;
     private readonly ILogger<WebDavStorageProvider> _logger;
 
-    public WebDavStorageProvider(WebDavStorageConfig webDavConfig, IConfigService configService, ILogger<WebDavStorageProvider> logger)
+    public WebDavStorageProvider(WebDavStorageConfig webDavConfig, ConfigService configService, ILogger<WebDavStorageProvider> logger)
     {
         _webDavConfig = webDavConfig;
         _configService = configService;
